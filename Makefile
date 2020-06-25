@@ -1,4 +1,4 @@
-GO_OBJS=main.go
+GO_OBJS=main.go token.go parse.go gen.go
 
 tgocc: $(GO_OBJS)
 	go build -o tgocc $(GO_OBJS)

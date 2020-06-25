@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strconv"
 )
 
 func main() {
@@ -11,14 +10,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "usage: tccgo <program>")
 		return
 	}
-	i, err := strconv.Atoi(os.Args[1])
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "not a number")
-		return
-	}
+	tokens := Tokenize(os.Args[1])
+	_, node := Expr(tokens)
 	fmt.Println(".intel_syntax noprefix")
 	fmt.Println(".globl main")
 	fmt.Println("main:")
-	fmt.Printf("	mov rax, %d\n", i)
+	Gen(node)
+	fmt.Println("	pop rax")
 	fmt.Println("	ret")
 }
