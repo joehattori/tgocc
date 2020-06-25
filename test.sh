@@ -29,4 +29,17 @@ assert "2 + 5 * 3" 17
 assert "(2 + 5) * 3" 21
 assert "4 - (-1)" 5
 
+assert "1==1" 1
+assert "1==3" 0
+assert "3!=5" 1
+assert "3!=3" 0
+assert "3<5" 1
+assert "3<3" 0
+assert "3<=3" 1
+assert "3<=2" 0
+assert "7>5" 1
+assert "2>3" 0
+assert "3>=3" 1
+assert "3>=9" 0
+
 echo OK

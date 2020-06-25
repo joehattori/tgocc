@@ -16,9 +16,10 @@ const (
 
 // Token is a type to describe token
 type Token struct {
-	kind tokenKind
-	val  int
-	str  string
+	kind   tokenKind
+	val    int
+	str    string
+	length int
 }
 
 // Tokenize returns the tokenized input
@@ -35,17 +36,21 @@ func Tokenize(s string) []*Token {
 		if regNum.MatchString(s) {
 			numStr := regNum.FindString(s)
 			num, _ := strconv.Atoi(numStr)
-			curTok := &Token{kind: tkNum, val: num}
-			toks = append(toks, curTok)
+			toks = append(toks, &Token{kind: tkNum, val: num, length: len(numStr)})
 			s = regNum.ReplaceAllString(s, "")
 			continue
 		}
 
-		regOp := regexp.MustCompile(`^[+-*/]`)
-		if regOp.MatchString(s) {
-			curTok := &Token{kind: tkReserved, str: s}
-			toks = append(toks, curTok)
-			s = regOp.ReplaceAllString(s, "")
+		if hasMultipleCharactorOperator(s) {
+			toks = append(toks, &Token{kind: tkReserved, str: s, length: 2})
+			s = s[2:]
+			continue
+		}
+
+		regSingleCharOp := regexp.MustCompile(`^[+-*/()<>]`)
+		if regSingleCharOp.MatchString(s) {
+			toks = append(toks, &Token{kind: tkReserved, str: s, length: 1})
+			s = regSingleCharOp.ReplaceAllString(s, "")
 			continue
 		}
 
@@ -53,4 +58,14 @@ func Tokenize(s string) []*Token {
 	}
 	toks = append(toks, &Token{kind: tkEOF, str: s})
 	return toks
+}
+
+func hasMultipleCharactorOperator(s string) bool {
+	ops := []string{"==", "!=", "<=", ">="}
+	for _, op := range ops {
+		if strings.HasPrefix(s, op) {
+			return true
+		}
+	}
+	return false
 }

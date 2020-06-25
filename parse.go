@@ -7,7 +7,7 @@ import (
 
 func consume(toks []*Token, str string) ([]*Token, bool) {
 	curTok := toks[0]
-	if curTok.kind != tkReserved || !strings.HasPrefix(curTok.str, str) {
+	if curTok.kind != tkReserved || curTok.length != len(str) || !strings.HasPrefix(curTok.str, str) {
 		return toks, false
 	}
 	return toks[1:], false
@@ -15,7 +15,7 @@ func consume(toks []*Token, str string) ([]*Token, bool) {
 
 func expect(toks []*Token, str string) error {
 	curTok := toks[0]
-	if curTok.kind != tkReserved || !strings.HasPrefix(curTok.str, str) {
+	if curTok.kind != tkReserved || curTok.length != len(str) || !strings.HasPrefix(curTok.str, str) {
 		return fmt.Errorf("%s was expected but got %s", str, curTok.str)
 	}
 	return nil
@@ -37,6 +37,12 @@ const (
 	ndMul
 	ndDiv
 	ndNum
+	ndEq
+	ndNeq
+	ndLt
+	ndLeq
+	ndGt
+	ndGeq
 )
 
 // Node represents each node in ast
@@ -55,23 +61,88 @@ func newNodeNum(val int) *Node {
 	return &Node{kind: ndNum, val: val}
 }
 
-/* expr    = mulDiv ("+" mulDiv | "-" mulDiv)*
-   mulDiv  = unary ("*" unary | "/" unary)*
-   unary   = ("+" | "-")? primary
-   primary = num | "(" expr ")" */
+// expr       = equality
+// equality   = relational ("==" relational | "!=" relational)*
+// relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+// add        = mul ("+" mul | "-" mul)*
+// mul        = unary ("*" unary | "/" unary)*
+// unary      = ("+" | "-")? primary
+// primary    = num | "(" expr ")"
+
+type opKind struct {
+	str  string
+	kind nodeKind
+}
 
 // Expr parses the expression shown above
 func Expr(toks []*Token) ([]*Token, *Node) {
-	toks, node := mulDiv(toks)
+	return equality(toks)
+}
+
+func equality(toks []*Token) ([]*Token, *Node) {
+	toks, node := relational(toks)
+	ops := []opKind{
+		opKind{str: "==", kind: ndEq},
+		opKind{str: "!=", kind: ndNeq},
+	}
 	for {
-		if newToks, isPlus := consume(toks, "+"); isPlus {
-			nxtToks, mulDivNode := mulDiv(newToks)
-			toks, node = nxtToks, newNode(ndAdd, node, mulDivNode)
+		matched := false
+		for _, op := range ops {
+			if newToks, isOp := consume(toks, op.str); isOp {
+				nxtToks, relNode := relational(newToks)
+				toks, node = nxtToks, newNode(op.kind, node, relNode)
+				matched = true
+			}
+		}
+		if matched {
 			continue
 		}
-		if newToks, isMinus := consume(toks, "-"); isMinus {
-			nxtToks, mulDivNode := mulDiv(newToks)
-			toks, node = nxtToks, newNode(ndDiv, node, mulDivNode)
+		break
+	}
+	return toks, node
+}
+
+func relational(toks []*Token) ([]*Token, *Node) {
+	toks, node := addSub(toks)
+	ops := []opKind{
+		opKind{str: "<=", kind: ndLeq},
+		opKind{str: ">=", kind: ndGeq},
+		opKind{str: "<", kind: ndLt},
+		opKind{str: ">", kind: ndGt},
+	}
+	for {
+		matched := false
+		for _, op := range ops {
+			if newToks, isOp := consume(toks, op.str); isOp {
+				nxtToks, addSubNode := addSub(newToks)
+				toks, node = nxtToks, newNode(op.kind, node, addSubNode)
+				matched = true
+			}
+		}
+		if matched {
+			continue
+		}
+		break
+	}
+	return toks, node
+}
+
+func addSub(toks []*Token) ([]*Token, *Node) {
+	toks, node := mulDiv(toks)
+	ops := []opKind{
+		opKind{str: "+", kind: ndAdd},
+		opKind{str: "-", kind: ndSub},
+	}
+	for {
+		matched := false
+		for _, op := range ops {
+			if newToks, isOp := consume(toks, op.str); isOp {
+				nxtToks, mulDivNode := mulDiv(newToks)
+				toks, node = nxtToks, newNode(op.kind, node, mulDivNode)
+				matched = true
+			}
+		}
+		if matched {
 			continue
 		}
 		break
@@ -81,15 +152,20 @@ func Expr(toks []*Token) ([]*Token, *Node) {
 
 func mulDiv(toks []*Token) ([]*Token, *Node) {
 	toks, node := unary(toks)
+	ops := []opKind{
+		opKind{str: "*", kind: ndMul},
+		opKind{str: "/", kind: ndDiv},
+	}
 	for {
-		if newToks, isMul := consume(toks, "*"); isMul {
-			nxtToks, unaryNode := unary(newToks)
-			toks, node = nxtToks, newNode(ndMul, node, unaryNode)
-			continue
+		matched := false
+		for _, op := range ops {
+			if newToks, isOp := consume(toks, op.str); isOp {
+				nxtToks, unaryNode := unary(newToks)
+				toks, node = nxtToks, newNode(op.kind, node, unaryNode)
+				matched = true
+			}
 		}
-		if newToks, isDiv := consume(toks, "/"); isDiv {
-			nxtToks, unaryNode := unary(newToks)
-			toks, node = nxtToks, newNode(ndDiv, node, unaryNode)
+		if matched {
 			continue
 		}
 		break
