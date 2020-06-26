@@ -1,8 +1,8 @@
 #!/bin/bash
 
 assert() {
-    expected="$1"
-    input="$2"
+    input="$1"
+    expected="$2"
 
     ./tgocc "$input" > tmp.s
     cc -o tmp tmp.s
@@ -17,29 +17,31 @@ assert() {
     fi
 }
 
-assert 0 0
-assert 42 42
+assert "0;" 0
+assert "42;" 42
 
-assert "1+3" 4
-assert "2-1" 1
-assert "5*3" 15
-assert "6/3" 2
+assert "1+3;" 4
+assert "2-1;" 1
+assert "5*3;" 15
+assert "6/3;" 2
 
-assert "2 + 5 * 3" 17
-assert "(2 + 5) * 3" 21
-assert "4 - (-1)" 5
+assert "2 + 5 * 3;" 17
+assert "(2 + 5) * 3;" 21
+assert "4 - (-1);" 5
 
-assert "1==1" 1
-assert "1==3" 0
-assert "3!=5" 1
-assert "3!=3" 0
-assert "3<5" 1
-assert "3<3" 0
-assert "3<=3" 1
-assert "3<=2" 0
-assert "7>5" 1
-assert "2>3" 0
-assert "3>=3" 1
-assert "3>=9" 0
+assert "1==1;" 1
+assert "1==3;" 0
+assert "3!=5;" 1
+assert "3!=3;" 0
+assert "3<5;" 1
+assert "3<3;" 0
+assert "3<=3;" 1
+assert "3<=2;" 0
+assert "7>5;" 1
+assert "2>3;" 0
+assert "3>=3;" 1
+assert "3>=9;" 0
+
+assert "a = 1; b = 2; a + b;" 3
 
 echo OK

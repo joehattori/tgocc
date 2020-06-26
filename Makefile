@@ -5,7 +5,7 @@ tgocc: $(GO_OBJS)
 
 .PHONY: clean test
 clean:
-	rm -f tgocc *.o tmp.*
+	rm -f tgocc *.o tmp*
 
 test: tgocc
 	./test.sh

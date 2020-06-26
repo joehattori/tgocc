@@ -2,10 +2,35 @@ package main
 
 import "fmt"
 
-// Gen generates assembly code for ast
+// genLVar pushes the address of loval variable to stack
+func genLVar(node *Node) {
+	if node.kind != ndLvar {
+		panic("This node should be local variable")
+	}
+	fmt.Println("	mov rax, rbp")
+	fmt.Printf("	sub rax, %d\n", node.offset)
+	fmt.Println("	push rax")
+}
+
+// Gen generates assembly code for given node. This emulates stack machine.
 func Gen(node *Node) {
-	if node.kind == ndNum {
+	switch node.kind {
+	case ndNum:
 		fmt.Printf("	push %d\n", node.val)
+		return
+	case ndAssign:
+		genLVar(node.lhs)
+		Gen(node.rhs)
+		fmt.Println("	pop rdi")
+		fmt.Println("	pop rax")
+		fmt.Println("	mov [rax], rdi")
+		fmt.Println("	push rdi")
+		return
+	case ndLvar:
+		genLVar(node)
+		fmt.Println("	pop rax")
+		fmt.Println("	mov rax, [rax]")
+		fmt.Println("	push rax")
 		return
 	}
 

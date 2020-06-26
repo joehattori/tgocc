@@ -10,7 +10,16 @@ func consume(toks []*Token, str string) ([]*Token, bool) {
 	if curTok.kind != tkReserved || curTok.length != len(str) || !strings.HasPrefix(curTok.str, str) {
 		return toks, false
 	}
-	return toks[1:], false
+	return toks[1:], true
+}
+
+func consumeID(toks []*Token) ([]*Token, string, bool) {
+	curTok := toks[0]
+	r := []rune(curTok.str)
+	if curTok.kind != tkID || !('a' <= r[0] && r[0] <= 'z') {
+		return toks, "", false
+	}
+	return toks[1:], string(r[0:1]), true
 }
 
 func expect(toks []*Token, str string) error {
@@ -43,14 +52,17 @@ const (
 	ndLeq
 	ndGt
 	ndGeq
+	ndLvar
+	ndAssign
 )
 
 // Node represents each node in ast
 type Node struct {
-	kind nodeKind
-	lhs  *Node
-	rhs  *Node
-	val  int
+	kind   nodeKind
+	lhs    *Node
+	rhs    *Node
+	val    int
+	offset int
 }
 
 func newNode(kind nodeKind, lhs *Node, rhs *Node) *Node {
@@ -61,22 +73,58 @@ func newNodeNum(val int) *Node {
 	return &Node{kind: ndNum, val: val}
 }
 
-// expr       = equality
+func newNodeVar(s string) *Node {
+	return &Node{kind: ndLvar, offset: int([]rune(s)[0]-'a'+1) * 8}
+}
+
+// program    = stmt*
+// stmt       = expr ";"
+// expr       = assign
+// assign     = equality ("=" assign) ?
 // equality   = relational ("==" relational | "!=" relational)*
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 // add        = mul ("+" mul | "-" mul)*
 // mul        = unary ("*" unary | "/" unary)*
 // unary      = ("+" | "-")? primary
-// primary    = num | "(" expr ")"
+// primary    = num | ident | "(" expr ")"
 
 type opKind struct {
 	str  string
 	kind nodeKind
 }
 
-// Expr parses the expression shown above
-func Expr(toks []*Token) ([]*Token, *Node) {
-	return equality(toks)
+// Code is an array of nodes which represents whole program input
+var Code []*Node
+
+// Program parses tokens and fills up Code
+func Program(toks []*Token) {
+	for toks[0].kind != tkEOF {
+		newToks, node := stmt(toks)
+		toks = newToks
+		Code = append(Code, node)
+	}
+}
+
+func stmt(toks []*Token) ([]*Token, *Node) {
+	newToks, node := expr(toks)
+	err := expect(newToks, ";")
+	if err != nil {
+		panic(err)
+	}
+	return newToks[1:], node
+}
+
+func expr(toks []*Token) ([]*Token, *Node) {
+	return assign(toks)
+}
+
+func assign(toks []*Token) ([]*Token, *Node) {
+	toks, node := equality(toks)
+	if newToks, isAssign := consume(toks, "="); isAssign {
+		nxtToks, assignNode := assign(newToks)
+		toks, node = nxtToks, newNode(ndAssign, node, assignNode)
+	}
+	return toks, node
 }
 
 func equality(toks []*Token) ([]*Token, *Node) {
@@ -110,8 +158,9 @@ func relational(toks []*Token) ([]*Token, *Node) {
 		opKind{str: "<", kind: ndLt},
 		opKind{str: ">", kind: ndGt},
 	}
-	for {
-		matched := false
+	matched := true
+	for matched {
+		matched = false
 		for _, op := range ops {
 			if newToks, isOp := consume(toks, op.str); isOp {
 				nxtToks, addSubNode := addSub(newToks)
@@ -119,10 +168,6 @@ func relational(toks []*Token) ([]*Token, *Node) {
 				matched = true
 			}
 		}
-		if matched {
-			continue
-		}
-		break
 	}
 	return toks, node
 }
@@ -133,8 +178,9 @@ func addSub(toks []*Token) ([]*Token, *Node) {
 		opKind{str: "+", kind: ndAdd},
 		opKind{str: "-", kind: ndSub},
 	}
-	for {
-		matched := false
+	matched := true
+	for matched {
+		matched = false
 		for _, op := range ops {
 			if newToks, isOp := consume(toks, op.str); isOp {
 				nxtToks, mulDivNode := mulDiv(newToks)
@@ -142,10 +188,6 @@ func addSub(toks []*Token) ([]*Token, *Node) {
 				matched = true
 			}
 		}
-		if matched {
-			continue
-		}
-		break
 	}
 	return toks, node
 }
@@ -156,8 +198,9 @@ func mulDiv(toks []*Token) ([]*Token, *Node) {
 		opKind{str: "*", kind: ndMul},
 		opKind{str: "/", kind: ndDiv},
 	}
-	for {
-		matched := false
+	matched := true
+	for matched {
+		matched = false
 		for _, op := range ops {
 			if newToks, isOp := consume(toks, op.str); isOp {
 				nxtToks, unaryNode := unary(newToks)
@@ -165,10 +208,6 @@ func mulDiv(toks []*Token) ([]*Token, *Node) {
 				matched = true
 			}
 		}
-		if matched {
-			continue
-		}
-		break
 	}
 	return toks, node
 }
@@ -185,17 +224,22 @@ func unary(toks []*Token) ([]*Token, *Node) {
 
 func primary(toks []*Token) ([]*Token, *Node) {
 	if newToks, isPar := consume(toks, "("); isPar {
-		newToks, node := Expr(newToks)
+		newToks, node := expr(newToks)
 		toks = newToks
 		err := expect(newToks, ")")
 		if err != nil {
-			panic("\")\" needed")
+			panic(err)
 		}
 		return toks[1:], node
 	}
+
+	if newToks, id, isID := consumeID(toks); isID {
+		return newToks, newNodeVar(id)
+	}
+
 	n, err := expectNum(toks)
 	if err != nil {
-		panic("Number expected")
+		panic(err)
 	}
 	return toks[1:], newNodeNum(n)
 }

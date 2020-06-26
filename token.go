@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -11,6 +12,7 @@ type tokenKind int
 const (
 	tkReserved = iota
 	tkNum
+	tkID
 	tkEOF
 )
 
@@ -30,7 +32,7 @@ func Tokenize(s string) []*Token {
 			break
 		}
 
-		s = strings.TrimLeft(s, " \n\t")
+		s = strings.TrimLeft(s, " \t")
 
 		regNum := regexp.MustCompile(`^[0-9]+`)
 		if regNum.MatchString(s) {
@@ -47,14 +49,20 @@ func Tokenize(s string) []*Token {
 			continue
 		}
 
-		regSingleCharOp := regexp.MustCompile(`^[+-*/()<>]`)
+		regSingleCharOp := regexp.MustCompile(`^[\+\-\*/\(\)<>;=]`)
 		if regSingleCharOp.MatchString(s) {
 			toks = append(toks, &Token{kind: tkReserved, str: s, length: 1})
-			s = regSingleCharOp.ReplaceAllString(s, "")
+			s = s[1:]
 			continue
 		}
 
-		panic("unexpected input")
+		if c := []rune(s)[0]; 'a' <= c && c <= 'z' {
+			toks = append(toks, &Token{kind: tkID, str: s, length: 1})
+			s = s[1:]
+			continue
+		}
+
+		panic(fmt.Sprintf("unexpected input %s\n", s))
 	}
 	toks = append(toks, &Token{kind: tkEOF, str: s})
 	return toks
