@@ -42,7 +42,12 @@ assert "2>3;" 0
 assert "3>=3;" 1
 assert "3>=9;" 0
 
+assert "foo = 5; foo;" 5
 assert "foo = 5; bar = 2; foo * bar;" 10
-assert "foo = 1; bar = 2; foo = 4; foo + bar;" 6
+assert "f_oo2 = 1; bar = 2; f_oo2 = 4; f_oo2 + bar;" 6
+
+assert "return 10;" 10
+assert "foo = 5; bar = 2; return foo + bar;" 7
+assert "return 10; return 20;" 10
 
 echo OK

@@ -1,7 +1,7 @@
-GO_OBJS=main.go token.go parse.go gen.go
+SRCS=main.go token.go parse.go gen.go
 
-tgocc: $(GO_OBJS)
-	go build -o tgocc $(GO_OBJS)
+tgocc: $(SRCS)
+	go build -o tgocc $(SRCS)
 
 .PHONY: clean test
 clean:

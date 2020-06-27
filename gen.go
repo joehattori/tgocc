@@ -30,6 +30,13 @@ func genNode(node *Node) {
 		fmt.Println("	mov rax, [rax]")
 		fmt.Println("	push rax")
 		return
+	case ndReturn:
+		genNode(node.rhs)
+		fmt.Println("	pop rax")
+		fmt.Println("	mov rsp, rbp")
+		fmt.Println("	pop rbp")
+		fmt.Println("	ret")
+		return
 	}
 
 	genNode(node.lhs)
@@ -76,17 +83,16 @@ func genNode(node *Node) {
 	fmt.Println("	push rax")
 }
 
-// Gode generates assembly for the whole program. This emulates stack machine.
+// Gen generates assembly for the whole program. This emulates stack machine.
 func Gen() {
 	fmt.Println(".intel_syntax noprefix")
 	fmt.Println(".globl main")
 	fmt.Println("main:")
 
-	stackSize := 8 * len(LVars)
-	// extend stack for local variables (named a to z for now)
+	// extend stack for local variables
 	fmt.Println("	push rbp")
 	fmt.Println("	mov rbp, rsp")
-	fmt.Printf("	sub rsp, %d\n", stackSize)
+	fmt.Printf("	sub rsp, %d\n", 8*len(LVars))
 
 	for _, code := range Code {
 		genNode(code)

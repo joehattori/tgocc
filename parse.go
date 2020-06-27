@@ -7,36 +7,37 @@ import (
 )
 
 func consume(toks []*Token, str string) ([]*Token, bool) {
-	curTok := toks[0]
-	if curTok.kind != tkReserved || curTok.length != len(str) || !strings.HasPrefix(curTok.str, str) {
+	cur := toks[0]
+	if cur.kind != tkReserved || cur.length != len(str) || !strings.HasPrefix(cur.str, str) {
 		return toks, false
 	}
 	return toks[1:], true
 }
 
 func consumeID(toks []*Token) ([]*Token, string, bool) {
-	curTok := toks[0]
-	reg := regexp.MustCompile(`^[a-zA-Z]+[a-zA-Z0-9]*`)
-	if curTok.kind != tkID || !reg.MatchString(curTok.str) {
+	cur := toks[0]
+	reg := regexp.MustCompile(`^[a-zA-Z]+[\w_]*`)
+	varName := reg.FindString(cur.str)
+	if cur.kind != tkID || varName == "" {
 		return toks, "", false
 	}
-	return toks[1:], curTok.str, true
+	return toks[1:], varName, true
 }
 
 func expect(toks []*Token, str string) error {
-	curTok := toks[0]
-	if curTok.kind != tkReserved || curTok.length != len(str) || !strings.HasPrefix(curTok.str, str) {
-		return fmt.Errorf("%s was expected but got %s", str, curTok.str)
+	cur := toks[0]
+	if cur.kind != tkReserved || cur.length != len(str) || !strings.HasPrefix(cur.str, str) {
+		return fmt.Errorf("%s was expected but got %s", str, cur.str)
 	}
 	return nil
 }
 
 func expectNum(toks []*Token) (int, error) {
-	curTok := toks[0]
-	if curTok.kind != tkNum {
+	cur := toks[0]
+	if cur.kind != tkNum {
 		return 0, fmt.Errorf("Number was expected")
 	}
-	return curTok.val, nil
+	return cur.val, nil
 }
 
 func findLVar(name string) *LVar {
@@ -64,6 +65,7 @@ const (
 	ndGeq
 	ndLvar
 	ndAssign
+	ndReturn
 )
 
 // Node represents each node in ast
@@ -84,8 +86,8 @@ func newNodeNum(val int) *Node {
 }
 
 func newNodeVar(s string) *Node {
-	v := findLVar(s)
 	node := &Node{kind: ndLvar}
+	v := findLVar(s)
 	if v != nil {
 		node.offset = v.offset
 	} else {
@@ -102,8 +104,12 @@ func newNodeVar(s string) *Node {
 	return node
 }
 
+func newNodeReturn(rhs *Node) *Node {
+	return &Node{kind: ndReturn, rhs: rhs}
+}
+
 // program    = stmt*
-// stmt       = expr ";"
+// stmt       = expr ";" | "return" expr ";"
 // expr       = assign
 // assign     = equality ("=" assign) ?
 // equality   = relational ("==" relational | "!=" relational)*
@@ -131,12 +137,18 @@ func Program(toks []*Token) {
 }
 
 func stmt(toks []*Token) ([]*Token, *Node) {
-	newToks, node := expr(toks)
-	err := expect(newToks, ";")
+	var node *Node
+	if newToks, isReturn := consume(toks, "return"); isReturn {
+		toks, node = expr(newToks)
+		node = newNodeReturn(node)
+	} else {
+		toks, node = expr(toks)
+	}
+	err := expect(toks, ";")
 	if err != nil {
 		panic(err)
 	}
-	return newToks[1:], node
+	return toks[1:], node
 }
 
 func expr(toks []*Token) ([]*Token, *Node) {
@@ -249,13 +261,12 @@ func unary(toks []*Token) ([]*Token, *Node) {
 
 func primary(toks []*Token) ([]*Token, *Node) {
 	if newToks, isPar := consume(toks, "("); isPar {
-		newToks, node := expr(newToks)
-		toks = newToks
-		err := expect(newToks, ")")
+		nxtToks, node := expr(newToks)
+		err := expect(nxtToks, ")")
 		if err != nil {
 			panic(err)
 		}
-		return toks[1:], node
+		return nxtToks[1:], node
 	}
 
 	if newToks, id, isID := consumeID(toks); isID {
