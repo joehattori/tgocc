@@ -2,7 +2,6 @@ package main
 
 import "fmt"
 
-// genLVar pushes the address of loval variable to stack
 func genLVar(node *Node) {
 	if node.kind != ndLvar {
 		panic("This node should be local variable")
@@ -12,15 +11,14 @@ func genLVar(node *Node) {
 	fmt.Println("	push rax")
 }
 
-// Gen generates assembly code for given node. This emulates stack machine.
-func Gen(node *Node) {
+func genNode(node *Node) {
 	switch node.kind {
 	case ndNum:
 		fmt.Printf("	push %d\n", node.val)
 		return
 	case ndAssign:
 		genLVar(node.lhs)
-		Gen(node.rhs)
+		genNode(node.rhs)
 		fmt.Println("	pop rdi")
 		fmt.Println("	pop rax")
 		fmt.Println("	mov [rax], rdi")
@@ -34,8 +32,8 @@ func Gen(node *Node) {
 		return
 	}
 
-	Gen(node.lhs)
-	Gen(node.rhs)
+	genNode(node.lhs)
+	genNode(node.rhs)
 
 	fmt.Println("	pop rdi")
 	fmt.Println("	pop rax")
@@ -76,4 +74,26 @@ func Gen(node *Node) {
 		fmt.Println("	movzb rax, al")
 	}
 	fmt.Println("	push rax")
+}
+
+// Gode generates assembly for the whole program. This emulates stack machine.
+func Gen() {
+	fmt.Println(".intel_syntax noprefix")
+	fmt.Println(".globl main")
+	fmt.Println("main:")
+
+	stackSize := 8 * len(LVars)
+	// extend stack for local variables (named a to z for now)
+	fmt.Println("	push rbp")
+	fmt.Println("	mov rbp, rsp")
+	fmt.Printf("	sub rsp, %d\n", stackSize)
+
+	for _, code := range Code {
+		genNode(code)
+		fmt.Println("	pop rax")
+	}
+
+	fmt.Println("	mov rsp, rbp")
+	fmt.Println("	pop rbp")
+	fmt.Println("	ret")
 }

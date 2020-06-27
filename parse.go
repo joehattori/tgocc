@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -15,11 +16,11 @@ func consume(toks []*Token, str string) ([]*Token, bool) {
 
 func consumeID(toks []*Token) ([]*Token, string, bool) {
 	curTok := toks[0]
-	r := []rune(curTok.str)
-	if curTok.kind != tkID || !('a' <= r[0] && r[0] <= 'z') {
+	reg := regexp.MustCompile(`^[a-zA-Z]+[a-zA-Z0-9]*`)
+	if curTok.kind != tkID || !reg.MatchString(curTok.str) {
 		return toks, "", false
 	}
-	return toks[1:], string(r[0:1]), true
+	return toks[1:], curTok.str, true
 }
 
 func expect(toks []*Token, str string) error {
@@ -36,6 +37,15 @@ func expectNum(toks []*Token) (int, error) {
 		return 0, fmt.Errorf("Number was expected")
 	}
 	return curTok.val, nil
+}
+
+func findLVar(name string) *LVar {
+	for _, v := range LVars {
+		if v.name == name {
+			return v
+		}
+	}
+	return nil
 }
 
 type nodeKind int
@@ -74,7 +84,22 @@ func newNodeNum(val int) *Node {
 }
 
 func newNodeVar(s string) *Node {
-	return &Node{kind: ndLvar, offset: int([]rune(s)[0]-'a'+1) * 8}
+	v := findLVar(s)
+	node := &Node{kind: ndLvar}
+	if v != nil {
+		node.offset = v.offset
+	} else {
+		var offset int
+		if len(LVars) > 0 {
+			offset = LVars[len(LVars)-1].offset + 8
+		} else {
+			offset = 8
+		}
+		v = &LVar{offset: offset, name: s}
+		node.offset = offset
+		LVars = append(LVars, v)
+	}
+	return node
 }
 
 // program    = stmt*

@@ -9,7 +9,7 @@ assert() {
     ./tmp
     actual="$?"
 
-    if [ "$actual"="$expected" ]; then
+    if [ "$actual" = "$expected" ]; then
         echo "$input => $actual"
     else
         echo "$input => $expected expected, but got $actual"
@@ -42,6 +42,7 @@ assert "2>3;" 0
 assert "3>=3;" 1
 assert "3>=9;" 0
 
-assert "a = 1; b = 2; a + b;" 3
+assert "foo = 5; bar = 2; foo * bar;" 10
+assert "foo = 1; bar = 2; foo = 4; foo + bar;" 6
 
 echo OK

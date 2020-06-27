@@ -56,9 +56,11 @@ func Tokenize(s string) []*Token {
 			continue
 		}
 
-		if c := []rune(s)[0]; 'a' <= c && c <= 'z' {
-			toks = append(toks, &Token{kind: tkID, str: s, length: 1})
-			s = s[1:]
+		regVar := regexp.MustCompile(`^[a-zA-Z]+\w*`)
+		if regVar.MatchString(s) {
+			varStr := regVar.FindString(s)
+			toks = append(toks, &Token{kind: tkID, str: varStr, length: len(varStr)})
+			s = s[len(varStr):]
 			continue
 		}
 
@@ -76,4 +78,13 @@ func hasMultipleCharactorOperator(s string) bool {
 		}
 	}
 	return false
+}
+
+//LVars represents the array of local variables
+var LVars []*LVar
+
+// LVar represents local variable. `offset` is the offset from rbp
+type LVar struct {
+	name   string
+	offset int
 }
