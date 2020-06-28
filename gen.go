@@ -2,6 +2,8 @@ package main
 
 import "fmt"
 
+var ifLabelCount, elseLabelCount, endifLabelCount int
+
 func genLVar(node *Node) {
 	if node.kind != ndLvar {
 		panic("This node should be local variable")
@@ -36,6 +38,21 @@ func genNode(node *Node) {
 		fmt.Println("	mov rsp, rbp")
 		fmt.Println("	pop rbp")
 		fmt.Println("	ret")
+		return
+	case ndIf:
+		genNode(node.cond)
+		fmt.Println("	pop rax")
+		fmt.Println("	cmp rax, 0")
+		fmt.Printf("	je .Lelse%d\n", elseLabelCount)
+		fmt.Printf("	je .Lend%d\n", endifLabelCount)
+		genNode(node.then)
+		fmt.Printf(".Lelse%d:\n", elseLabelCount)
+		elseLabelCount++
+		if node.els != nil {
+			genNode(node.els)
+		}
+		fmt.Printf(".Lend%d:\n", endifLabelCount)
+		endifLabelCount++
 		return
 	}
 

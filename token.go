@@ -50,6 +50,14 @@ func Tokenize(s string) []*Token {
 			continue
 		}
 
+		regCtrl := regexp.MustCompile(`^(if|else|while|for)`)
+		if regCtrl.MatchString(s) {
+			cStr := regCtrl.FindString(s)
+			toks = append(toks, &Token{kind: tkReserved, str: s, length: len(cStr)})
+			s = regCtrl.ReplaceAllString(s, "")
+			continue
+		}
+
 		if hasMultipleCharactorOperator(s) {
 			toks = append(toks, &Token{kind: tkReserved, str: s, length: 2})
 			s = s[2:]

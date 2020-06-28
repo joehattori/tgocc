@@ -50,4 +50,11 @@ assert "return 10;" 10
 assert "foo = 5; bar = 2; return foo + bar;" 7
 assert "return 10; return 20;" 10
 
+assert "if (1) 3;" 3
+assert "if (1) return 5;" 5
+assert "if (0) return 5; else return 4;" 4
+assert "if (1 == 3) return 5; else if (1) return 4;" 4
+assert "if (3 + 2 == 6) return 5; else if (1) return 4; else return 3;" 4
+assert "if (0) return 5; else if (1 == 2) return 4; else return 3;" 3
+
 echo OK
