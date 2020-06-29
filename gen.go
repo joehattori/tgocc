@@ -2,8 +2,7 @@ package main
 
 import "fmt"
 
-var ifLabelCount, elseLabelCount, endifLabelCount int
-var beginLabelCount, endLabelCount int
+var ifLabelCount, elseLabelCount, beginLabelCount, endLabelCount int
 
 func genLVar(node *Node) {
 	if node.kind != ndLvar {
@@ -45,15 +44,15 @@ func genNode(node *Node) {
 		fmt.Println("	pop rax")
 		fmt.Println("	cmp rax, 0")
 		fmt.Printf("	je .Lelse%d\n", elseLabelCount)
-		fmt.Printf("	je .Lend%d\n", endifLabelCount)
+		fmt.Printf("	je .Lend%d\n", endLabelCount)
 		genNode(node.then)
 		fmt.Printf(".Lelse%d:\n", elseLabelCount)
 		elseLabelCount++
 		if node.els != nil {
 			genNode(node.els)
 		}
-		fmt.Printf(".Lend%d:\n", endifLabelCount)
-		endifLabelCount++
+		fmt.Printf(".Lend%d:\n", endLabelCount)
+		endLabelCount++
 		return
 	case ndWhile:
 		fmt.Printf(".Lbegin%d:\n", beginLabelCount)
@@ -63,8 +62,30 @@ func genNode(node *Node) {
 		fmt.Printf("	je .Lend%d\n", endLabelCount)
 		genNode(node.then)
 		fmt.Printf("	jmp .Lbegin%d\n", beginLabelCount)
-		fmt.Printf(".Lend%d:\n", endLabelCount)
 		beginLabelCount++
+		fmt.Printf(".Lend%d:\n", endLabelCount)
+		endLabelCount++
+		return
+	case ndFor:
+		if node.forInit != nil {
+			genNode(node.forInit)
+		}
+		fmt.Printf(".Lbegin%d:\n", beginLabelCount)
+		if node.cond != nil {
+			genNode(node.cond)
+		}
+		fmt.Println("	pop rax")
+		fmt.Println("	cmp rax, 0")
+		fmt.Printf("	je .Lend%d\n", endLabelCount)
+		if node.then != nil {
+			genNode(node.then)
+		}
+		if node.forInc != nil {
+			genNode(node.forInc)
+		}
+		fmt.Printf("	jmp .Lbegin%d\n", beginLabelCount)
+		beginLabelCount++
+		fmt.Printf(".Lend%d:\n", endLabelCount)
 		endLabelCount++
 		return
 	}

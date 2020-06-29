@@ -50,14 +50,80 @@ assert "return 10;" 10
 assert "foo = 5; bar = 2; return foo + bar;" 7
 assert "return 10; return 20;" 10
 
-assert "if (1) 3;" 3
-assert "if (1) return 5;" 5
-assert "if (0) return 5; else return 4;" 4
-assert "if (1 == 3) return 5; else if (1) return 4;" 4
-assert "if (3 + 2 == 6) return 5; else if (1) return 4; else return 3;" 4
-assert "if (0) return 5; else if (1 == 2) return 4; else return 3;" 3
+assert "
+if (1)
+    3;" 3
+assert "
+if (1)
+    return 5;" 5
+assert "
+if (0)
+    return 5;
+else
+    return 4;" 4
+assert "
+if (1 == 3)
+    return 5;
+else if (1)
+    return 4;" 4
+assert "
+if (3 + 2 == 6)
+    return 5;
+else if (1)
+    return 4;
+else return 3;" 4
+assert "
+if (0)
+    return 5;
+else if (1 == 2)
+    return 4;
+else return 3;" 3
 
-assert "t = 100; while (t) t = t - 1; return t;" 0
-assert "t = 0; while (t != 10) t = t + 1; return t;" 10
+assert "
+t = 100;
+while (t)
+    t = t - 1;
+return t;" 0
+assert "
+t = 0;
+while (t != 10)
+    t = t + 1;
+return t;" 10
+
+assert "
+t = 100;
+for (t = 0; t < 10; t = t+1)
+    1;
+return t;" 10
+assert "
+t = 100;
+for (i = 0; i < 10; i = i+1)
+    t = t - 2;
+return t;" 80
+assert "
+for (i = 0; i < 10; i = i + 1)
+    if (i == 3)
+        return i;
+" 3
+assert "
+for (i = 0;; i = i+1)
+    if (i == 5)
+        return i;
+" 5
+assert "
+i = 0;
+v = 0;
+for (; i < 10; i = i+2)
+    v = v + 3;
+return v;
+" 15
+assert "
+v = 0;
+for (i = 0; i < 10;)
+    if (i > 4)
+        return i;
+    else
+        i = i + 2;
+" 6
 
 echo OK

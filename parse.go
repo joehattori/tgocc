@@ -74,14 +74,16 @@ const (
 
 // Node represents each node in ast
 type Node struct {
-	kind   nodeKind
-	lhs    *Node
-	rhs    *Node
-	val    int
-	offset int
-	cond   *Node
-	then   *Node
-	els    *Node
+	kind    nodeKind
+	lhs     *Node
+	rhs     *Node
+	val     int
+	offset  int
+	cond    *Node // used for "if", "while" and "for"
+	then    *Node // used for "if", "while" and "for"
+	els     *Node // used for "if"
+	forInit *Node // used for "for"
+	forInc  *Node // used for "for"
 }
 
 func newNode(kind nodeKind, lhs *Node, rhs *Node) *Node {
@@ -94,8 +96,7 @@ func newNodeNum(val int) *Node {
 
 func newNodeVar(s string) *Node {
 	node := &Node{kind: ndLvar}
-	v := findLVar(s)
-	if v != nil {
+	if v := findLVar(s); v != nil {
 		node.offset = v.offset
 	} else {
 		var offset int
@@ -104,9 +105,8 @@ func newNodeVar(s string) *Node {
 		} else {
 			offset = 8
 		}
-		v = &LVar{offset: offset, name: s}
 		node.offset = offset
-		LVars = append(LVars, v)
+		LVars = append(LVars, &LVar{offset: offset, name: s})
 	}
 	return node
 }
@@ -121,6 +121,10 @@ func newNodeIf(cond *Node, then *Node, els *Node) *Node {
 
 func newNodeWhile(cond *Node, then *Node) *Node {
 	return &Node{kind: ndWhile, cond: cond, then: then}
+}
+
+func newNodeFor(init *Node, cond *Node, inc *Node, then *Node) *Node {
+	return &Node{kind: ndFor, forInit: init, cond: cond, forInc: inc, then: then}
 }
 
 // program    = stmt*
@@ -166,7 +170,7 @@ func stmt(toks []*Token) ([]*Token, *Node) {
 		return toks, node
 	}
 
-	// handle if
+	// handle if statement
 	if newToks, isIf := consume(toks, "if"); isIf {
 		var condNode, thenNode, elsNode *Node
 		toks = expect(newToks, "(")
@@ -182,7 +186,7 @@ func stmt(toks []*Token) ([]*Token, *Node) {
 		return toks, newNodeIf(condNode, thenNode, elsNode)
 	}
 
-	// handle while
+	// handle while statement
 	if newToks, isWhile := consume(toks, "while"); isWhile {
 		var condNode, thenNode *Node
 		toks = expect(newToks, "(")
@@ -190,6 +194,33 @@ func stmt(toks []*Token) ([]*Token, *Node) {
 		toks = expect(toks, ")")
 		toks, thenNode = stmt(toks)
 		return toks, newNodeWhile(condNode, thenNode)
+	}
+
+	// handle for statement
+	if newToks, isFor := consume(toks, "for"); isFor {
+		var initNode, condNode, incNode, thenNode *Node
+		toks = expect(newToks, "(")
+
+		toks, isSc := consume(toks, ";")
+		if !isSc {
+			toks, initNode = expr(toks)
+			toks = expect(toks, ";")
+		}
+
+		toks, isSc = consume(toks, ";")
+		if !isSc {
+			toks, condNode = expr(toks)
+			toks = expect(toks, ";")
+		}
+
+		toks, isRPar := consume(toks, ")")
+		if !isRPar {
+			toks, incNode = expr(toks)
+			toks = expect(toks, ")")
+		}
+
+		toks, thenNode = stmt(toks)
+		return toks, newNodeFor(initNode, condNode, incNode, thenNode)
 	}
 
 	toks, node = expr(toks)
@@ -308,8 +339,8 @@ func unary(toks []*Token) ([]*Token, *Node) {
 func primary(toks []*Token) ([]*Token, *Node) {
 	if newToks, isPar := consume(toks, "("); isPar {
 		nxtToks, node := expr(newToks)
-		expect(nxtToks, ")")
-		return nxtToks[1:], node
+		toks = expect(nxtToks, ")")
+		return toks, node
 	}
 
 	if newToks, id, isID := consumeID(toks); isID {

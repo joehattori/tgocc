@@ -32,29 +32,29 @@ func Tokenize(s string) []*Token {
 			break
 		}
 
-		s = strings.TrimLeft(s, " \t")
+		s = strings.TrimSpace(s)
 
-		regRet := regexp.MustCompile(`^return[^\w_]`)
+		regRet := regexp.MustCompile(`^return\W`)
 		if regRet.MatchString(s) {
 			toks = append(toks, &Token{kind: tkReserved, str: s, length: len("return")})
 			s = s[len("return"):]
 			continue
 		}
 
-		regNum := regexp.MustCompile(`^[0-9]+`)
+		regNum := regexp.MustCompile(`^\d+`)
 		if regNum.MatchString(s) {
 			numStr := regNum.FindString(s)
 			num, _ := strconv.Atoi(numStr)
 			toks = append(toks, &Token{kind: tkNum, val: num, length: len(numStr)})
-			s = regNum.ReplaceAllString(s, "")
+			s = s[len(numStr):]
 			continue
 		}
 
-		regCtrl := regexp.MustCompile(`^(if|else|while|for)`)
+		regCtrl := regexp.MustCompile(`^(if|else|while|for)\W`)
 		if regCtrl.MatchString(s) {
 			cStr := regCtrl.FindString(s)
-			toks = append(toks, &Token{kind: tkReserved, str: s, length: len(cStr)})
-			s = regCtrl.ReplaceAllString(s, "")
+			toks = append(toks, &Token{kind: tkReserved, str: s, length: len(cStr) - 1})
+			s = s[len(cStr)-1:]
 			continue
 		}
 
@@ -71,7 +71,7 @@ func Tokenize(s string) []*Token {
 			continue
 		}
 
-		regVar := regexp.MustCompile(`^[a-zA-Z_]+[\w_]*`)
+		regVar := regexp.MustCompile(`^[a-zA-Z_]+\w*`)
 		if regVar.MatchString(s) {
 			varStr := regVar.FindString(s)
 			toks = append(toks, &Token{kind: tkID, str: s, length: len(varStr)})
