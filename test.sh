@@ -57,4 +57,7 @@ assert "if (1 == 3) return 5; else if (1) return 4;" 4
 assert "if (3 + 2 == 6) return 5; else if (1) return 4; else return 3;" 4
 assert "if (0) return 5; else if (1 == 2) return 4; else return 3;" 3
 
+assert "t = 100; while (t) t = t - 1; return t;" 0
+assert "t = 0; while (t != 10) t = t + 1; return t;" 10
+
 echo OK

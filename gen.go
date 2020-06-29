@@ -3,6 +3,7 @@ package main
 import "fmt"
 
 var ifLabelCount, elseLabelCount, endifLabelCount int
+var beginLabelCount, endLabelCount int
 
 func genLVar(node *Node) {
 	if node.kind != ndLvar {
@@ -53,6 +54,18 @@ func genNode(node *Node) {
 		}
 		fmt.Printf(".Lend%d:\n", endifLabelCount)
 		endifLabelCount++
+		return
+	case ndWhile:
+		fmt.Printf(".Lbegin%d:\n", beginLabelCount)
+		genNode(node.cond)
+		fmt.Println("	pop rax")
+		fmt.Println("	cmp rax, 0")
+		fmt.Printf("	je .Lend%d\n", endLabelCount)
+		genNode(node.then)
+		fmt.Printf("	jmp .Lbegin%d\n", beginLabelCount)
+		fmt.Printf(".Lend%d:\n", endLabelCount)
+		beginLabelCount++
+		endLabelCount++
 		return
 	}
 

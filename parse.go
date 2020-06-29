@@ -119,6 +119,10 @@ func newNodeIf(cond *Node, then *Node, els *Node) *Node {
 	return &Node{kind: ndIf, cond: cond, then: then, els: els}
 }
 
+func newNodeWhile(cond *Node, then *Node) *Node {
+	return &Node{kind: ndWhile, cond: cond, then: then}
+}
+
 // program    = stmt*
 // stmt       = expr ";"
 //			    | "return" expr ";"
@@ -153,12 +157,16 @@ func Program(toks []*Token) {
 
 func stmt(toks []*Token) ([]*Token, *Node) {
 	var node *Node
+
+	// handle return
 	if newToks, isReturn := consume(toks, "return"); isReturn {
 		toks, node = expr(newToks)
 		node = newNodeReturn(node)
 		toks = expect(toks, ";")
 		return toks, node
 	}
+
+	// handle if
 	if newToks, isIf := consume(toks, "if"); isIf {
 		var condNode, thenNode, elsNode *Node
 		toks = expect(newToks, "(")
@@ -173,6 +181,17 @@ func stmt(toks []*Token) ([]*Token, *Node) {
 
 		return toks, newNodeIf(condNode, thenNode, elsNode)
 	}
+
+	// handle while
+	if newToks, isWhile := consume(toks, "while"); isWhile {
+		var condNode, thenNode *Node
+		toks = expect(newToks, "(")
+		toks, condNode = expr(toks)
+		toks = expect(toks, ")")
+		toks, thenNode = stmt(toks)
+		return toks, newNodeWhile(condNode, thenNode)
+	}
+
 	toks, node = expr(toks)
 	toks = expect(toks, ";")
 	return toks, node
