@@ -2,7 +2,7 @@ package main
 
 import "fmt"
 
-var ifLabelCount, elseLabelCount, beginLabelCount, endLabelCount int
+var labelCount int
 
 func genLVar(node *Node) {
 	if node.kind != ndLvar {
@@ -40,53 +40,66 @@ func genNode(node *Node) {
 		fmt.Println("	ret")
 		return
 	case ndIf:
-		genNode(node.cond)
-		fmt.Println("	pop rax")
-		fmt.Println("	cmp rax, 0")
-		fmt.Printf("	je .Lelse%d\n", elseLabelCount)
-		fmt.Printf("	je .Lend%d\n", endLabelCount)
-		genNode(node.then)
-		fmt.Printf(".Lelse%d:\n", elseLabelCount)
-		elseLabelCount++
+		c := labelCount
+		labelCount++
 		if node.els != nil {
+			genNode(node.cond)
+			fmt.Println("	pop rax")
+			fmt.Println("	cmp rax, 0")
+			fmt.Printf("	je .Lelse%d\n", c)
+			genNode(node.then)
+			fmt.Printf("	je .Lend%d\n", c)
+			fmt.Printf(".Lelse%d:\n", c)
 			genNode(node.els)
+			fmt.Printf(".Lend%d:\n", c)
+		} else {
+			genNode(node.cond)
+			fmt.Println("	pop rax")
+			fmt.Println("	cmp rax, 0")
+			fmt.Printf("	je .Lend%d\n", c)
+			genNode(node.then)
+			fmt.Printf(".Lend%d:\n", c)
 		}
-		fmt.Printf(".Lend%d:\n", endLabelCount)
-		endLabelCount++
 		return
 	case ndWhile:
-		fmt.Printf(".Lbegin%d:\n", beginLabelCount)
+		c := labelCount
+		labelCount++
+		fmt.Printf(".Lbegin%d:\n", c)
 		genNode(node.cond)
 		fmt.Println("	pop rax")
 		fmt.Println("	cmp rax, 0")
-		fmt.Printf("	je .Lend%d\n", endLabelCount)
+		fmt.Printf("	je .Lend%d\n", c)
 		genNode(node.then)
-		fmt.Printf("	jmp .Lbegin%d\n", beginLabelCount)
-		beginLabelCount++
-		fmt.Printf(".Lend%d:\n", endLabelCount)
-		endLabelCount++
+		fmt.Printf("	jmp .Lbegin%d\n", c)
+		fmt.Printf(".Lend%d:\n", c)
 		return
 	case ndFor:
+		c := labelCount
+		labelCount++
 		if node.forInit != nil {
 			genNode(node.forInit)
 		}
-		fmt.Printf(".Lbegin%d:\n", beginLabelCount)
+		fmt.Printf(".Lbegin%d:\n", c)
 		if node.cond != nil {
 			genNode(node.cond)
+			fmt.Println("	pop rax")
+			fmt.Println("	cmp rax, 0")
+			fmt.Printf("	je .Lend%d\n", c)
 		}
-		fmt.Println("	pop rax")
-		fmt.Println("	cmp rax, 0")
-		fmt.Printf("	je .Lend%d\n", endLabelCount)
 		if node.then != nil {
 			genNode(node.then)
 		}
 		if node.forInc != nil {
 			genNode(node.forInc)
 		}
-		fmt.Printf("	jmp .Lbegin%d\n", beginLabelCount)
-		beginLabelCount++
-		fmt.Printf(".Lend%d:\n", endLabelCount)
-		endLabelCount++
+		fmt.Printf("	jmp .Lbegin%d\n", c)
+		fmt.Printf(".Lend%d:\n", c)
+		return
+	case ndBlk:
+		for _, st := range node.blkStmts {
+			genNode(st)
+			//fmt.Println("	pop rax")
+		}
 		return
 	}
 
@@ -130,6 +143,8 @@ func genNode(node *Node) {
 		fmt.Println("	cmp rdi, rax")
 		fmt.Println("	setle al")
 		fmt.Println("	movzb rax, al")
+	default:
+		panic("Unhandled node kind")
 	}
 	fmt.Println("	push rax")
 }

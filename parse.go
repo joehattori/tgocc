@@ -70,20 +70,22 @@ const (
 	ndElse
 	ndWhile
 	ndFor
+	ndBlk
 )
 
 // Node represents each node in ast
 type Node struct {
-	kind    nodeKind
-	lhs     *Node
-	rhs     *Node
-	val     int
-	offset  int
-	cond    *Node // used for "if", "while" and "for"
-	then    *Node // used for "if", "while" and "for"
-	els     *Node // used for "if"
-	forInit *Node // used for "for"
-	forInc  *Node // used for "for"
+	kind     nodeKind
+	lhs      *Node
+	rhs      *Node
+	val      int
+	offset   int
+	cond     *Node   // used for "if", "while" and "for"
+	then     *Node   // used for "if", "while" and "for"
+	els      *Node   // used for "if"
+	forInit  *Node   // used for "for"
+	forInc   *Node   // used for "for"
+	blkStmts []*Node // statements inside a block
 }
 
 func newNode(kind nodeKind, lhs *Node, rhs *Node) *Node {
@@ -127,8 +129,13 @@ func newNodeFor(init *Node, cond *Node, inc *Node, then *Node) *Node {
 	return &Node{kind: ndFor, forInit: init, cond: cond, forInc: inc, then: then}
 }
 
+func newNodeBlk(blkStmts []*Node) *Node {
+	return &Node{kind: ndBlk, blkStmts: blkStmts}
+}
+
 // program    = stmt*
 // stmt       = expr ";"
+//				| "{" stmt* "}"
 //			    | "return" expr ";"
 //				| "if" "(" expr ")" stmt ("else" stmt) ?
 //				| "while" "(" expr ")" stmt
@@ -161,6 +168,21 @@ func Program(toks []*Token) {
 
 func stmt(toks []*Token) ([]*Token, *Node) {
 	var node *Node
+
+	// handle block
+	if newToks, isLBracket := consume(toks, "{"); isLBracket {
+		var blkStmts []*Node
+		var isRBracket bool
+		toks = newToks
+		for {
+			toks, isRBracket = consume(toks, "}")
+			if isRBracket {
+				return toks, newNodeBlk(blkStmts)
+			}
+			toks, node = stmt(toks)
+			blkStmts = append(blkStmts, node)
+		}
+	}
 
 	// handle return
 	if newToks, isReturn := consume(toks, "return"); isReturn {

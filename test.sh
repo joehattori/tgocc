@@ -73,6 +73,13 @@ else if (1)
     return 4;
 else return 3;" 4
 assert "
+a = 3;
+if (a == 3)
+    return 5;
+else if (a == 2)
+    return 4;
+else return 3;" 5
+assert "
 if (0)
     return 5;
 else if (1 == 2)
@@ -101,10 +108,11 @@ for (i = 0; i < 10; i = i+1)
     t = t - 2;
 return t;" 80
 assert "
+a = 0;
 for (i = 0; i < 10; i = i + 1)
     if (i == 3)
-        return i;
-" 3
+        a = i;
+return a;" 3
 assert "
 for (i = 0;; i = i+1)
     if (i == 5)
@@ -124,6 +132,57 @@ for (i = 0; i < 10;)
         return i;
     else
         i = i + 2;
+" 6
+
+assert "
+a = 0;
+{ a = 42; }
+return a;
+" 42
+assert "i=0; j=0; while(i<=10) {j=i+j; i=i+1;} return j;" 55
+assert "
+a = 0;
+b = 0;
+if (a == 0) {
+    a = 10;
+    b = 4;
+}
+return a+b;
+" 14
+assert "
+s = 0;
+a = 0;
+for (i = 0; i < 10; i = i + 1) {
+    s = s + i;
+    a = i;
+}
+return a + s;
+" 54
+assert "
+b = 0;
+for(a=0; a <= 10; a=a+1) {
+  if (a==6) {
+    b=b+1;
+    b=b+1;
+    b=b+1;
+  }
+}
+return b;
+" 3
+assert "
+b = 0;
+for (a=0; a <= 10; a=a+1) {
+  if (a==2) {
+    b=b+1;
+    b=b+1;
+  } else if (a == 4) {
+    b=b+1;
+    b=b+1;
+    b=b+1;
+    b=b+1;
+  }
+}
+return b;
 " 6
 
 echo OK
