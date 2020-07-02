@@ -71,6 +71,7 @@ const (
 	ndWhile
 	ndFor
 	ndBlk
+	ndFuncCall
 )
 
 // Node represents each node in ast
@@ -86,6 +87,7 @@ type Node struct {
 	forInit  *Node   // used for "for"
 	forInc   *Node   // used for "for"
 	blkStmts []*Node // statements inside a block
+	funcName string
 }
 
 func newNode(kind nodeKind, lhs *Node, rhs *Node) *Node {
@@ -133,6 +135,10 @@ func newNodeBlk(blkStmts []*Node) *Node {
 	return &Node{kind: ndBlk, blkStmts: blkStmts}
 }
 
+func newNodeFuncCall(name string) *Node {
+	return &Node{kind: ndFuncCall, funcName: name}
+}
+
 // program    = stmt*
 // stmt       = expr ";"
 //				| "{" stmt* "}"
@@ -147,7 +153,7 @@ func newNodeBlk(blkStmts []*Node) *Node {
 // add        = mul ("+" mul | "-" mul)*
 // mul        = unary ("*" unary | "/" unary)*
 // unary      = ("+" | "-")? primary
-// primary    = num | ident | "(" expr ")"
+// primary    = num | ident ("(" ")")? | "(" expr ")"
 
 type opKind struct {
 	str  string
@@ -366,6 +372,10 @@ func primary(toks []*Token) ([]*Token, *Node) {
 	}
 
 	if newToks, id, isID := consumeID(toks); isID {
+		if toks, isLPar := consume(newToks, "("); isLPar {
+			toks = expect(toks, ")")
+			return toks, newNodeFuncCall(id)
+		}
 		return newToks, newNodeVar(id)
 	}
 

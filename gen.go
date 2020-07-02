@@ -98,8 +98,11 @@ func genNode(node *Node) {
 	case ndBlk:
 		for _, st := range node.blkStmts {
 			genNode(st)
-			//fmt.Println("	pop rax")
 		}
+		return
+	case ndFuncCall:
+		fmt.Printf("	call %s\n", node.funcName)
+		fmt.Println("	push rax")
 		return
 	}
 

@@ -1,11 +1,16 @@
 #!/bin/bash
 
+cat <<EOF | cc -xc -c -o tmp2.o -
+int return1() { return 1; }
+int return3() { return 3; }
+EOF
+
 assert() {
     input="$1"
     expected="$2"
 
     ./tgocc "$input" > tmp.s
-    cc -o tmp tmp.s
+    cc -static -o tmp tmp.s tmp2.o
     ./tmp
     actual="$?"
 
@@ -184,5 +189,12 @@ for (a=0; a <= 10; a=a+1) {
 }
 return b;
 " 6
+
+assert "
+return return1();
+" 1
+assert "
+return return3();
+" 3
 
 echo OK
