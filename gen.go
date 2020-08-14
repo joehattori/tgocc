@@ -107,8 +107,21 @@ func genNode(node *Node) {
 			genNode(arg)
 			fmt.Printf("	pop %s\n", argRegs[i])
 		}
+		// align rsp to 16 byte boundary
+		fmt.Println("	mov rax, rsp")
+		fmt.Println("	and rax, 15")
+		fmt.Printf("	jz .L.func.call%d\n", labelCount)
+		fmt.Println("	mov rax, 0")
 		fmt.Printf("	call %s\n", node.funcName)
+		fmt.Printf("	jmp .L.func.end%d\n", labelCount)
+		fmt.Printf(".L.func.call%d:\n", labelCount)
+		fmt.Println("	sub rsp, 8")
+		fmt.Println("	mov rax, 0")
+		fmt.Printf("	call %s\n", node.funcName)
+		fmt.Println("	add rsp, 8")
+		fmt.Printf(".L.func.end%d:\n", labelCount)
 		fmt.Println("	push rax")
+		labelCount++
 		return
 	}
 
