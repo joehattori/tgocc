@@ -1,8 +1,6 @@
 #!/bin/bash
 
-cat <<EOF | cc -xc -c -o tmp2.o -
-int return1() { return 1; }
-int return3() { return 3; }
+cat <<EOF | cc -xc -c -o tmp2.o example/predefined_functions.c
 EOF
 
 assert() {
