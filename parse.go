@@ -88,6 +88,7 @@ type Node struct {
 	forInc   *Node   // used for "for"
 	blkStmts []*Node // statements inside a block
 	funcName string
+	funcArgs []*Node
 }
 
 func newNode(kind nodeKind, lhs *Node, rhs *Node) *Node {
@@ -135,8 +136,8 @@ func newNodeBlk(blkStmts []*Node) *Node {
 	return &Node{kind: ndBlk, blkStmts: blkStmts}
 }
 
-func newNodeFuncCall(name string) *Node {
-	return &Node{kind: ndFuncCall, funcName: name}
+func newNodeFuncCall(name string, args []*Node) *Node {
+	return &Node{kind: ndFuncCall, funcName: name, funcArgs: args}
 }
 
 // program    = stmt*
@@ -153,7 +154,7 @@ func newNodeFuncCall(name string) *Node {
 // add        = mul ("+" mul | "-" mul)*
 // mul        = unary ("*" unary | "/" unary)*
 // unary      = ("+" | "-")? primary
-// primary    = num | ident ("(" ")")? | "(" expr ")"
+// primary    = num | ident ("(" (expr ("," expr)* )? ")")? | "(" expr ")"
 
 type opKind struct {
 	str  string
@@ -365,18 +366,33 @@ func unary(toks []*Token) ([]*Token, *Node) {
 }
 
 func primary(toks []*Token) ([]*Token, *Node) {
-	if newToks, isPar := consume(toks, "("); isPar {
-		nxtToks, node := expr(newToks)
-		toks = expect(nxtToks, ")")
+	if toks, isPar := consume(toks, "("); isPar {
+		toks, node := expr(toks)
+		toks = expect(toks, ")")
 		return toks, node
 	}
 
-	if newToks, id, isID := consumeID(toks); isID {
-		if toks, isLPar := consume(newToks, "("); isLPar {
+	if toks, id, isID := consumeID(toks); isID {
+		if toks, isLPar := consume(toks, "("); isLPar {
+			var args []*Node
+			// no args
+			if toks, isRPar := consume(toks, ")"); isRPar {
+				return toks, newNodeFuncCall(id, args)
+			}
+			toks, arg := expr(toks)
+			args = append(args, arg)
+			for {
+				newToks, isComma := consume(toks, ",")
+				if !isComma {
+					break
+				}
+				toks, arg = expr(newToks)
+				args = append(args, arg)
+			}
 			toks = expect(toks, ")")
-			return toks, newNodeFuncCall(id)
+			return toks, newNodeFuncCall(id, args)
 		}
-		return newToks, newNodeVar(id)
+		return toks, newNodeVar(id)
 	}
 
 	toks, n := expectNum(toks)

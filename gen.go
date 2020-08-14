@@ -4,6 +4,8 @@ import "fmt"
 
 var labelCount int
 
+var argRegs = []string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
+
 func genLVar(node *Node) {
 	if node.kind != ndLvar {
 		panic("This node should be local variable")
@@ -101,6 +103,10 @@ func genNode(node *Node) {
 		}
 		return
 	case ndFuncCall:
+		for i, arg := range node.funcArgs {
+			genNode(arg)
+			fmt.Printf("	pop %s\n", argRegs[i])
+		}
 		fmt.Printf("	call %s\n", node.funcName)
 		fmt.Println("	push rax")
 		return
