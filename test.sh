@@ -259,8 +259,22 @@ main() {
 
 
 assert "
-ret0() { return 0; }
-main() { return ret0(); }
-" 0
+ret5() { return 5; }
+main() { return ret5(); }
+" 5
+
+assert "
+idn(n) { return n; }
+main() { return idn(1); }
+" 1
+
+assert "
+fib(n) {
+    if (n <= 1)
+        return n;
+    return fib(n - 1) + fib(n - 2);
+}
+main() { return fib(10); }
+" 55
 
 echo OK

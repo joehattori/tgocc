@@ -4,7 +4,7 @@ import "fmt"
 
 var labelCount int
 
-var argRegs = []string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
+var argRegs = [...]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
 
 func genLVar(v *LvarNode) {
 	fmt.Println("	mov rax, rbp")
@@ -46,33 +46,33 @@ func genNode(node Node, funcName string) {
 			genNode(i.cond, funcName)
 			fmt.Println("	pop rax")
 			fmt.Println("	cmp rax, 0")
-			fmt.Printf("	je .Lelse%d\n", c)
+			fmt.Printf("	je .L.else.%d\n", c)
 			genNode(i.then, funcName)
-			fmt.Printf("	je .Lend%d\n", c)
-			fmt.Printf(".Lelse%d:\n", c)
+			fmt.Printf("	je .L.end.%d\n", c)
+			fmt.Printf(".L.else.%d:\n", c)
 			genNode(i.els, funcName)
-			fmt.Printf(".Lend%d:\n", c)
+			fmt.Printf(".L.end.%d:\n", c)
 		} else {
 			genNode(i.cond, funcName)
 			fmt.Println("	pop rax")
 			fmt.Println("	cmp rax, 0")
-			fmt.Printf("	je .Lend%d\n", c)
+			fmt.Printf("	je .L.end.%d\n", c)
 			genNode(i.then, funcName)
-			fmt.Printf(".Lend%d:\n", c)
+			fmt.Printf(".L.end.%d:\n", c)
 		}
 		return
 	case ndWhile:
 		c := labelCount
 		labelCount++
 		w := node.(*WhileNode)
-		fmt.Printf(".Lbegin%d:\n", c)
+		fmt.Printf(".L.begin.%d:\n", c)
 		genNode(w.cond, funcName)
 		fmt.Println("	pop rax")
 		fmt.Println("	cmp rax, 0")
-		fmt.Printf("	je .Lend%d\n", c)
+		fmt.Printf("	je .L.end.%d\n", c)
 		genNode(w.then, funcName)
-		fmt.Printf("	jmp .Lbegin%d\n", c)
-		fmt.Printf(".Lend%d:\n", c)
+		fmt.Printf("	jmp .L.begin.%d\n", c)
+		fmt.Printf(".L.end.%d:\n", c)
 		return
 	case ndFor:
 		c := labelCount
@@ -81,12 +81,12 @@ func genNode(node Node, funcName string) {
 		if f.init != nil {
 			genNode(f.init, funcName)
 		}
-		fmt.Printf(".Lbegin%d:\n", c)
+		fmt.Printf(".L.begin.%d:\n", c)
 		if f.cond != nil {
 			genNode(f.cond, funcName)
 			fmt.Println("	pop rax")
 			fmt.Println("	cmp rax, 0")
-			fmt.Printf("	je .Lend%d\n", c)
+			fmt.Printf("	je .L.end.%d\n", c)
 		}
 		if f.body != nil {
 			genNode(f.body, funcName)
@@ -94,8 +94,8 @@ func genNode(node Node, funcName string) {
 		if f.inc != nil {
 			genNode(f.inc, funcName)
 		}
-		fmt.Printf("	jmp .Lbegin%d\n", c)
-		fmt.Printf(".Lend%d:\n", c)
+		fmt.Printf("	jmp .L.begin.%d\n", c)
+		fmt.Printf(".L.end.%d:\n", c)
 		return
 	case ndBlk:
 		b := node.(*BlkNode)
@@ -112,16 +112,16 @@ func genNode(node Node, funcName string) {
 		// align rsp to 16 byte boundary
 		fmt.Println("	mov rax, rsp")
 		fmt.Println("	and rax, 15")
-		fmt.Printf("	jz .L.func.call%d\n", labelCount)
+		fmt.Printf("	jz .L.func.call.%d\n", labelCount)
 		fmt.Println("	mov rax, 0")
 		fmt.Printf("	call %s\n", f.name)
-		fmt.Printf("	jmp .L.func.end%d\n", labelCount)
-		fmt.Printf(".L.func.call%d:\n", labelCount)
+		fmt.Printf("	jmp .L.func.end.%d\n", labelCount)
+		fmt.Printf(".L.func.call.%d:\n", labelCount)
 		fmt.Println("	sub rsp, 8")
 		fmt.Println("	mov rax, 0")
 		fmt.Printf("	call %s\n", f.name)
 		fmt.Println("	add rsp, 8")
-		fmt.Printf(".L.func.end%d:\n", labelCount)
+		fmt.Printf(".L.func.end.%d:\n", labelCount)
 		fmt.Println("	push rax")
 		labelCount++
 		return
@@ -187,6 +187,9 @@ func Gen() {
 		fmt.Println("	push rbp")
 		fmt.Println("	mov rbp, rsp")
 		fmt.Printf("	sub rsp, %d\n", fn.stackSize)
+		for i, arg := range fn.args {
+			fmt.Printf("	mov [rbp-%d], %s\n", arg.offset, argRegs[i])
+		}
 		for _, node := range fn.body {
 			genNode(node, funcName)
 		}

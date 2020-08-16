@@ -100,21 +100,35 @@ func function(toks []*Token) ([]*Token, Node) {
 	toks, funcName := expectID(toks)
 	toks = expect(toks, "(")
 	var body []Node
-	var args []Node
-	if toks, isRPar := consume(toks, ")"); isRPar {
-		toks = expect(toks, "{")
-		var node Node
-		var isLBracket bool
-		for {
-			if toks, isLBracket = consume(toks, "}"); isLBracket {
-				break
-			}
-			toks, node = stmt(toks)
-			body = append(body, node)
+	var args []*LVar
+	isFirstArg := true
+	for {
+		var isRPar bool
+		if toks, isRPar = consume(toks, ")"); isRPar {
+			break
 		}
-		return toks, NewFuncDefNode(funcName, args, body, 8*len(LVars))
+
+		if !isFirstArg {
+			toks = expect(toks, ",")
+		}
+		isFirstArg = false
+		var s string
+		toks, s = expectID(toks)
+		arg := &LVar{name: s, offset: 8 * (len(args) + 1)}
+		args = append(args, arg)
+		LVars = append(LVars, arg)
 	}
-	panic("should not come here now")
+	toks = expect(toks, "{")
+	var node Node
+	var isLBracket bool
+	for {
+		if toks, isLBracket = consume(toks, "}"); isLBracket {
+			break
+		}
+		toks, node = stmt(toks)
+		body = append(body, node)
+	}
+	return toks, NewFuncDefNode(funcName, args, body, 8*len(LVars))
 }
 
 func stmt(toks []*Token) ([]*Token, Node) {

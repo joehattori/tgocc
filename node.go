@@ -43,7 +43,7 @@ type (
 	// FuncDefNode represents a node of function definition
 	FuncDefNode struct {
 		name      string
-		args      []Node
+		args      []*LVar
 		body      []Node
 		stackSize int
 	}
@@ -128,7 +128,7 @@ func NewFuncCallNode(name string, args []Node) Node {
 }
 
 // NewFuncDefNode builds a FuncDefNode
-func NewFuncDefNode(name string, args []Node, body []Node, stackSize int) Node {
+func NewFuncDefNode(name string, args []*LVar, body []Node, stackSize int) Node {
 	return &FuncDefNode{name: name, args: args, body: body, stackSize: stackSize}
 }
 
@@ -157,12 +157,7 @@ func NewLvarNode(s string) Node {
 	if v := findLVar(s); v != nil {
 		node.offset = v.offset
 	} else {
-		var offset int
-		if len(LVars) > 0 {
-			offset = LVars[len(LVars)-1].offset + 8
-		} else {
-			offset = 8
-		}
+		offset := 8 * (len(LVars) + 1)
 		node.offset = offset
 		LVars = append(LVars, &LVar{offset: offset, name: s})
 	}
