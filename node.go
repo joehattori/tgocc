@@ -42,14 +42,14 @@ type (
 
 	// FuncDefNode represents a node of function definition
 	FuncDefNode struct {
-		name      string
-		args      []*LVar
-		body      []Node
-		stackSize int
+		name  string
+		args  []*LVar
+		body  []Node
+		lvars []*LVar
 	}
 
-	// LvarNode represents a node of local variable
-	LvarNode struct {
+	// LVarNode represents a node of local variable
+	LVarNode struct {
 		offset int
 		name   string
 	}
@@ -128,8 +128,8 @@ func NewFuncCallNode(name string, args []Node) Node {
 }
 
 // NewFuncDefNode builds a FuncDefNode
-func NewFuncDefNode(name string, args []*LVar, body []Node, stackSize int) Node {
-	return &FuncDefNode{name: name, args: args, body: body, stackSize: stackSize}
+func NewFuncDefNode(name string, args []*LVar, body []Node, lvars []*LVar) Node {
+	return &FuncDefNode{name: name, args: args, body: body, lvars: lvars}
 }
 
 // NewIfNode builds a IfNode
@@ -142,24 +142,24 @@ func NewNumNode(val int) Node {
 	return &NumNode{val}
 }
 
-func findLVar(name string) *LVar {
-	for _, v := range LVars {
-		if v.name == name {
+func (f *FuncDefNode) findLVar(varName string) *LVar {
+	for _, v := range f.lvars {
+		if v.name == varName {
 			return v
 		}
 	}
 	return nil
 }
 
-// NewLvarNode builds arNode
-func NewLvarNode(s string) Node {
-	node := &LvarNode{}
-	if v := findLVar(s); v != nil {
+// NewLVarNode builds arNode
+func (f *FuncDefNode) NewLVarNode(s string) Node {
+	node := &LVarNode{}
+	if v := f.findLVar(s); v != nil {
 		node.offset = v.offset
 	} else {
-		offset := 8 * (len(LVars) + 1)
+		offset := 8 * (len(f.lvars) + 1)
 		node.offset = offset
-		LVars = append(LVars, &LVar{offset: offset, name: s})
+		f.lvars = append(f.lvars, &LVar{offset: offset, name: s})
 	}
 	return node
 }
@@ -198,7 +198,7 @@ func (*FuncDefNode) kind() nodeKind {
 	return ndFuncDef
 }
 
-func (*LvarNode) kind() nodeKind {
+func (*LVarNode) kind() nodeKind {
 	return ndLvar
 }
 

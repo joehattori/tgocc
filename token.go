@@ -24,8 +24,14 @@ type Token struct {
 	length int
 }
 
+// Tokenized represents tokenized input generated in token.go
+type Tokenized struct {
+	toks  []*Token
+	curFn FuncDefNode
+}
+
 // Tokenize returns the tokenized input
-func Tokenize(s string) []*Token {
+func Tokenize(s string) *Tokenized {
 	var toks []*Token
 	for {
 		if s == "" {
@@ -77,7 +83,7 @@ func Tokenize(s string) []*Token {
 		panic(fmt.Sprintf("unexpected input %s\n", s))
 	}
 	toks = append(toks, &Token{kind: tkEOF, str: s})
-	return toks
+	return &Tokenized{toks: toks}
 }
 
 func hasMultipleCharactorOperator(s string) bool {

@@ -10,7 +10,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "usage: ./tccgo <program>")
 		return
 	}
-	tokens := Tokenize(os.Args[1])
-	Program(tokens)
-	Gen()
+	t := Tokenize(os.Args[1])
+	ast := t.parse()
+	Gen(ast)
 }

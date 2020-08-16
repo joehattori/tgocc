@@ -6,7 +6,7 @@ var labelCount int
 
 var argRegs = [...]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
 
-func genLVar(v *LvarNode) {
+func genLVar(v *LVarNode) {
 	fmt.Println("	mov rax, rbp")
 	fmt.Printf("	sub rax, %d\n", v.offset)
 	fmt.Println("	push rax")
@@ -19,7 +19,7 @@ func genNode(node Node, funcName string) {
 		return
 	case ndAssign:
 		a := node.(*AssignNode)
-		genLVar(a.lhs.(*LvarNode))
+		genLVar(a.lhs.(*LVarNode))
 		genNode(a.rhs, funcName)
 		fmt.Println("	pop rdi")
 		fmt.Println("	pop rax")
@@ -27,7 +27,7 @@ func genNode(node Node, funcName string) {
 		fmt.Println("	push rdi")
 		return
 	case ndLvar:
-		genLVar(node.(*LvarNode))
+		genLVar(node.(*LVarNode))
 		fmt.Println("	pop rax")
 		fmt.Println("	mov rax, [rax]")
 		fmt.Println("	push rax")
@@ -176,17 +176,17 @@ func genNode(node Node, funcName string) {
 }
 
 // Gen generates assembly for the whole program. This emulates stack machine.
-func Gen() {
+func Gen(ast Ast) {
 	fmt.Println(".intel_syntax noprefix")
 
-	for _, code := range Code {
-		fn := code.(*FuncDefNode)
+	for _, node := range ast.nodes {
+		fn := node.(*FuncDefNode)
 		funcName := fn.name
 		fmt.Printf(".globl %s\n", funcName)
 		fmt.Printf("%s:\n", funcName)
 		fmt.Println("	push rbp")
 		fmt.Println("	mov rbp, rsp")
-		fmt.Printf("	sub rsp, %d\n", fn.stackSize)
+		fmt.Printf("	sub rsp, %d\n", 8*(len(fn.lvars)+1))
 		for i, arg := range fn.args {
 			fmt.Printf("	mov [rbp-%d], %s\n", arg.offset, argRegs[i])
 		}

@@ -6,62 +6,67 @@ import (
 	"strings"
 )
 
-//LVars represents the array of local variables
-var LVars []*LVar
-
 // LVar represents local variable. `offset` is the offset from rbp
 type LVar struct {
 	name   string
 	offset int
 }
 
-// Code is an array of nodes which represents whole program input
-var Code []Node
-
-// TODO: move toks to instance method
-// TODO: define struct program that contains token and lvar
-func consume(toks []*Token, str string) ([]*Token, bool) {
-	cur := toks[0]
-	if cur.kind != tkReserved || cur.length != len(str) || !strings.HasPrefix(cur.str, str) {
-		return toks, false
-	}
-	return toks[1:], true
+// Ast is an array of nodes which represents whole program input (technically not a tree, but let's call this Ast still.)
+type Ast struct {
+	nodes []Node
 }
 
-func consumeID(toks []*Token) ([]*Token, string, bool) {
-	cur := toks[0]
+func (t *Tokenized) popToks() {
+	t.toks = t.toks[1:]
+}
+
+func (t *Tokenized) consume(str string) bool {
+	cur := t.toks[0]
+	if cur.kind != tkReserved || cur.length != len(str) || !strings.HasPrefix(cur.str, str) {
+		return false
+	}
+	t.popToks()
+	return true
+}
+
+func (t *Tokenized) consumeID() (string, bool) {
+	cur := t.toks[0]
 	reg := regexp.MustCompile(`^[a-zA-Z]+[\w_]*`)
 	varName := reg.FindString(cur.str)
 	if cur.kind != tkID || varName == "" {
-		return toks, "", false
+		return "", false
 	}
-	return toks[1:], varName, true
+	t.popToks()
+	return varName, true
 }
 
-func expect(toks []*Token, str string) []*Token {
-	cur := toks[0]
+func (t *Tokenized) expect(str string) {
+	cur := t.toks[0]
 	if cur.kind != tkReserved || cur.length != len(str) || !strings.HasPrefix(cur.str, str) {
 		panic(fmt.Sprintf("%s was expected but got %s", str, cur.str))
 	}
-	return toks[1:]
+	t.popToks()
 }
 
-func expectID(toks []*Token) ([]*Token, string) {
-	cur := toks[0]
+func (t *Tokenized) expectID() string {
+	cur := t.toks[0]
 	reg := regexp.MustCompile(`^[a-zA-Z]+[\w_]*`)
 	varName := reg.FindString(cur.str)
 	if cur.kind != tkID || varName == "" {
 		panic(fmt.Sprintf("ID was expected but got %s", cur.str))
 	}
-	return toks[1:], varName
+	t.popToks()
+	return varName
 }
 
-func expectNum(toks []*Token) ([]*Token, int) {
-	cur := toks[0]
+func (t *Tokenized) expectNum() int {
+	cur := t.toks[0]
 	if cur.kind != tkNum {
 		panic("Number was expected")
 	}
-	return toks[1:], cur.val
+	t.popToks()
+	return cur.val
 }
 
 // program    = function*
@@ -86,274 +91,226 @@ type opKind struct {
 	kind nodeKind
 }
 
-// Program parses tokens and fills up Code
-func Program(toks []*Token) {
-	var node Node
-	for toks[0].kind != tkEOF {
-		toks, node = function(toks)
-		Code = append(Code, node)
+func (t *Tokenized) parse() Ast {
+	var ast Ast
+	for t.toks[0].kind != tkEOF {
+		ast.nodes = append(ast.nodes, t.function())
 	}
+	return ast
 }
 
-func function(toks []*Token) ([]*Token, Node) {
-	LVars = nil
-	toks, funcName := expectID(toks)
-	toks = expect(toks, "(")
+func (t *Tokenized) function() Node {
+	funcName := t.expectID()
+	t.expect("(")
+
 	var body []Node
-	var args []*LVar
+	var args, lvars []*LVar
+
 	isFirstArg := true
 	for {
-		var isRPar bool
-		if toks, isRPar = consume(toks, ")"); isRPar {
+		if t.consume(")") {
 			break
 		}
 
 		if !isFirstArg {
-			toks = expect(toks, ",")
+			t.expect(",")
 		}
 		isFirstArg = false
-		var s string
-		toks, s = expectID(toks)
+
+		s := t.expectID()
 		arg := &LVar{name: s, offset: 8 * (len(args) + 1)}
 		args = append(args, arg)
-		LVars = append(LVars, arg)
+		lvars = append(lvars, arg)
 	}
-	toks = expect(toks, "{")
-	var node Node
-	var isLBracket bool
+	t.expect("{")
 	for {
-		if toks, isLBracket = consume(toks, "}"); isLBracket {
+		if t.consume("}") {
 			break
 		}
-		toks, node = stmt(toks)
-		body = append(body, node)
+		body = append(body, t.stmt())
 	}
-	return toks, NewFuncDefNode(funcName, args, body, 8*len(LVars))
+	return NewFuncDefNode(funcName, args, body, lvars)
 }
 
-func stmt(toks []*Token) ([]*Token, Node) {
-	var node Node
-
+func (t *Tokenized) stmt() Node {
 	// handle block
-	if newToks, isLBracket := consume(toks, "{"); isLBracket {
+	if t.consume("{") {
 		var blkStmts []Node
-		var isRBracket bool
-		toks = newToks
 		for {
-			toks, isRBracket = consume(toks, "}")
-			if isRBracket {
-				return toks, NewBlkNode(blkStmts)
+			if t.consume("}") {
+				return NewBlkNode(blkStmts)
 			}
-			toks, node = stmt(toks)
-			blkStmts = append(blkStmts, node)
+			blkStmts = append(blkStmts, t.stmt())
 		}
 	}
 
 	// handle return
-	if newToks, isReturn := consume(toks, "return"); isReturn {
-		toks, node = expr(newToks)
-		node = NewRetNode(node)
-		toks = expect(toks, ";")
-		return toks, node
+	if t.consume("return") {
+		node := NewRetNode(t.expr())
+		t.expect(";")
+		return node
 	}
 
 	// handle if statement
-	if newToks, isIf := consume(toks, "if"); isIf {
-		var cond, then, els Node
-		toks = expect(newToks, "(")
-		toks, cond = expr(toks)
-		toks = expect(toks, ")")
-		toks, then = stmt(toks)
+	if t.consume("if") {
+		t.expect("(")
+		cond := t.expr()
+		t.expect(")")
+		then := t.stmt()
 
-		if newToks, isElse := consume(toks, "else"); isElse {
-			toks, node = stmt(newToks)
-			els = node
+		var els Node
+		if t.consume("else") {
+			els = t.stmt()
 		}
 
-		return toks, NewIfNode(cond, then, els)
+		return NewIfNode(cond, then, els)
 	}
 
 	// handle while statement
-	if newToks, isWhile := consume(toks, "while"); isWhile {
-		var condNode, thenNode Node
-		toks = expect(newToks, "(")
-		toks, condNode = expr(toks)
-		toks = expect(toks, ")")
-		toks, thenNode = stmt(toks)
-		return toks, NewWhileNode(condNode, thenNode)
+	if t.consume("while") {
+		t.expect("(")
+		condNode := t.expr()
+		t.expect(")")
+		thenNode := t.stmt()
+		return NewWhileNode(condNode, thenNode)
 	}
 
 	// handle for statement
-	if newToks, isFor := consume(toks, "for"); isFor {
+	if t.consume("for") {
+		t.expect("(")
+
 		var init, cond, inc, then Node
-		toks = expect(newToks, "(")
 
-		toks, isSc := consume(toks, ";")
-		if !isSc {
-			toks, init = expr(toks)
-			toks = expect(toks, ";")
+		if !t.consume(";") {
+			init = t.expr()
+			t.expect(";")
 		}
 
-		toks, isSc = consume(toks, ";")
-		if !isSc {
-			toks, cond = expr(toks)
-			toks = expect(toks, ";")
+		if !t.consume(";") {
+			cond = t.expr()
+			t.expect(";")
 		}
 
-		toks, isRPar := consume(toks, ")")
-		if !isRPar {
-			toks, inc = expr(toks)
-			toks = expect(toks, ")")
+		if !t.consume(")") {
+			inc = t.expr()
+			t.expect(")")
 		}
 
-		toks, then = stmt(toks)
-		return toks, NewForNode(init, cond, inc, then)
+		then = t.stmt()
+		return NewForNode(init, cond, inc, then)
 	}
 
-	toks, node = expr(toks)
-	toks = expect(toks, ";")
-	return toks, node
+	node := t.expr()
+	t.expect(";")
+	return node
 }
 
-func expr(toks []*Token) ([]*Token, Node) {
-	return assign(toks)
+func (t *Tokenized) expr() Node {
+	return t.assign()
 }
 
-func assign(toks []*Token) ([]*Token, Node) {
-	toks, node := equality(toks)
-	var isAssign bool
-	var assignNode Node
-	if toks, isAssign = consume(toks, "="); isAssign {
-		toks, assignNode = assign(toks)
+func (t *Tokenized) assign() Node {
+	node := t.equality()
+
+	if t.consume("=") {
+		assignNode := t.assign()
 		node = NewAssignNode(node, assignNode)
 	}
-	return toks, node
+	return node
 }
 
-func equality(toks []*Token) ([]*Token, Node) {
-	toks, node := relational(toks)
-	ops := []opKind{
-		opKind{str: "==", kind: ndEq},
-		opKind{str: "!=", kind: ndNeq},
-	}
-	matched := true
-	for matched {
-		matched = false
-		for _, op := range ops {
-			if newToks, isOp := consume(toks, op.str); isOp {
-				nxtToks, relNode := relational(newToks)
-				toks, node = nxtToks, NewArithNode(op.kind, node, relNode)
-				matched = true
-			}
+func (t *Tokenized) equality() Node {
+	node := t.relational()
+	for {
+		if t.consume("==") {
+			node = NewArithNode(ndEq, node, t.relational())
+		} else if t.consume("!=") {
+			node = NewArithNode(ndNeq, node, t.relational())
+		} else {
+			return node
 		}
 	}
-	return toks, node
 }
 
-func relational(toks []*Token) ([]*Token, Node) {
-	toks, node := addSub(toks)
-	ops := []opKind{
-		opKind{str: "<=", kind: ndLeq},
-		opKind{str: ">=", kind: ndGeq},
-		opKind{str: "<", kind: ndLt},
-		opKind{str: ">", kind: ndGt},
-	}
-	matched := true
-	for matched {
-		matched = false
-		for _, op := range ops {
-			if newToks, isOp := consume(toks, op.str); isOp {
-				nxtToks, addSubNode := addSub(newToks)
-				toks, node = nxtToks, NewArithNode(op.kind, node, addSubNode)
-				matched = true
-			}
+func (t *Tokenized) relational() Node {
+	node := t.addSub()
+	for {
+		if t.consume("<=") {
+			node = NewArithNode(ndLeq, node, t.addSub())
+		} else if t.consume(">=") {
+			node = NewArithNode(ndGeq, node, t.addSub())
+		} else if t.consume("<") {
+			node = NewArithNode(ndLt, node, t.addSub())
+		} else if t.consume(">") {
+			node = NewArithNode(ndGt, node, t.addSub())
+		} else {
+			return node
 		}
 	}
-	return toks, node
 }
 
-func addSub(toks []*Token) ([]*Token, Node) {
-	toks, node := mulDiv(toks)
-	ops := []opKind{
-		opKind{str: "+", kind: ndAdd},
-		opKind{str: "-", kind: ndSub},
-	}
-	matched := true
-	for matched {
-		matched = false
-		for _, op := range ops {
-			var mulDivNode Node
-			if newToks, isOp := consume(toks, op.str); isOp {
-				toks, mulDivNode = mulDiv(newToks)
-				node = NewArithNode(op.kind, node, mulDivNode)
-				matched = true
-			}
+func (t *Tokenized) addSub() Node {
+	node := t.mulDiv()
+	for {
+		if t.consume("+") {
+			node = NewArithNode(ndAdd, node, t.mulDiv())
+		} else if t.consume("-") {
+			node = NewArithNode(ndSub, node, t.mulDiv())
+		} else {
+			return node
 		}
 	}
-	return toks, node
 }
 
-func mulDiv(toks []*Token) ([]*Token, Node) {
-	toks, node := unary(toks)
-	ops := []opKind{
-		opKind{str: "*", kind: ndMul},
-		opKind{str: "/", kind: ndDiv},
-	}
-	matched := true
-	for matched {
-		matched = false
-		for _, op := range ops {
-			var unaryNode Node
-			if newToks, isOp := consume(toks, op.str); isOp {
-				toks, unaryNode = unary(newToks)
-				node = NewArithNode(op.kind, node, unaryNode)
-				matched = true
-			}
+func (t *Tokenized) mulDiv() Node {
+	node := t.unary()
+	for {
+		if t.consume("*") {
+			node = NewArithNode(ndMul, node, t.unary())
+		} else if t.consume("/") {
+			node = NewArithNode(ndDiv, node, t.unary())
+		} else {
+			return node
 		}
 	}
-	return toks, node
 }
 
-func unary(toks []*Token) ([]*Token, Node) {
-	if newToks, isPlus := consume(toks, "+"); isPlus {
-		return primary(newToks)
-	} else if newToks, isMinus := consume(toks, "-"); isMinus {
-		newToks, node := primary(newToks)
-		return newToks, NewArithNode(ndSub, NewNumNode(0), node)
+func (t *Tokenized) unary() Node {
+	if t.consume("+") {
+		return t.primary()
+	} else if t.consume("-") {
+		node := t.primary()
+		return NewArithNode(ndSub, NewNumNode(0), node)
 	}
-	return primary(toks)
+	return t.primary()
 }
 
-func primary(toks []*Token) ([]*Token, Node) {
-	if toks, isPar := consume(toks, "("); isPar {
-		toks, node := expr(toks)
-		toks = expect(toks, ")")
-		return toks, node
+func (t *Tokenized) primary() Node {
+	if t.consume("(") {
+		node := t.expr()
+		t.expect(")")
+		return node
 	}
 
-	if toks, id, isID := consumeID(toks); isID {
-		if toks, isLPar := consume(toks, "("); isLPar {
+	if id, isID := t.consumeID(); isID {
+		if t.consume("(") {
 			var args []Node
 			// no args
-			if toks, isRPar := consume(toks, ")"); isRPar {
-				return toks, NewFuncCallNode(id, args)
+			if t.consume(")") {
+				return NewFuncCallNode(id, args)
 			}
-			toks, arg := expr(toks)
-			args = append(args, arg)
+			args = append(args, t.expr())
 			for {
-				newToks, isComma := consume(toks, ",")
-				if !isComma {
+				if !t.consume(",") {
 					break
 				}
-				toks, arg = expr(newToks)
-				args = append(args, arg)
+				args = append(args, t.expr())
 			}
-			toks = expect(toks, ")")
-			return toks, NewFuncCallNode(id, args)
+			t.expect(")")
+			return NewFuncCallNode(id, args)
 		}
-		return toks, NewLvarNode(id)
+		return t.curFn.NewLVarNode(id)
 	}
 
-	toks, n := expectNum(toks)
-	return toks, NewNumNode(n)
+	return NewNumNode(t.expectNum())
 }
