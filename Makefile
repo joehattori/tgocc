@@ -1,4 +1,4 @@
-SRCS=main.go token.go parse.go gen.go
+SRCS=main.go token.go parse.go gen.go node.go
 
 tgocc: $(SRCS)
 	go build -o tgocc $(SRCS)
