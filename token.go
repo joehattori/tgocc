@@ -89,12 +89,3 @@ func hasMultipleCharactorOperator(s string) bool {
 	}
 	return false
 }
-
-//LVars represents the array of local variables
-var LVars []*LVar
-
-// LVar represents local variable. `offset` is the offset from rbp
-type LVar struct {
-	name   string
-	offset int
-}

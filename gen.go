@@ -15,14 +15,14 @@ func genLVar(node *Node) {
 	fmt.Println("	push rax")
 }
 
-func genNode(node *Node) {
+func genNode(node *Node, funcName string) {
 	switch node.kind {
 	case ndNum:
 		fmt.Printf("	push %d\n", node.val)
 		return
 	case ndAssign:
 		genLVar(node.lhs)
-		genNode(node.rhs)
+		genNode(node.rhs, funcName)
 		fmt.Println("	pop rdi")
 		fmt.Println("	pop rax")
 		fmt.Println("	mov [rax], rdi")
@@ -35,31 +35,29 @@ func genNode(node *Node) {
 		fmt.Println("	push rax")
 		return
 	case ndReturn:
-		genNode(node.rhs)
+		genNode(node.rhs, funcName)
 		fmt.Println("	pop rax")
-		fmt.Println("	mov rsp, rbp")
-		fmt.Println("	pop rbp")
-		fmt.Println("	ret")
+		fmt.Printf("	jmp .L.return.%s\n", funcName)
 		return
 	case ndIf:
 		c := labelCount
 		labelCount++
 		if node.els != nil {
-			genNode(node.cond)
+			genNode(node.cond, funcName)
 			fmt.Println("	pop rax")
 			fmt.Println("	cmp rax, 0")
 			fmt.Printf("	je .Lelse%d\n", c)
-			genNode(node.then)
+			genNode(node.then, funcName)
 			fmt.Printf("	je .Lend%d\n", c)
 			fmt.Printf(".Lelse%d:\n", c)
-			genNode(node.els)
+			genNode(node.els, funcName)
 			fmt.Printf(".Lend%d:\n", c)
 		} else {
-			genNode(node.cond)
+			genNode(node.cond, funcName)
 			fmt.Println("	pop rax")
 			fmt.Println("	cmp rax, 0")
 			fmt.Printf("	je .Lend%d\n", c)
-			genNode(node.then)
+			genNode(node.then, funcName)
 			fmt.Printf(".Lend%d:\n", c)
 		}
 		return
@@ -67,11 +65,11 @@ func genNode(node *Node) {
 		c := labelCount
 		labelCount++
 		fmt.Printf(".Lbegin%d:\n", c)
-		genNode(node.cond)
+		genNode(node.cond, funcName)
 		fmt.Println("	pop rax")
 		fmt.Println("	cmp rax, 0")
 		fmt.Printf("	je .Lend%d\n", c)
-		genNode(node.then)
+		genNode(node.then, funcName)
 		fmt.Printf("	jmp .Lbegin%d\n", c)
 		fmt.Printf(".Lend%d:\n", c)
 		return
@@ -79,32 +77,32 @@ func genNode(node *Node) {
 		c := labelCount
 		labelCount++
 		if node.forInit != nil {
-			genNode(node.forInit)
+			genNode(node.forInit, funcName)
 		}
 		fmt.Printf(".Lbegin%d:\n", c)
 		if node.cond != nil {
-			genNode(node.cond)
+			genNode(node.cond, funcName)
 			fmt.Println("	pop rax")
 			fmt.Println("	cmp rax, 0")
 			fmt.Printf("	je .Lend%d\n", c)
 		}
 		if node.then != nil {
-			genNode(node.then)
+			genNode(node.then, funcName)
 		}
 		if node.forInc != nil {
-			genNode(node.forInc)
+			genNode(node.forInc, funcName)
 		}
 		fmt.Printf("	jmp .Lbegin%d\n", c)
 		fmt.Printf(".Lend%d:\n", c)
 		return
 	case ndBlk:
 		for _, st := range node.blkStmts {
-			genNode(st)
+			genNode(st, funcName)
 		}
 		return
 	case ndFuncCall:
 		for i, arg := range node.funcArgs {
-			genNode(arg)
+			genNode(arg, funcName)
 			fmt.Printf("	pop %s\n", argRegs[i])
 		}
 		// align rsp to 16 byte boundary
@@ -125,8 +123,8 @@ func genNode(node *Node) {
 		return
 	}
 
-	genNode(node.lhs)
-	genNode(node.rhs)
+	genNode(node.lhs, funcName)
+	genNode(node.rhs, funcName)
 
 	fmt.Println("	pop rdi")
 	fmt.Println("	pop rax")
@@ -174,20 +172,20 @@ func genNode(node *Node) {
 // Gen generates assembly for the whole program. This emulates stack machine.
 func Gen() {
 	fmt.Println(".intel_syntax noprefix")
-	fmt.Println(".globl main")
-	fmt.Println("main:")
-
-	// extend stack for local variables
-	fmt.Println("	push rbp")
-	fmt.Println("	mov rbp, rsp")
-	fmt.Printf("	sub rsp, %d\n", 8*len(LVars))
 
 	for _, code := range Code {
-		genNode(code)
-		fmt.Println("	pop rax")
+		funcName := code.funcName
+		fmt.Printf(".globl %s\n", funcName)
+		fmt.Printf("%s:\n", funcName)
+		fmt.Println("	push rbp")
+		fmt.Println("	mov rbp, rsp")
+		fmt.Printf("	sub rsp, %d\n", code.stackSize)
+		for _, node := range code.body {
+			genNode(node, funcName)
+		}
+		fmt.Printf(".L.return.%s:\n", funcName)
+		fmt.Println("	mov rsp, rbp")
+		fmt.Println("	pop rbp")
+		fmt.Println("	ret")
 	}
-
-	fmt.Println("	mov rsp, rbp")
-	fmt.Println("	pop rbp")
-	fmt.Println("	ret")
 }

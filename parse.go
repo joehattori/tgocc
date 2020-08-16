@@ -6,6 +6,20 @@ import (
 	"strings"
 )
 
+//LVars represents the array of local variables
+var LVars []*LVar
+
+// LVar represents local variable. `offset` is the offset from rbp
+type LVar struct {
+	name   string
+	offset int
+}
+
+// Code is an array of nodes which represents whole program input
+var Code []*Node
+
+// TODO: move toks to instance method
+// TODO: define struct program that contains token and lvar
 func consume(toks []*Token, str string) ([]*Token, bool) {
 	cur := toks[0]
 	if cur.kind != tkReserved || cur.length != len(str) || !strings.HasPrefix(cur.str, str) {
@@ -30,6 +44,16 @@ func expect(toks []*Token, str string) []*Token {
 		panic(fmt.Sprintf("%s was expected but got %s", str, cur.str))
 	}
 	return toks[1:]
+}
+
+func expectID(toks []*Token) ([]*Token, string) {
+	cur := toks[0]
+	reg := regexp.MustCompile(`^[a-zA-Z]+[\w_]*`)
+	varName := reg.FindString(cur.str)
+	if cur.kind != tkID || varName == "" {
+		panic(fmt.Sprintf("ID was expected but got %s", cur.str))
+	}
+	return toks[1:], varName
 }
 
 func expectNum(toks []*Token) ([]*Token, int) {
@@ -72,23 +96,27 @@ const (
 	ndFor
 	ndBlk
 	ndFuncCall
+	ndFuncDef
 )
 
 // Node represents each node in ast
+// TODO: duck typing
 type Node struct {
-	kind     nodeKind
-	lhs      *Node
-	rhs      *Node
-	val      int
-	offset   int
-	cond     *Node   // used for "if", "while" and "for"
-	then     *Node   // used for "if", "while" and "for"
-	els      *Node   // used for "if"
-	forInit  *Node   // used for "for"
-	forInc   *Node   // used for "for"
-	blkStmts []*Node // statements inside a block
-	funcName string
-	funcArgs []*Node
+	kind      nodeKind
+	lhs       *Node
+	rhs       *Node
+	val       int
+	offset    int
+	cond      *Node   // used for "if", "while" and "for"
+	then      *Node   // used for "if", "while" and "for"
+	els       *Node   // used for "if"
+	forInit   *Node   // used for "for"
+	forInc    *Node   // used for "for"
+	blkStmts  []*Node // statements inside a block
+	funcName  string
+	funcArgs  []*Node
+	body      []*Node
+	stackSize int
 }
 
 func newNode(kind nodeKind, lhs *Node, rhs *Node) *Node {
@@ -140,7 +168,12 @@ func newNodeFuncCall(name string, args []*Node) *Node {
 	return &Node{kind: ndFuncCall, funcName: name, funcArgs: args}
 }
 
-// program    = stmt*
+func newNodeFuncDef(name string, args []*Node, body []*Node) *Node {
+	return &Node{kind: ndFuncDef, funcName: name, funcArgs: args, body: body, stackSize: 8 * len(LVars)}
+}
+
+// program    = function*
+// function   = ident ("(" (ident ("," ident)* )? ")") "{" stmt* "}"
 // stmt       = expr ";"
 //				| "{" stmt* "}"
 //			    | "return" expr ";"
@@ -161,16 +194,35 @@ type opKind struct {
 	kind nodeKind
 }
 
-// Code is an array of nodes which represents whole program input
-var Code []*Node
-
 // Program parses tokens and fills up Code
 func Program(toks []*Token) {
+	var node *Node
 	for toks[0].kind != tkEOF {
-		newToks, node := stmt(toks)
-		toks = newToks
+		toks, node = function(toks)
 		Code = append(Code, node)
 	}
+}
+
+func function(toks []*Token) ([]*Token, *Node) {
+	LVars = nil
+	toks, funcName := expectID(toks)
+	toks = expect(toks, "(")
+	var body []*Node
+	var args []*Node
+	if toks, isRPar := consume(toks, ")"); isRPar {
+		toks = expect(toks, "{")
+		var node *Node
+		var isLBracket bool
+		for {
+			if toks, isLBracket = consume(toks, "}"); isLBracket {
+				break
+			}
+			toks, node = stmt(toks)
+			body = append(body, node)
+		}
+		return toks, newNodeFuncDef(funcName, args, body)
+	}
+	panic("should not come here now")
 }
 
 func stmt(toks []*Token) ([]*Token, *Node) {
@@ -263,9 +315,11 @@ func expr(toks []*Token) ([]*Token, *Node) {
 
 func assign(toks []*Token) ([]*Token, *Node) {
 	toks, node := equality(toks)
-	if newToks, isAssign := consume(toks, "="); isAssign {
-		nxtToks, assignNode := assign(newToks)
-		toks, node = nxtToks, newNode(ndAssign, node, assignNode)
+	var isAssign bool
+	var assignNode *Node
+	if toks, isAssign = consume(toks, "="); isAssign {
+		toks, assignNode = assign(toks)
+		node = newNode(ndAssign, node, assignNode)
 	}
 	return toks, node
 }
