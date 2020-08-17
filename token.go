@@ -46,6 +46,13 @@ func Tokenize(s string) *Tokenized {
 			continue
 		}
 
+		if r := regexp.MustCompile(`^(int)\W`); r.MatchString(s) {
+			typeStr := r.FindString(s)
+			toks = append(toks, &Token{kind: tkReserved, str: s, length: len(typeStr) - 1})
+			s = s[len(typeStr)-1:]
+			continue
+		}
+
 		if r := regexp.MustCompile(`^\d+`); r.MatchString(s) {
 			numStr := r.FindString(s)
 			num, _ := strconv.Atoi(numStr)

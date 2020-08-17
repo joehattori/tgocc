@@ -63,7 +63,7 @@ func (t *Tokenized) expectID() string {
 func (t *Tokenized) expectNum() int {
 	cur := t.toks[0]
 	if cur.kind != tkNum {
-		panic("Number was expected")
+		panic(fmt.Sprintf("Number was expected but got %s", cur.str))
 	}
 	t.popToks()
 	return cur.val
@@ -77,6 +77,7 @@ func (t *Tokenized) expectNum() int {
 //				| "if" "(" expr ")" stmt ("else" stmt) ?
 //				| "while" "(" expr ")" stmt
 //				| "for" "(" expr? ";" expr? ";" expr? ")" stmt
+//				| "int" ident ";"
 // expr       = assign
 // assign     = equality ("=" assign) ?
 // equality   = relational ("==" relational | "!=" relational)*
@@ -100,11 +101,9 @@ func (t *Tokenized) parse() *Ast {
 }
 
 func (t *Tokenized) function() Node {
+	t.expect("int")
 	funcName := t.expectID()
 	t.expect("(")
-
-	var body []Node
-	var args, lvars []*LVar
 
 	fn := &FnNode{name: funcName}
 	t.curFn = fn
@@ -120,21 +119,19 @@ func (t *Tokenized) function() Node {
 		}
 		isFirstArg = false
 
+		t.expect("int")
 		s := t.expectID()
-		arg := &LVar{name: s, offset: 8 * (len(args) + 1)}
-		args = append(args, arg)
-		lvars = append(lvars, arg)
+		arg := &LVar{name: s, offset: 8 * (len(fn.args) + 1)}
+		fn.args = append(fn.args, arg)
+		fn.lvars = append(fn.lvars, arg)
 	}
 	t.expect("{")
 	for {
 		if t.consume("}") {
 			break
 		}
-		body = append(body, t.stmt())
+		fn.body = append(fn.body, t.stmt())
 	}
-	fn.args = args
-	fn.lvars = lvars
-	fn.body = body
 	return fn
 }
 
@@ -204,6 +201,13 @@ func (t *Tokenized) stmt() Node {
 
 		then = t.stmt()
 		return NewForNode(init, cond, inc, then)
+	}
+
+	// handle variable definition
+	if t.consume("int") {
+		id := t.expectID()
+		t.expect(";")
+		return t.curFn.NewLVarNode(id)
 	}
 
 	node := t.expr()
@@ -323,7 +327,7 @@ func (t *Tokenized) primary() Node {
 			t.expect(")")
 			return NewFuncCallNode(id, args)
 		}
-		return t.curFn.NewLVarNode(id)
+		return t.curFn.FindLVarNode(id)
 	}
 
 	return NewNumNode(t.expectNum())

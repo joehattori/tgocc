@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 var labelCount int
 
 var argRegs = [...]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
@@ -161,17 +163,23 @@ func (f *FnNode) findLVar(varName string) *LVar {
 	return nil
 }
 
-// NewLVarNode builds arNode
-func (f *FnNode) NewLVarNode(s string) Node {
-	node := &LVarNode{}
-	if v := f.findLVar(s); v != nil {
-		node.offset = v.offset
-	} else {
-		offset := 8 * (len(f.lvars) + 1)
-		node.offset = offset
-		f.lvars = append(f.lvars, &LVar{offset: offset, name: s})
+// FindLVarNode searches LVarNode named s
+func (f *FnNode) FindLVarNode(s string) Node {
+	v := f.findLVar(s)
+	if v == nil {
+		panic(fmt.Sprintf("undefined variable %s", s))
 	}
-	return node
+	return &LVarNode{offset: v.offset, name: s}
+}
+
+// NewLVarNode builds LVarNode
+func (f *FnNode) NewLVarNode(s string) Node {
+	if f.findLVar(s) != nil {
+		panic(fmt.Sprintf("variable %s is already defined", s))
+	}
+	offset := 8 * (len(f.lvars) + 1)
+	f.lvars = append(f.lvars, &LVar{offset: offset, name: s})
+	return &LVarNode{offset: offset, name: s}
 }
 
 // NewRetNode builds RetNode
