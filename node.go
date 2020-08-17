@@ -37,7 +37,7 @@ type (
 
 	// DerefNode represents a reference node of pointer
 	DerefNode struct {
-		pt Node
+		ptr Node
 	}
 
 	// ForNode represents a node of for statement
@@ -50,16 +50,18 @@ type (
 
 	// FuncCallNode represents a node of function call
 	FuncCallNode struct {
-		name string
 		args []Node
+		name string
+		ty   Type
 	}
 
 	// FnNode represents a node of function definition
 	FnNode struct {
-		name  string
 		args  []*LVar
 		body  []Node
 		lvars []*LVar
+		name  string
+		ty    Type
 	}
 
 	// IfNode represents a if statement node
@@ -73,6 +75,7 @@ type (
 	LVarNode struct {
 		offset int
 		name   string
+		ty     Type
 	}
 
 	// NumNode represents number node
@@ -130,8 +133,8 @@ func NewBlkNode(body []Node) Node {
 }
 
 // NewDerefNode builds a DerefNode
-func NewDerefNode(pt Node) Node {
-	return &DerefNode{pt: pt}
+func NewDerefNode(ptr Node) Node {
+	return &DerefNode{ptr: ptr}
 }
 
 // NewForNode builds a ForNode
@@ -173,7 +176,7 @@ func (f *FnNode) FindLVarNode(s string) Node {
 }
 
 // NewLVarNode builds LVarNode
-func (f *FnNode) NewLVarNode(s string) Node {
+func (f *FnNode) NewLVarNode(s string, ty Type) Node {
 	if f.findLVar(s) != nil {
 		panic(fmt.Sprintf("variable %s is already defined", s))
 	}

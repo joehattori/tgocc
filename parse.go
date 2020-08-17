@@ -10,6 +10,7 @@ import (
 type LVar struct {
 	name   string
 	offset int
+	ty     Type
 }
 
 // Ast is an array of nodes which represents whole program input (technically not a tree, but let's call this Ast still.)
@@ -41,6 +42,19 @@ func (t *Tokenized) consumeID() (string, bool) {
 	return varName, true
 }
 
+func (t *Tokenized) consumeType() (Type, bool) {
+	arr := []struct {
+		string
+		Type
+	}{{"int", &TyInt{}}}
+	for _, a := range arr {
+		if t.consume(a.string) {
+			return a.Type, true
+		}
+	}
+	return nil, false
+}
+
 func (t *Tokenized) expect(str string) {
 	cur := t.toks[0]
 	if cur.kind != tkReserved || cur.length != len(str) || !strings.HasPrefix(cur.str, str) {
@@ -67,6 +81,24 @@ func (t *Tokenized) expectNum() int {
 	}
 	t.popToks()
 	return cur.val
+}
+
+func (t *Tokenized) expectType() Type {
+	arr := []struct {
+		string
+		Type
+	}{{"int", &TyInt{}}}
+	cur := t.toks[0]
+	if cur.kind != tkReserved {
+		panic(fmt.Sprintf("tkReserved was expected but got %d %s", cur.kind, cur.str))
+	}
+	for _, a := range arr {
+		if strings.HasPrefix(cur.str, a.string) {
+			t.popToks()
+			return a.Type
+		}
+	}
+	panic(fmt.Sprintf("Unexpected type %s", cur.str))
 }
 
 // program    = function*
@@ -101,11 +133,17 @@ func (t *Tokenized) parse() *Ast {
 }
 
 func (t *Tokenized) function() Node {
-	t.expect("int")
+	ty := t.expectType()
+	for {
+		if !t.consume("*") {
+			break
+		}
+		ty = &TyPtr{to: ty}
+	}
 	funcName := t.expectID()
 	t.expect("(")
 
-	fn := &FnNode{name: funcName}
+	fn := &FnNode{name: funcName, ty: ty}
 	t.curFn = fn
 
 	isFirstArg := true
@@ -119,9 +157,9 @@ func (t *Tokenized) function() Node {
 		}
 		isFirstArg = false
 
-		t.expect("int")
+		ty := t.expectType()
 		s := t.expectID()
-		arg := &LVar{name: s, offset: 8 * (len(fn.args) + 1)}
+		arg := &LVar{name: s, offset: 8 * (len(fn.args) + 1), ty: ty}
 		fn.args = append(fn.args, arg)
 		fn.lvars = append(fn.lvars, arg)
 	}
@@ -204,10 +242,16 @@ func (t *Tokenized) stmt() Node {
 	}
 
 	// handle variable definition
-	if t.consume("int") {
+	if ty, isTy := t.consumeType(); isTy {
+		for {
+			if !t.consume("*") {
+				break
+			}
+			ty = &TyPtr{to: ty}
+		}
 		id := t.expectID()
 		t.expect(";")
-		return t.curFn.NewLVarNode(id)
+		return t.curFn.NewLVarNode(id, ty)
 	}
 
 	node := t.expr()

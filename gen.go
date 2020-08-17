@@ -62,7 +62,15 @@ func (a *ArithNode) gen() {
 }
 
 func (a *AssignNode) gen() {
-	a.lhs.(*LVarNode).genLVarAddr()
+	switch l := a.lhs.(type) {
+	case *DerefNode:
+		l.ptr.gen()
+		fmt.Println("	pop rax")
+	case *LVarNode:
+		l.genLVarAddr()
+	default:
+		panic(fmt.Sprintf("Unhandled type in assignment %T", l))
+	}
 	a.rhs.gen()
 	fmt.Println("	pop rdi")
 	fmt.Println("	pop rax")
@@ -77,7 +85,7 @@ func (b *BlkNode) gen() {
 }
 
 func (d *DerefNode) gen() {
-	d.pt.gen()
+	d.ptr.gen()
 	fmt.Println("	pop rax")
 	fmt.Println("	mov rax, [rax]")
 	fmt.Println("	push rax")

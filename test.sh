@@ -327,4 +327,25 @@ int main() {
     return *y;
 }" 4
 
+assert "
+int main() {
+    int x;
+    int *y;
+    y = &x;
+    *y = 3;
+    return x;
+}" 3
+
+assert "
+int *retref() {
+    int *y;
+    *y = 33;
+    return y;
+}
+int main() {
+    int *x;
+    x = retref();
+    return *x;
+}" 33
+
 echo OK
