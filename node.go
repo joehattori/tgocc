@@ -10,6 +10,11 @@ type (
 		gen()
 	}
 
+	// AddrNode represents a node of address
+	AddrNode struct {
+		v *LVarNode
+	}
+
 	// ArithNode represents a node of arithmetic calculation
 	ArithNode struct {
 		op  nodeKind
@@ -26,6 +31,11 @@ type (
 	// BlkNode represents a node of block
 	BlkNode struct {
 		body []Node
+	}
+
+	// DerefNode represents a reference node of pointer
+	DerefNode struct {
+		pt Node
 	}
 
 	// ForNode represents a node of for statement
@@ -97,6 +107,11 @@ const (
 	ndGeq
 )
 
+// NewAddrNode builds a AddrNode
+func NewAddrNode(v *LVarNode) Node {
+	return &AddrNode{v: v}
+}
+
 // NewArithNode builds a ArithNode
 func NewArithNode(op nodeKind, lhs Node, rhs Node) Node {
 	return &ArithNode{op: op, lhs: lhs, rhs: rhs}
@@ -110,6 +125,11 @@ func NewAssignNode(lhs Node, rhs Node) Node {
 // NewBlkNode builds a BlkNode
 func NewBlkNode(body []Node) Node {
 	return &BlkNode{body}
+}
+
+// NewDerefNode builds a DerefNode
+func NewDerefNode(pt Node) Node {
+	return &DerefNode{pt: pt}
 }
 
 // NewForNode builds a ForNode

@@ -282,4 +282,20 @@ fib(n) {
 main() { return fib(10); }
 " 55
 
+
+assert "
+main() {
+    x = 3;
+    y = &x;
+    return *y;
+}" 3
+
+assert "
+main() {
+    x = 3;
+    y = &x;
+    x = 4;
+    return *y;
+}" 4
+
 echo OK

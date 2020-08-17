@@ -284,9 +284,18 @@ func (t *Tokenized) mulDiv() Node {
 func (t *Tokenized) unary() Node {
 	if t.consume("+") {
 		return t.primary()
-	} else if t.consume("-") {
+	}
+	if t.consume("-") {
 		node := t.primary()
 		return NewArithNode(ndSub, NewNumNode(0), node)
+	}
+	if t.consume("*") {
+		node := t.unary()
+		return NewDerefNode(node)
+	}
+	if t.consume("&") {
+		node := t.unary()
+		return NewAddrNode(node.(*LVarNode))
 	}
 	return t.primary()
 }
@@ -301,7 +310,6 @@ func (t *Tokenized) primary() Node {
 	if id, isID := t.consumeID(); isID {
 		if t.consume("(") {
 			var args []Node
-			// no args
 			if t.consume(")") {
 				return NewFuncCallNode(id, args)
 			}

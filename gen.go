@@ -10,6 +10,10 @@ func (a *Ast) gen() {
 	}
 }
 
+func (a *AddrNode) gen() {
+	a.v.genLVarAddr()
+}
+
 func (a *ArithNode) gen() {
 	a.lhs.gen()
 	a.rhs.gen()
@@ -70,6 +74,13 @@ func (b *BlkNode) gen() {
 	for _, st := range b.body {
 		st.gen()
 	}
+}
+
+func (d *DerefNode) gen() {
+	d.pt.gen()
+	fmt.Println("	pop rax")
+	fmt.Println("	mov rax, [rax]")
+	fmt.Println("	push rax")
 }
 
 func (f *ForNode) gen() {
