@@ -27,7 +27,7 @@ type Token struct {
 // Tokenized represents tokenized input generated in token.go
 type Tokenized struct {
 	toks  []*Token
-	curFn FuncDefNode
+	curFn *FnNode
 }
 
 // Tokenize returns the tokenized input
@@ -67,7 +67,7 @@ func Tokenize(s string) *Tokenized {
 			continue
 		}
 
-		if strings.Contains("+-*/(){}<>;=,", s[:1]) {
+		if strings.Contains("+-*/(){}<>;=,&", s[:1]) {
 			toks = append(toks, &Token{kind: tkReserved, str: s, length: 1})
 			s = s[1:]
 			continue

@@ -12,5 +12,6 @@ func main() {
 	}
 	t := Tokenize(os.Args[1])
 	ast := t.parse()
-	Gen(ast)
+
+	ast.gen()
 }

@@ -83,7 +83,7 @@ func (t *Tokenized) expectNum() int {
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 // add        = mul ("+" mul | "-" mul)*
 // mul        = unary ("*" unary | "/" unary)*
-// unary      = ("+" | "-")? primary
+// unary      = ("+" | "-" | "*" | "&")? primary
 // primary    = num | ident ("(" (expr ("," expr)* )? ")")? | "(" expr ")"
 
 type opKind struct {
@@ -91,12 +91,12 @@ type opKind struct {
 	kind nodeKind
 }
 
-func (t *Tokenized) parse() Ast {
+func (t *Tokenized) parse() *Ast {
 	var ast Ast
 	for t.toks[0].kind != tkEOF {
 		ast.nodes = append(ast.nodes, t.function())
 	}
-	return ast
+	return &ast
 }
 
 func (t *Tokenized) function() Node {
@@ -105,6 +105,9 @@ func (t *Tokenized) function() Node {
 
 	var body []Node
 	var args, lvars []*LVar
+
+	fn := &FnNode{name: funcName}
+	t.curFn = fn
 
 	isFirstArg := true
 	for {
@@ -129,7 +132,10 @@ func (t *Tokenized) function() Node {
 		}
 		body = append(body, t.stmt())
 	}
-	return NewFuncDefNode(funcName, args, body, lvars)
+	fn.args = args
+	fn.lvars = lvars
+	fn.body = body
+	return fn
 }
 
 func (t *Tokenized) stmt() Node {
@@ -146,7 +152,7 @@ func (t *Tokenized) stmt() Node {
 
 	// handle return
 	if t.consume("return") {
-		node := NewRetNode(t.expr())
+		node := NewRetNode(t.expr(), t.curFn.name)
 		t.expect(";")
 		return node
 	}

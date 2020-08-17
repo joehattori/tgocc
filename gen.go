@@ -2,140 +2,22 @@ package main
 
 import "fmt"
 
-var labelCount int
+func (a *Ast) gen() {
+	fmt.Println(".intel_syntax noprefix")
 
-var argRegs = [...]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
-
-func genLVar(v *LVarNode) {
-	fmt.Println("	mov rax, rbp")
-	fmt.Printf("	sub rax, %d\n", v.offset)
-	fmt.Println("	push rax")
+	for _, node := range a.nodes {
+		node.gen()
+	}
 }
 
-func genNode(node Node, funcName string) {
-	switch node.kind() {
-	case ndNum:
-		fmt.Printf("	push %d\n", node.(*NumNode).val)
-		return
-	case ndAssign:
-		a := node.(*AssignNode)
-		genLVar(a.lhs.(*LVarNode))
-		genNode(a.rhs, funcName)
-		fmt.Println("	pop rdi")
-		fmt.Println("	pop rax")
-		fmt.Println("	mov [rax], rdi")
-		fmt.Println("	push rdi")
-		return
-	case ndLvar:
-		genLVar(node.(*LVarNode))
-		fmt.Println("	pop rax")
-		fmt.Println("	mov rax, [rax]")
-		fmt.Println("	push rax")
-		return
-	case ndRet:
-		r := node.(*RetNode)
-		genNode(r.rhs, funcName)
-		fmt.Println("	pop rax")
-		fmt.Printf("	jmp .L.return.%s\n", funcName)
-		return
-	case ndIf:
-		c := labelCount
-		labelCount++
-		i := node.(*IfNode)
-		if i.els != nil {
-			genNode(i.cond, funcName)
-			fmt.Println("	pop rax")
-			fmt.Println("	cmp rax, 0")
-			fmt.Printf("	je .L.else.%d\n", c)
-			genNode(i.then, funcName)
-			fmt.Printf("	je .L.end.%d\n", c)
-			fmt.Printf(".L.else.%d:\n", c)
-			genNode(i.els, funcName)
-			fmt.Printf(".L.end.%d:\n", c)
-		} else {
-			genNode(i.cond, funcName)
-			fmt.Println("	pop rax")
-			fmt.Println("	cmp rax, 0")
-			fmt.Printf("	je .L.end.%d\n", c)
-			genNode(i.then, funcName)
-			fmt.Printf(".L.end.%d:\n", c)
-		}
-		return
-	case ndWhile:
-		c := labelCount
-		labelCount++
-		w := node.(*WhileNode)
-		fmt.Printf(".L.begin.%d:\n", c)
-		genNode(w.cond, funcName)
-		fmt.Println("	pop rax")
-		fmt.Println("	cmp rax, 0")
-		fmt.Printf("	je .L.end.%d\n", c)
-		genNode(w.then, funcName)
-		fmt.Printf("	jmp .L.begin.%d\n", c)
-		fmt.Printf(".L.end.%d:\n", c)
-		return
-	case ndFor:
-		c := labelCount
-		labelCount++
-		f := node.(*ForNode)
-		if f.init != nil {
-			genNode(f.init, funcName)
-		}
-		fmt.Printf(".L.begin.%d:\n", c)
-		if f.cond != nil {
-			genNode(f.cond, funcName)
-			fmt.Println("	pop rax")
-			fmt.Println("	cmp rax, 0")
-			fmt.Printf("	je .L.end.%d\n", c)
-		}
-		if f.body != nil {
-			genNode(f.body, funcName)
-		}
-		if f.inc != nil {
-			genNode(f.inc, funcName)
-		}
-		fmt.Printf("	jmp .L.begin.%d\n", c)
-		fmt.Printf(".L.end.%d:\n", c)
-		return
-	case ndBlk:
-		b := node.(*BlkNode)
-		for _, st := range b.body {
-			genNode(st, funcName)
-		}
-		return
-	case ndFuncCall:
-		f := node.(*FuncCallNode)
-		for i, arg := range f.args {
-			genNode(arg, funcName)
-			fmt.Printf("	pop %s\n", argRegs[i])
-		}
-		// align rsp to 16 byte boundary
-		fmt.Println("	mov rax, rsp")
-		fmt.Println("	and rax, 15")
-		fmt.Printf("	jz .L.func.call.%d\n", labelCount)
-		fmt.Println("	mov rax, 0")
-		fmt.Printf("	call %s\n", f.name)
-		fmt.Printf("	jmp .L.func.end.%d\n", labelCount)
-		fmt.Printf(".L.func.call.%d:\n", labelCount)
-		fmt.Println("	sub rsp, 8")
-		fmt.Println("	mov rax, 0")
-		fmt.Printf("	call %s\n", f.name)
-		fmt.Println("	add rsp, 8")
-		fmt.Printf(".L.func.end.%d:\n", labelCount)
-		fmt.Println("	push rax")
-		labelCount++
-		return
-	}
-
-	nd := node.(*ArithNode)
-
-	genNode(nd.lhs, funcName)
-	genNode(nd.rhs, funcName)
+func (a *ArithNode) gen() {
+	a.lhs.gen()
+	a.rhs.gen()
 
 	fmt.Println("	pop rdi")
 	fmt.Println("	pop rax")
 
-	switch nd.kind() {
+	switch a.op {
 	case ndAdd:
 		fmt.Println("	add rax, rdi")
 	case ndSub:
@@ -175,27 +57,141 @@ func genNode(node Node, funcName string) {
 	fmt.Println("	push rax")
 }
 
-// Gen generates assembly for the whole program. This emulates stack machine.
-func Gen(ast Ast) {
-	fmt.Println(".intel_syntax noprefix")
+func (a *AssignNode) gen() {
+	a.lhs.(*LVarNode).genLVarAddr()
+	a.rhs.gen()
+	fmt.Println("	pop rdi")
+	fmt.Println("	pop rax")
+	fmt.Println("	mov [rax], rdi")
+	fmt.Println("	push rdi")
+}
 
-	for _, node := range ast.nodes {
-		fn := node.(*FuncDefNode)
-		funcName := fn.name
-		fmt.Printf(".globl %s\n", funcName)
-		fmt.Printf("%s:\n", funcName)
-		fmt.Println("	push rbp")
-		fmt.Println("	mov rbp, rsp")
-		fmt.Printf("	sub rsp, %d\n", 8*(len(fn.lvars)+1))
-		for i, arg := range fn.args {
-			fmt.Printf("	mov [rbp-%d], %s\n", arg.offset, argRegs[i])
-		}
-		for _, node := range fn.body {
-			genNode(node, funcName)
-		}
-		fmt.Printf(".L.return.%s:\n", funcName)
-		fmt.Println("	mov rsp, rbp")
-		fmt.Println("	pop rbp")
-		fmt.Println("	ret")
+func (b *BlkNode) gen() {
+	for _, st := range b.body {
+		st.gen()
 	}
+}
+
+func (f *ForNode) gen() {
+	c := labelCount
+	labelCount++
+	if f.init != nil {
+		f.init.gen()
+	}
+	fmt.Printf(".L.begin.%d:\n", c)
+	if f.cond != nil {
+		f.cond.gen()
+		fmt.Println("	pop rax")
+		fmt.Println("	cmp rax, 0")
+		fmt.Printf("	je .L.end.%d\n", c)
+	}
+	if f.body != nil {
+		f.body.gen()
+	}
+	if f.inc != nil {
+		f.inc.gen()
+	}
+	fmt.Printf("	jmp .L.begin.%d\n", c)
+	fmt.Printf(".L.end.%d:\n", c)
+}
+
+func (f *FuncCallNode) gen() {
+	for i, arg := range f.args {
+		arg.gen()
+		fmt.Printf("	pop %s\n", argRegs[i])
+	}
+	// align rsp to 16 byte boundary
+	fmt.Println("	mov rax, rsp")
+	fmt.Println("	and rax, 15")
+	fmt.Printf("	jz .L.func.call.%d\n", labelCount)
+	fmt.Println("	mov rax, 0")
+	fmt.Printf("	call %s\n", f.name)
+	fmt.Printf("	jmp .L.func.end.%d\n", labelCount)
+	fmt.Printf(".L.func.call.%d:\n", labelCount)
+	fmt.Println("	sub rsp, 8")
+	fmt.Println("	mov rax, 0")
+	fmt.Printf("	call %s\n", f.name)
+	fmt.Println("	add rsp, 8")
+	fmt.Printf(".L.func.end.%d:\n", labelCount)
+	fmt.Println("	push rax")
+	labelCount++
+}
+
+func (f *FnNode) gen() {
+	name := f.name
+	fmt.Printf(".globl %s\n", name)
+	fmt.Printf("%s:\n", name)
+	fmt.Println("	push rbp")
+	fmt.Println("	mov rbp, rsp")
+	fmt.Printf("	sub rsp, %d\n", 8*(len(f.lvars)+1))
+	for i, arg := range f.args {
+		fmt.Printf("	mov [rbp-%d], %s\n", arg.offset, argRegs[i])
+	}
+	for _, node := range f.body {
+		node.gen()
+	}
+	fmt.Printf(".L.return.%s:\n", name)
+	fmt.Println("	mov rsp, rbp")
+	fmt.Println("	pop rbp")
+	fmt.Println("	ret")
+}
+
+func (i *IfNode) gen() {
+	c := labelCount
+	labelCount++
+	if i.els != nil {
+		i.cond.gen()
+		fmt.Println("	pop rax")
+		fmt.Println("	cmp rax, 0")
+		fmt.Printf("	je .L.else.%d\n", c)
+		i.then.gen()
+		fmt.Printf("	je .L.end.%d\n", c)
+		fmt.Printf(".L.else.%d:\n", c)
+		i.els.gen()
+		fmt.Printf(".L.end.%d:\n", c)
+	} else {
+		i.cond.gen()
+		fmt.Println("	pop rax")
+		fmt.Println("	cmp rax, 0")
+		fmt.Printf("	je .L.end.%d\n", c)
+		i.then.gen()
+		fmt.Printf(".L.end.%d:\n", c)
+	}
+	fmt.Println("	push rax")
+}
+
+func (l *LVarNode) gen() {
+	l.genLVarAddr()
+	fmt.Println("	pop rax")
+	fmt.Println("	mov rax, [rax]")
+	fmt.Println("	push rax")
+}
+
+func (l *LVarNode) genLVarAddr() {
+	fmt.Println("   mov rax, rbp")
+	fmt.Printf("    sub rax, %d\n", l.offset)
+	fmt.Println("   push rax")
+}
+
+func (n *NumNode) gen() {
+	fmt.Printf("	push %d\n", n.val)
+}
+
+func (r *RetNode) gen() {
+	r.rhs.gen()
+	fmt.Println("	pop rax")
+	fmt.Printf("	jmp .L.return.%s\n", r.fnName)
+}
+
+func (w *WhileNode) gen() {
+	c := labelCount
+	labelCount++
+	fmt.Printf(".L.begin.%d:\n", c)
+	w.cond.gen()
+	fmt.Println("	pop rax")
+	fmt.Println("	cmp rax, 0")
+	fmt.Printf("	je .L.end.%d\n", c)
+	w.then.gen()
+	fmt.Printf("	jmp .L.begin.%d\n", c)
+	fmt.Printf(".L.end.%d:\n", c)
 }

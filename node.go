@@ -1,11 +1,13 @@
 package main
 
-type nodeKind int
+var labelCount int
+
+var argRegs = [...]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
 
 type (
 	// Node represents each node in ast
 	Node interface {
-		kind() nodeKind
+		gen()
 	}
 
 	// ArithNode represents a node of arithmetic calculation
@@ -40,12 +42,19 @@ type (
 		args []Node
 	}
 
-	// FuncDefNode represents a node of function definition
-	FuncDefNode struct {
+	// FnNode represents a node of function definition
+	FnNode struct {
 		name  string
 		args  []*LVar
 		body  []Node
 		lvars []*LVar
+	}
+
+	// IfNode represents a if statement node
+	IfNode struct {
+		cond Node
+		then Node
+		els  Node
 	}
 
 	// LVarNode represents a node of local variable
@@ -61,14 +70,8 @@ type (
 
 	// RetNode represents a return node
 	RetNode struct {
-		rhs Node
-	}
-
-	// IfNode represents a if statement node
-	IfNode struct {
-		cond Node
-		then Node
-		els  Node
+		rhs    Node
+		fnName string
 	}
 
 	// WhileNode represents a node of while statement
@@ -77,6 +80,8 @@ type (
 		then Node
 	}
 )
+
+type nodeKind int
 
 const (
 	ndAdd = iota
@@ -90,16 +95,6 @@ const (
 	ndLeq
 	ndGt
 	ndGeq
-	ndLvar
-	ndAssign
-	ndRet
-	ndIf
-	ndElse
-	ndWhile
-	ndFor
-	ndBlk
-	ndFuncCall
-	ndFuncDef
 )
 
 // NewArithNode builds a ArithNode
@@ -127,11 +122,6 @@ func NewFuncCallNode(name string, args []Node) Node {
 	return &FuncCallNode{name: name, args: args}
 }
 
-// NewFuncDefNode builds a FuncDefNode
-func NewFuncDefNode(name string, args []*LVar, body []Node, lvars []*LVar) Node {
-	return &FuncDefNode{name: name, args: args, body: body, lvars: lvars}
-}
-
 // NewIfNode builds a IfNode
 func NewIfNode(cond Node, then Node, els Node) Node {
 	return &IfNode{cond, then, els}
@@ -142,7 +132,7 @@ func NewNumNode(val int) Node {
 	return &NumNode{val}
 }
 
-func (f *FuncDefNode) findLVar(varName string) *LVar {
+func (f *FnNode) findLVar(varName string) *LVar {
 	for _, v := range f.lvars {
 		if v.name == varName {
 			return v
@@ -152,7 +142,7 @@ func (f *FuncDefNode) findLVar(varName string) *LVar {
 }
 
 // NewLVarNode builds arNode
-func (f *FuncDefNode) NewLVarNode(s string) Node {
+func (f *FnNode) NewLVarNode(s string) Node {
 	node := &LVarNode{}
 	if v := f.findLVar(s); v != nil {
 		node.offset = v.offset
@@ -165,55 +155,11 @@ func (f *FuncDefNode) NewLVarNode(s string) Node {
 }
 
 // NewRetNode builds RetNode
-func NewRetNode(rhs Node) Node {
-	return &RetNode{rhs: rhs}
+func NewRetNode(rhs Node, fnName string) Node {
+	return &RetNode{rhs: rhs, fnName: fnName}
 }
 
 // NewWhileNode builds a WhileNode
 func NewWhileNode(cond Node, then Node) Node {
 	return &WhileNode{cond: cond, then: then}
-}
-
-func (a *ArithNode) kind() nodeKind {
-	return a.op
-}
-
-func (*AssignNode) kind() nodeKind {
-	return ndAssign
-}
-
-func (*BlkNode) kind() nodeKind {
-	return ndBlk
-}
-
-func (*ForNode) kind() nodeKind {
-	return ndFor
-}
-
-func (*FuncCallNode) kind() nodeKind {
-	return ndFuncCall
-}
-
-func (*FuncDefNode) kind() nodeKind {
-	return ndFuncDef
-}
-
-func (*LVarNode) kind() nodeKind {
-	return ndLvar
-}
-
-func (*NumNode) kind() nodeKind {
-	return ndNum
-}
-
-func (*RetNode) kind() nodeKind {
-	return ndRet
-}
-
-func (*IfNode) kind() nodeKind {
-	return ndIf
-}
-
-func (*WhileNode) kind() nodeKind {
-	return ndWhile
 }
