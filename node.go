@@ -2,19 +2,21 @@ package main
 
 import "fmt"
 
-var labelCount int
-
-var argRegs = [...]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
-
 type (
 	// Node represents each node in ast
 	Node interface {
 		gen()
 	}
 
+	// AddressableNode represents a node whose address can be calculated
+	AddressableNode interface {
+		genAddr()
+		Node
+	}
+
 	// AddrNode represents a node of address
 	AddrNode struct {
-		v *LVarNode
+		v AddressableNode
 	}
 
 	// ArithNode represents a node of arithmetic calculation
@@ -26,7 +28,7 @@ type (
 
 	// AssignNode represents assignment node
 	AssignNode struct {
-		lhs Node
+		lhs AddressableNode
 		rhs Node
 	}
 
@@ -40,6 +42,11 @@ type (
 		ptr Node
 	}
 
+	// ExprNode represents a node of expression
+	ExprNode struct {
+		body Node
+	}
+
 	// ForNode represents a node of for statement
 	ForNode struct {
 		init Node
@@ -48,20 +55,21 @@ type (
 		body Node
 	}
 
-	// FuncCallNode represents a node of function call
-	FuncCallNode struct {
-		args []Node
-		name string
-		ty   Type
+	// FnCallNode represents a node of function call
+	FnCallNode struct {
+		params []Node
+		name   string
+		ty     Type
 	}
 
 	// FnNode represents a node of function definition
 	FnNode struct {
-		args  []*LVar
-		body  []Node
-		lvars []*LVar
-		name  string
-		ty    Type
+		params    []*LVarNode
+		body      []Node
+		lvars     []*LVarNode
+		name      string
+		stackSize int
+		ty        Type
 	}
 
 	// IfNode represents a if statement node
@@ -73,10 +81,13 @@ type (
 
 	// LVarNode represents a node of local variable
 	LVarNode struct {
-		offset int
 		name   string
+		offset int
 		ty     Type
 	}
+
+	// NullNode is a node which doesn't emit assembly code
+	NullNode struct{}
 
 	// NumNode represents number node
 	NumNode struct {
@@ -123,7 +134,7 @@ func NewArithNode(op nodeKind, lhs Node, rhs Node) Node {
 }
 
 // NewAssignNode builds AssignNode
-func NewAssignNode(lhs Node, rhs Node) Node {
+func NewAssignNode(lhs AddressableNode, rhs Node) Node {
 	return &AssignNode{lhs, rhs}
 }
 
@@ -142,9 +153,9 @@ func NewForNode(init Node, cond Node, inc Node, body Node) Node {
 	return &ForNode{init: init, cond: cond, inc: inc, body: body}
 }
 
-// NewFuncCallNode builds a FuncCallNode
-func NewFuncCallNode(name string, args []Node) Node {
-	return &FuncCallNode{name: name, args: args}
+// NewFnCallNode builds a FuncCallNode
+func NewFnCallNode(name string, params []Node) Node {
+	return &FnCallNode{name: name, params: params}
 }
 
 // NewIfNode builds a IfNode
@@ -157,7 +168,7 @@ func NewNumNode(val int) Node {
 	return &NumNode{val}
 }
 
-func (f *FnNode) findLVar(varName string) *LVar {
+func (f *FnNode) searchLVarNode(varName string) *LVarNode {
 	for _, v := range f.lvars {
 		if v.name == varName {
 			return v
@@ -168,21 +179,26 @@ func (f *FnNode) findLVar(varName string) *LVar {
 
 // FindLVarNode searches LVarNode named s
 func (f *FnNode) FindLVarNode(s string) Node {
-	v := f.findLVar(s)
+	v := f.searchLVarNode(s)
 	if v == nil {
 		panic(fmt.Sprintf("undefined variable %s", s))
 	}
-	return &LVarNode{offset: v.offset, name: s}
+	return v
 }
 
-// NewLVarNode builds LVarNode
-func (f *FnNode) NewLVarNode(s string, ty Type) Node {
-	if f.findLVar(s) != nil {
+// BuildLVarNode builds LVarNode
+func (f *FnNode) BuildLVarNode(s string, ty Type, isArg bool) Node {
+	if f.searchLVarNode(s) != nil {
 		panic(fmt.Sprintf("variable %s is already defined", s))
 	}
-	offset := 8 * (len(f.lvars) + 1)
-	f.lvars = append(f.lvars, &LVar{offset: offset, name: s})
-	return &LVarNode{offset: offset, name: s}
+	offset := f.stackSize + 8
+	arg := &LVarNode{name: s, ty: ty, offset: offset}
+	f.lvars = append(f.lvars, arg)
+	if isArg {
+		f.params = append(f.params, arg)
+	}
+	f.stackSize = offset
+	return &NullNode{}
 }
 
 // NewRetNode builds RetNode

@@ -2,6 +2,10 @@ package main
 
 import "fmt"
 
+var paramRegs = [...]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
+
+var labelCount int
+
 func (a *Ast) gen() {
 	fmt.Println(".intel_syntax noprefix")
 
@@ -11,7 +15,7 @@ func (a *Ast) gen() {
 }
 
 func (a *AddrNode) gen() {
-	a.v.genLVarAddr()
+	a.v.genAddr()
 }
 
 func (a *ArithNode) gen() {
@@ -62,15 +66,7 @@ func (a *ArithNode) gen() {
 }
 
 func (a *AssignNode) gen() {
-	switch l := a.lhs.(type) {
-	case *DerefNode:
-		l.ptr.gen()
-		fmt.Println("	pop rax")
-	case *LVarNode:
-		l.genLVarAddr()
-	default:
-		panic(fmt.Sprintf("Unhandled type in assignment %T", l))
-	}
+	a.lhs.genAddr()
 	a.rhs.gen()
 	fmt.Println("	pop rdi")
 	fmt.Println("	pop rax")
@@ -89,6 +85,11 @@ func (d *DerefNode) gen() {
 	fmt.Println("	pop rax")
 	fmt.Println("	mov rax, [rax]")
 	fmt.Println("	push rax")
+}
+
+func (e *ExprNode) gen() {
+	e.body.gen()
+	fmt.Println("	add rsp, 8")
 }
 
 func (f *ForNode) gen() {
@@ -114,10 +115,10 @@ func (f *ForNode) gen() {
 	fmt.Printf(".L.end.%d:\n", c)
 }
 
-func (f *FuncCallNode) gen() {
-	for i, arg := range f.args {
-		arg.gen()
-		fmt.Printf("	pop %s\n", argRegs[i])
+func (f *FnCallNode) gen() {
+	for i, param := range f.params {
+		param.gen()
+		fmt.Printf("	pop %s\n", paramRegs[i])
 	}
 	// align rsp to 16 byte boundary
 	fmt.Println("	mov rax, rsp")
@@ -142,9 +143,9 @@ func (f *FnNode) gen() {
 	fmt.Printf("%s:\n", name)
 	fmt.Println("	push rbp")
 	fmt.Println("	mov rbp, rsp")
-	fmt.Printf("	sub rsp, %d\n", 8*(len(f.lvars)+1))
-	for i, arg := range f.args {
-		fmt.Printf("	mov [rbp-%d], %s\n", arg.offset, argRegs[i])
+	fmt.Printf("	sub rsp, %d\n", f.stackSize)
+	for i, param := range f.params {
+		fmt.Printf("	mov [rbp-%d], %s\n", param.offset, paramRegs[i])
 	}
 	for _, node := range f.body {
 		node.gen()
@@ -180,17 +181,13 @@ func (i *IfNode) gen() {
 }
 
 func (l *LVarNode) gen() {
-	l.genLVarAddr()
+	l.genAddr()
 	fmt.Println("	pop rax")
 	fmt.Println("	mov rax, [rax]")
 	fmt.Println("	push rax")
 }
 
-func (l *LVarNode) genLVarAddr() {
-	fmt.Println("   mov rax, rbp")
-	fmt.Printf("    sub rax, %d\n", l.offset)
-	fmt.Println("   push rax")
-}
+func (*NullNode) gen() {}
 
 func (n *NumNode) gen() {
 	fmt.Printf("	push %d\n", n.val)
@@ -213,4 +210,13 @@ func (w *WhileNode) gen() {
 	w.then.gen()
 	fmt.Printf("	jmp .L.begin.%d\n", c)
 	fmt.Printf(".L.end.%d:\n", c)
+}
+
+func (d *DerefNode) genAddr() {
+	d.ptr.gen()
+}
+
+func (l *LVarNode) genAddr() {
+	fmt.Printf("	lea rax, [rbp-%d]\n", l.offset)
+	fmt.Println("	push rax")
 }

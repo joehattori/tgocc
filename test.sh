@@ -310,6 +310,24 @@ int main() { return fib(10); }
 
 assert "
 int main() {
+   int *x;
+   *x = 4;
+   return *x;
+}
+" 4
+
+assert "
+int main() {
+    int *x;
+    int y;
+    y = 4;
+    *x = y;
+    return *x;
+}
+" 4
+
+assert "
+int main() {
     int x;
     x = 3;
     int y;
@@ -347,5 +365,18 @@ int main() {
     x = retref();
     return *x;
 }" 33
+
+assert "
+int main() {
+    int *y;
+    *y = 4;
+    int **x;
+    x = &y;
+    return **x;
+}
+" 4
+
+assert "int main() { int x; x=3; return *&x; }" 3
+assert "int main() { int x; x=3; int *y; y=&x; int **z; z=&y; return **z; }" 3
 
 echo OK

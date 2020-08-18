@@ -6,13 +6,6 @@ import (
 	"strings"
 )
 
-// LVar represents local variable. `offset` is the offset from rbp
-type LVar struct {
-	name   string
-	offset int
-	ty     Type
-}
-
 // Ast is an array of nodes which represents whole program input (technically not a tree, but let's call this Ast still.)
 type Ast struct {
 	nodes []Node
@@ -109,7 +102,7 @@ func (t *Tokenized) expectType() Type {
 //				| "if" "(" expr ")" stmt ("else" stmt) ?
 //				| "while" "(" expr ")" stmt
 //				| "for" "(" expr? ";" expr? ";" expr? ")" stmt
-//				| "int" ident ";"
+//				| Type ident ";"
 // expr       = assign
 // assign     = equality ("=" assign) ?
 // equality   = relational ("==" relational | "!=" relational)*
@@ -118,11 +111,6 @@ func (t *Tokenized) expectType() Type {
 // mul        = unary ("*" unary | "/" unary)*
 // unary      = ("+" | "-" | "*" | "&")? primary
 // primary    = num | ident ("(" (expr ("," expr)* )? ")")? | "(" expr ")"
-
-type opKind struct {
-	str  string
-	kind nodeKind
-}
 
 func (t *Tokenized) parse() *Ast {
 	var ast Ast
@@ -134,10 +122,7 @@ func (t *Tokenized) parse() *Ast {
 
 func (t *Tokenized) function() Node {
 	ty := t.expectType()
-	for {
-		if !t.consume("*") {
-			break
-		}
+	for t.consume("*") {
 		ty = &TyPtr{to: ty}
 	}
 	funcName := t.expectID()
@@ -147,11 +132,7 @@ func (t *Tokenized) function() Node {
 	t.curFn = fn
 
 	isFirstArg := true
-	for {
-		if t.consume(")") {
-			break
-		}
-
+	for !t.consume(")") {
 		if !isFirstArg {
 			t.expect(",")
 		}
@@ -159,15 +140,10 @@ func (t *Tokenized) function() Node {
 
 		ty := t.expectType()
 		s := t.expectID()
-		arg := &LVar{name: s, offset: 8 * (len(fn.args) + 1), ty: ty}
-		fn.args = append(fn.args, arg)
-		fn.lvars = append(fn.lvars, arg)
+		fn.BuildLVarNode(s, ty, true)
 	}
 	t.expect("{")
-	for {
-		if t.consume("}") {
-			break
-		}
+	for !t.consume("}") {
 		fn.body = append(fn.body, t.stmt())
 	}
 	return fn
@@ -243,20 +219,17 @@ func (t *Tokenized) stmt() Node {
 
 	// handle variable definition
 	if ty, isTy := t.consumeType(); isTy {
-		for {
-			if !t.consume("*") {
-				break
-			}
+		for t.consume("*") {
 			ty = &TyPtr{to: ty}
 		}
 		id := t.expectID()
 		t.expect(";")
-		return t.curFn.NewLVarNode(id, ty)
+		return t.curFn.BuildLVarNode(id, ty, false)
 	}
 
 	node := t.expr()
 	t.expect(";")
-	return node
+	return &ExprNode{body: node}
 }
 
 func (t *Tokenized) expr() Node {
@@ -268,7 +241,7 @@ func (t *Tokenized) assign() Node {
 
 	if t.consume("=") {
 		assignNode := t.assign()
-		node = NewAssignNode(node, assignNode)
+		node = NewAssignNode(node.(AddressableNode), assignNode)
 	}
 	return node
 }
@@ -357,19 +330,16 @@ func (t *Tokenized) primary() Node {
 
 	if id, isID := t.consumeID(); isID {
 		if t.consume("(") {
-			var args []Node
+			var params []Node
 			if t.consume(")") {
-				return NewFuncCallNode(id, args)
+				return NewFnCallNode(id, params)
 			}
-			args = append(args, t.expr())
-			for {
-				if !t.consume(",") {
-					break
-				}
-				args = append(args, t.expr())
+			params = append(params, t.expr())
+			for t.consume(",") {
+				params = append(params, t.expr())
 			}
 			t.expect(")")
-			return NewFuncCallNode(id, args)
+			return NewFnCallNode(id, params)
 		}
 		return t.curFn.FindLVarNode(id)
 	}
