@@ -1,7 +1,6 @@
 #!/bin/bash
 
-cat <<EOF | cc -xc -c -o tmp2.o example/predefined_functions.c
-EOF
+cc -xc -c -o tmp2.o example/predefined_functions.c
 
 assert() {
     input="$1"
@@ -96,5 +95,10 @@ assert "int *retref() { int *y; *y = 33; return y; } int main() { int *x = retre
 assert "int main() { int *y; *y = 4; int **x; x = &y; return **x; } " 4
 assert "int main() { int x=3; return *&x; }" 3
 assert "int main() { int x=3; int *y=&x; int **z; z=&y; return **z; }" 3
+
+assert "int main() { int x=3; int y=5; return *(&y+1); }" 3
+assert "int main() { int x=3; int y=5; return *(&x-1); }" 5
+assert "int main() { int x=3; int y=5; *(&y+1)=7; return x; }" 7
+assert "int main() { int x=3; int y=5; *(&x-1)=7; return y; }" 7
 
 echo OK

@@ -295,9 +295,9 @@ func (t *Tokenized) addSub() Node {
 	node := t.mulDiv()
 	for {
 		if t.consume("+") {
-			node = NewArithNode(ndAdd, node, t.mulDiv())
+			node = NewAddNode(node, t.mulDiv())
 		} else if t.consume("-") {
-			node = NewArithNode(ndSub, node, t.mulDiv())
+			node = NewSubNode(node, t.mulDiv())
 		} else {
 			return node
 		}
@@ -323,7 +323,7 @@ func (t *Tokenized) unary() Node {
 	}
 	if t.consume("-") {
 		node := t.primary()
-		return NewArithNode(ndSub, NewNumNode(0), node)
+		return NewSubNode(NewNumNode(0), node)
 	}
 	if t.consume("*") {
 		node := t.unary()

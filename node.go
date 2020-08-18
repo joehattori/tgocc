@@ -6,17 +6,19 @@ type (
 	// Node represents each node in ast
 	Node interface {
 		gen()
+		loadType() Type
 	}
 
 	// AddressableNode represents a node whose address can be calculated
 	AddressableNode interface {
-		genAddr()
 		Node
+		genAddr()
 	}
 
 	// AddrNode represents a node in form of &x
 	AddrNode struct {
-		v AddressableNode
+		v  AddressableNode
+		ty Type
 	}
 
 	// ArithNode represents a node of arithmetic calculation
@@ -24,12 +26,14 @@ type (
 		op  nodeKind
 		lhs Node
 		rhs Node
+		ty  Type
 	}
 
 	// AssignNode represents assignment node
 	AssignNode struct {
 		lhs AddressableNode
 		rhs Node
+		ty  Type
 	}
 
 	// BlkNode represents a node of block
@@ -40,11 +44,13 @@ type (
 	// DerefNode represents a reference node of pointer
 	DerefNode struct {
 		ptr Node
+		ty  Type
 	}
 
 	// ExprNode represents a node of expression
 	ExprNode struct {
 		body Node
+		ty   Type
 	}
 
 	// ForNode represents a node of for statement
@@ -92,12 +98,14 @@ type (
 	// NumNode represents number node
 	NumNode struct {
 		val int
+		ty  Type
 	}
 
 	// RetNode represents a return node
 	RetNode struct {
 		rhs    Node
 		fnName string
+		ty     Type
 	}
 
 	// WhileNode represents a node of while statement
@@ -121,7 +129,28 @@ const (
 	ndLeq
 	ndGt
 	ndGeq
+	ndPtrAdd
+	ndPtrSub
 )
+
+// NewAddNode builds a node for addition
+func NewAddNode(lhs Node, rhs Node) Node {
+	switch lhs.loadType().(type) {
+	case *TyInt:
+		switch rhs.loadType().(type) {
+		case *TyInt:
+			return &ArithNode{op: ndAdd, lhs: lhs, rhs: rhs}
+		case *TyPtr:
+			return &ArithNode{op: ndPtrAdd, lhs: rhs, rhs: lhs}
+		}
+	case *TyPtr:
+		switch rhs.loadType().(type) {
+		case *TyInt, *TyPtr:
+			return &ArithNode{op: ndPtrAdd, lhs: lhs, rhs: rhs}
+		}
+	}
+	panic(fmt.Sprintf("Unexpected type: lhs: %T %T, rhs: %T %T", lhs, lhs.loadType(), rhs, rhs.loadType()))
+}
 
 // NewAddrNode builds a AddrNode
 func NewAddrNode(v *LVarNode) Node {
@@ -135,7 +164,7 @@ func NewArithNode(op nodeKind, lhs Node, rhs Node) Node {
 
 // NewAssignNode builds AssignNode
 func NewAssignNode(lhs AddressableNode, rhs Node) Node {
-	return &AssignNode{lhs, rhs}
+	return &AssignNode{lhs: lhs, rhs: rhs}
 }
 
 // NewBlkNode builds a BlkNode
@@ -150,12 +179,13 @@ func NewDerefNode(ptr Node) Node {
 
 // NewForNode builds a ForNode
 func NewForNode(init Node, cond Node, inc Node, body Node) Node {
-	return &ForNode{init: init, cond: cond, inc: inc, body: body}
+	return &ForNode{init, cond, inc, body}
 }
 
 // NewFnCallNode builds a FuncCallNode
 func NewFnCallNode(name string, params []Node) Node {
-	return &FnCallNode{name: name, params: params}
+	// TODO: change type dynamically
+	return &FnCallNode{name: name, params: params, ty: &TyInt{}}
 }
 
 // NewIfNode builds a IfNode
@@ -165,7 +195,26 @@ func NewIfNode(cond Node, then Node, els Node) Node {
 
 // NewNumNode builds NumNode
 func NewNumNode(val int) Node {
-	return &NumNode{val}
+	return &NumNode{val: val}
+}
+
+// NewSubNode builds a node for subtraction
+func NewSubNode(lhs Node, rhs Node) Node {
+	switch lhs.loadType().(type) {
+	case *TyInt:
+		switch rhs.loadType().(type) {
+		case *TyInt:
+			return &ArithNode{op: ndSub, lhs: lhs, rhs: rhs}
+		case *TyPtr:
+			return &ArithNode{op: ndPtrSub, lhs: rhs, rhs: lhs}
+		}
+	case *TyPtr:
+		switch rhs.loadType().(type) {
+		case *TyInt, *TyPtr:
+			return &ArithNode{op: ndPtrSub, lhs: lhs, rhs: rhs}
+		}
+	}
+	panic(fmt.Sprintf("Unexpected type: lhs: %T, rhs: %T", lhs.loadType(), rhs.loadType()))
 }
 
 func (f *FnNode) searchLVarNode(varName string) *LVarNode {

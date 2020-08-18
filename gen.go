@@ -59,6 +59,12 @@ func (a *ArithNode) gen() {
 		fmt.Println("	cmp rdi, rax")
 		fmt.Println("	setle al")
 		fmt.Println("	movzb rax, al")
+	case ndPtrAdd:
+		fmt.Println("	imul rdi, 8")
+		fmt.Println("	add rax, rdi")
+	case ndPtrSub:
+		fmt.Println("	imul rdi, 8")
+		fmt.Println("	sub rax, rdi")
 	default:
 		panic("Unhandled node kind")
 	}
