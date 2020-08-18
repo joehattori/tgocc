@@ -14,7 +14,7 @@ type (
 		Node
 	}
 
-	// AddrNode represents a node of address
+	// AddrNode represents a node in form of &x
 	AddrNode struct {
 		v AddressableNode
 	}
@@ -178,7 +178,7 @@ func (f *FnNode) searchLVarNode(varName string) *LVarNode {
 }
 
 // FindLVarNode searches LVarNode named s
-func (f *FnNode) FindLVarNode(s string) Node {
+func (f *FnNode) FindLVarNode(s string) *LVarNode {
 	v := f.searchLVarNode(s)
 	if v == nil {
 		panic(fmt.Sprintf("undefined variable %s", s))

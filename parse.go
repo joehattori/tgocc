@@ -35,19 +35,6 @@ func (t *Tokenized) consumeID() (string, bool) {
 	return varName, true
 }
 
-func (t *Tokenized) consumeType() (Type, bool) {
-	arr := []struct {
-		string
-		Type
-	}{{"int", &TyInt{}}}
-	for _, a := range arr {
-		if t.consume(a.string) {
-			return a.Type, true
-		}
-	}
-	return nil, false
-}
-
 func (t *Tokenized) expect(str string) {
 	cur := t.toks[0]
 	if cur.kind != tkReserved || cur.length != len(str) || !strings.HasPrefix(cur.str, str) {
@@ -77,14 +64,14 @@ func (t *Tokenized) expectNum() int {
 }
 
 func (t *Tokenized) expectType() Type {
-	arr := []struct {
-		string
-		Type
-	}{{"int", &TyInt{}}}
 	cur := t.toks[0]
 	if cur.kind != tkReserved {
 		panic(fmt.Sprintf("tkReserved was expected but got %d %s", cur.kind, cur.str))
 	}
+	arr := []struct {
+		string
+		Type
+	}{{"int", &TyInt{}}}
 	for _, a := range arr {
 		if strings.HasPrefix(cur.str, a.string) {
 			t.popToks()
@@ -92,6 +79,23 @@ func (t *Tokenized) expectType() Type {
 		}
 	}
 	panic(fmt.Sprintf("Unexpected type %s", cur.str))
+}
+
+func (t *Tokenized) peekType() bool {
+	cur := t.toks[0]
+	if cur.kind != tkReserved {
+		return false
+	}
+	arr := []struct {
+		string
+		Type
+	}{{"int", &TyInt{}}}
+	for _, a := range arr {
+		if strings.HasPrefix(cur.str, a.string) {
+			return true
+		}
+	}
+	return false
 }
 
 // program    = function*
@@ -218,18 +222,29 @@ func (t *Tokenized) stmt() Node {
 	}
 
 	// handle variable definition
-	if ty, isTy := t.consumeType(); isTy {
-		for t.consume("*") {
-			ty = &TyPtr{to: ty}
-		}
-		id := t.expectID()
-		t.expect(";")
-		return t.curFn.BuildLVarNode(id, ty, false)
+	if t.peekType() {
+		return t.varDef()
 	}
 
 	node := t.expr()
 	t.expect(";")
 	return &ExprNode{body: node}
+}
+
+func (t *Tokenized) varDef() Node {
+	ty := t.expectType()
+	for t.consume("*") {
+		ty = &TyPtr{to: ty}
+	}
+	id := t.expectID()
+	def := t.curFn.BuildLVarNode(id, ty, false)
+	if t.consume(";") {
+		return def
+	}
+	t.expect("=")
+	rhs := t.expr()
+	t.expect(";")
+	return NewAssignNode(t.curFn.FindLVarNode(id), rhs)
 }
 
 func (t *Tokenized) expr() Node {
