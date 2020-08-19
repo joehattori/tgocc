@@ -115,7 +115,7 @@ func (t *Tokenized) peekType() bool {
 //				| "if" "(" expr ")" stmt ("else" stmt) ?
 //				| "while" "(" expr ")" stmt
 //				| "for" "(" expr? ";" expr? ";" expr? ")" stmt
-//				| Type ident ";"
+//				| Type ident ("[" expr "]")? ";"
 // expr       = assign
 // assign     = equality ("=" assign) ?
 // equality   = relational ("==" relational | "!=" relational)*
@@ -246,13 +246,18 @@ func (t *Tokenized) varDef() Node {
 		ty = &TyPtr{to: ty}
 	}
 	id := t.expectID()
-	def := t.curFn.BuildLVarNode(id, ty, false)
+	if t.consume("[") {
+		l := t.expectNum()
+		ty = &TyArr{to: ty, len: l}
+		t.expect("]")
+	}
 	if t.consume(";") {
-		return def
+		return t.curFn.BuildLVarNode(id, ty, false)
 	}
 	t.expect("=")
 	rhs := t.expr()
 	t.expect(";")
+	t.curFn.BuildLVarNode(id, ty, false)
 	return NewAssignNode(t.curFn.FindLVarNode(id), rhs)
 }
 

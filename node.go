@@ -239,8 +239,7 @@ func (f *FnNode) BuildLVarNode(s string, ty Type, isArg bool) Node {
 	if f.searchLVarNode(s) != nil {
 		panic(fmt.Sprintf("variable %s is already defined", s))
 	}
-	// TODO: think of changing the increment offset dynamically
-	offset := f.stackSize + 8
+	offset := f.stackSize + ty.size()
 	arg := &LVarNode{name: s, ty: ty, offset: offset}
 	f.lvars = append(f.lvars, arg)
 	if isArg {

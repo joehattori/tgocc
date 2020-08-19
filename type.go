@@ -13,6 +13,15 @@ type TyPtr struct {
 	to Type
 }
 
+// TyArr represents array type
+type TyArr struct {
+	to  Type
+	len int
+}
+
+// TyEmpty represents empty type. e.g) Block expression has this type
+type TyEmpty struct{}
+
 func (i *TyInt) size() int {
 	return 4
 }
@@ -25,8 +34,9 @@ func (e *TyEmpty) size() int {
 	return 0
 }
 
-// TyEmpty represents empty type. e.g) Block expression has this type
-type TyEmpty struct{}
+func (a *TyArr) size() int {
+	return a.len * a.to.size()
+}
 
 func (a *AddrNode) loadType() Type {
 	if a.ty != nil {

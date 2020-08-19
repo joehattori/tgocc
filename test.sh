@@ -50,7 +50,6 @@ assert "int main() { int f_oo2 = 1; int bar = 2; f_oo2 = 4; return f_oo2 + bar; 
 assert "int main() { return 10; return 20; }" 10
 assert "int main() { 10; return 20; }" 20
 
-
 assert "int main() { if (1) return 3; }" 3
 assert "int main() { if (0) return 5; else return 4; }" 4
 assert "int main() { if (1 == 3) return 5; else if (1) return 4; }" 4
@@ -88,8 +87,8 @@ assert " int fib(int n) { if (n <= 1) return n; return fib(n - 1) + fib(n - 2); 
 
 assert "int main() { int *x; *x = 4; return *x; } " 4
 assert "int main() { int *x; int y = 4; *x = y; return *x; } " 4
-assert "int main() { int x = 3; int y = &x; return *y; }" 3
-assert "int main() { int x = 3; int y = &x; x = 4; return *y; }" 4
+assert "int main() { int x = 3; int *y = &x; return *y; }" 3
+assert "int main() { int x = 3; int *y = &x; x = 4; return *y; }" 4
 assert "int main() { int x; int *y = &x; *y = 3; return x; }" 3
 assert "int *retref() { int *y; *y = 33; return y; } int main() { int *x = retref(); return *x; }" 33
 assert "int main() { int *y; *y = 4; int **x; x = &y; return **x; } " 4
@@ -105,5 +104,7 @@ assert "int main() { int x = 3; return sizeof(x + 1); }" 4
 assert "int main() { int *x; *x = 20; return sizeof(*x); }" 4
 assert "int main() { return sizeof(1); }" 4
 assert "int main() { int *x; *x = 3; return sizeof(sizeof(*x)); }" 4
+
+assert "int main() { int i[10]; return 0; }" 0
 
 echo OK

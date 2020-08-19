@@ -2,7 +2,8 @@ package main
 
 import "fmt"
 
-var paramRegs = [...]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
+var paramRegs4 = [...]string{"edi", "esi", "edx", "ecx", "r8d", "r9d"}
+var paramRegs8 = [...]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
 
 var labelCount int
 
@@ -74,10 +75,7 @@ func (a *ArithNode) gen() {
 func (a *AssignNode) gen() {
 	a.lhs.genAddr()
 	a.rhs.gen()
-	fmt.Println("	pop rdi")
-	fmt.Println("	pop rax")
-	fmt.Println("	mov [rax], rdi")
-	fmt.Println("	push rdi")
+	store(a.loadType())
 }
 
 func (b *BlkNode) gen() {
@@ -88,9 +86,7 @@ func (b *BlkNode) gen() {
 
 func (d *DerefNode) gen() {
 	d.ptr.gen()
-	fmt.Println("	pop rax")
-	fmt.Println("	mov rax, [rax]")
-	fmt.Println("	push rax")
+	load(d.loadType())
 }
 
 func (e *ExprNode) gen() {
@@ -124,7 +120,7 @@ func (f *ForNode) gen() {
 func (f *FnCallNode) gen() {
 	for i, param := range f.params {
 		param.gen()
-		fmt.Printf("	pop %s\n", paramRegs[i])
+		fmt.Printf("	pop %s\n", paramRegs8[i])
 	}
 	// align rsp to 16 byte boundary
 	fmt.Println("	mov rax, rsp")
@@ -151,7 +147,14 @@ func (f *FnNode) gen() {
 	fmt.Println("	mov rbp, rsp")
 	fmt.Printf("	sub rsp, %d\n", f.stackSize)
 	for i, param := range f.params {
-		fmt.Printf("	mov [rbp-%d], %s\n", param.offset, paramRegs[i])
+		var r [6]string
+		switch param.loadType().size() {
+		case 4:
+			r = paramRegs4
+		case 8:
+			r = paramRegs8
+		}
+		fmt.Printf("	mov [rbp-%d], %s\n", param.offset, r[i])
 	}
 	for _, node := range f.body {
 		node.gen()
@@ -188,9 +191,7 @@ func (i *IfNode) gen() {
 
 func (l *LVarNode) gen() {
 	l.genAddr()
-	fmt.Println("	pop rax")
-	fmt.Println("	mov rax, [rax]")
-	fmt.Println("	push rax")
+	load(l.loadType())
 }
 
 func (*NullNode) gen() {}
@@ -225,4 +226,29 @@ func (d *DerefNode) genAddr() {
 func (l *LVarNode) genAddr() {
 	fmt.Printf("	lea rax, [rbp-%d]\n", l.offset)
 	fmt.Println("	push rax")
+}
+
+func load(ty Type) {
+	fmt.Println("	pop rax")
+	switch ty.size() {
+	case 4:
+		fmt.Println("	movsxd rax, dword ptr [rax]")
+	case 8:
+		fmt.Println("	mov rax, [rax]")
+	}
+	fmt.Println("	push rax")
+}
+
+func store(ty Type) {
+	fmt.Println("	pop rdi")
+	fmt.Println("	pop rax")
+	var r string
+	switch ty.size() {
+	case 4:
+		r = "edi"
+	case 8:
+		r = "rdi"
+	}
+	fmt.Printf("	mov [rax], %s\n", r)
+	fmt.Println("	push rdi")
 }
