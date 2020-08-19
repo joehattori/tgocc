@@ -96,9 +96,14 @@ assert "int main() { int *y; *y = 4; int **x; x = &y; return **x; } " 4
 assert "int main() { int x=3; return *&x; }" 3
 assert "int main() { int x=3; int *y=&x; int **z; z=&y; return **z; }" 3
 
-assert "int main() { int x=3; int y=5; return *(&y+1); }" 3
-assert "int main() { int x=3; int y=5; return *(&x-1); }" 5
-assert "int main() { int x=3; int y=5; *(&y+1)=7; return x; }" 7
-assert "int main() { int x=3; int y=5; *(&x-1)=7; return y; }" 7
+assert "int main() { int *p = alloc4(1,2,100,4); return *p; }" 1
+assert "int main() { int *p = alloc4(1,2,100,4); int *q; q = p + 2; return *q; }" 100
+
+assert "int main() { int x = 34; return sizeof(x); }" 4
+assert "int main() { int *x; *x = 20; return sizeof(x); }" 8
+assert "int main() { int x = 3; return sizeof(x + 1); }" 4
+assert "int main() { int *x; *x = 20; return sizeof(*x); }" 4
+assert "int main() { return sizeof(1); }" 4
+assert "int main() { int *x; *x = 3; return sizeof(sizeof(*x)); }" 4
 
 echo OK

@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 type tokenKind int
@@ -14,6 +15,7 @@ const (
 	tkNum
 	tkID
 	tkEOF
+	tkSizeOf
 )
 
 // Token is a type to describe token
@@ -77,6 +79,13 @@ func Tokenize(s string) *Tokenized {
 		if strings.Contains("+-*/(){}<>;=,&", s[:1]) {
 			toks = append(toks, &Token{kind: tkReserved, str: s, length: 1})
 			s = s[1:]
+			continue
+		}
+
+		if strings.HasPrefix(s, "sizeof") {
+			c := utf8.RuneCountInString("sizeof")
+			toks = append(toks, &Token{kind: tkSizeOf, str: s, length: c})
+			s = s[c:]
 			continue
 		}
 

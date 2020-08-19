@@ -1,9 +1,9 @@
 package main
 
-import "fmt"
-
 // Type represents type
-type Type interface{}
+type Type interface {
+	size() int
+}
 
 // TyInt represents int type
 type TyInt struct{}
@@ -11,6 +11,18 @@ type TyInt struct{}
 // TyPtr represents pointer type
 type TyPtr struct {
 	to Type
+}
+
+func (i *TyInt) size() int {
+	return 4
+}
+
+func (p *TyPtr) size() int {
+	return 8
+}
+
+func (e *TyEmpty) size() int {
+	return 0
 }
 
 // TyEmpty represents empty type. e.g) Block expression has this type
@@ -50,14 +62,16 @@ func (b *BlkNode) loadType() Type {
 }
 
 func (d *DerefNode) loadType() Type {
-	ty := d.ptr.loadType()
+	if d.ty != nil {
+		return d.ty
+	}
 	switch v := d.ptr.loadType().(type) {
 	case *TyInt:
 		d.ty = &TyInt{}
 	case *TyPtr:
 		d.ty = v.to
 	}
-	return ty
+	return d.ty
 }
 
 func (e *ExprNode) loadType() Type {
@@ -104,7 +118,6 @@ func (i *IfNode) loadType() Type {
 	if i.els != nil {
 		i.els.loadType()
 	}
-	fmt.Println("	push rax")
 	return &TyEmpty{}
 }
 

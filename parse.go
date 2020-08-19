@@ -35,6 +35,15 @@ func (t *Tokenized) consumeID() (string, bool) {
 	return varName, true
 }
 
+func (t *Tokenized) consumeSizeOf() bool {
+	cur := t.toks[0]
+	if cur.kind == tkSizeOf && strings.HasPrefix(cur.str, "sizeof") {
+		t.popToks()
+		return true
+	}
+	return false
+}
+
 func (t *Tokenized) expect(str string) {
 	cur := t.toks[0]
 	if cur.kind != tkReserved || cur.length != len(str) || !strings.HasPrefix(cur.str, str) {
@@ -113,7 +122,7 @@ func (t *Tokenized) peekType() bool {
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 // add        = mul ("+" mul | "-" mul)*
 // mul        = unary ("*" unary | "/" unary)*
-// unary      = ("+" | "-" | "*" | "&")? primary
+// unary      = "sizeof" unary | ("+" | "-" | "*" | "&")? primary
 // primary    = num | ident ("(" (expr ("," expr)* )? ")")? | "(" expr ")"
 
 func (t *Tokenized) parse() *Ast {
@@ -318,6 +327,9 @@ func (t *Tokenized) mulDiv() Node {
 }
 
 func (t *Tokenized) unary() Node {
+	if t.consumeSizeOf() {
+		return NewNumNode(t.unary().loadType().size())
+	}
 	if t.consume("+") {
 		return t.primary()
 	}
