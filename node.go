@@ -134,21 +134,23 @@ const (
 
 // NewAddNode builds a node for addition
 func NewAddNode(lhs Node, rhs Node) Node {
-	switch lhs.loadType().(type) {
+	l := lhs.loadType()
+	r := rhs.loadType()
+	switch l.(type) {
 	case *TyInt:
-		switch rhs.loadType().(type) {
+		switch r.(type) {
 		case *TyInt:
 			return &ArithNode{op: ndAdd, lhs: lhs, rhs: rhs}
-		case *TyPtr:
+		case *TyPtr, *TyArr:
 			return &ArithNode{op: ndPtrAdd, lhs: rhs, rhs: lhs}
 		}
-	case *TyPtr:
-		switch rhs.loadType().(type) {
-		case *TyInt, *TyPtr:
+	case *TyPtr, *TyArr:
+		switch r.(type) {
+		case *TyInt:
 			return &ArithNode{op: ndPtrAdd, lhs: lhs, rhs: rhs}
 		}
 	}
-	panic(fmt.Sprintf("Unexpected type: lhs: %T %T, rhs: %T %T", lhs, lhs.loadType(), rhs, rhs.loadType()))
+	panic(fmt.Sprintf("Unexpected type: lhs: %T %T, rhs: %T %T", lhs, l, rhs, r))
 }
 
 // NewAddrNode builds a AddrNode
@@ -199,21 +201,23 @@ func NewNumNode(val int) Node {
 
 // NewSubNode builds a node for subtraction
 func NewSubNode(lhs Node, rhs Node) Node {
-	switch lhs.loadType().(type) {
+	l := lhs.loadType()
+	r := rhs.loadType()
+	switch l.(type) {
 	case *TyInt:
-		switch rhs.loadType().(type) {
+		switch r.(type) {
 		case *TyInt:
 			return &ArithNode{op: ndSub, lhs: lhs, rhs: rhs}
-		case *TyPtr:
+		case *TyPtr, *TyArr:
 			return &ArithNode{op: ndPtrSub, lhs: rhs, rhs: lhs}
 		}
-	case *TyPtr:
-		switch rhs.loadType().(type) {
-		case *TyInt, *TyPtr:
+	case *TyPtr, *TyArr:
+		switch r.(type) {
+		case *TyInt:
 			return &ArithNode{op: ndPtrSub, lhs: lhs, rhs: rhs}
 		}
 	}
-	panic(fmt.Sprintf("Unexpected type: lhs: %T, rhs: %T", lhs.loadType(), rhs.loadType()))
+	panic(fmt.Sprintf("Unexpected type: lhs: %T, rhs: %T", l, r))
 }
 
 func (f *FnNode) searchLVarNode(varName string) *LVarNode {

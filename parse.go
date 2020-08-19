@@ -246,9 +246,9 @@ func (t *Tokenized) varDef() Node {
 		ty = &TyPtr{to: ty}
 	}
 	id := t.expectID()
-	if t.consume("[") {
+	for t.consume("[") {
 		l := t.expectNum()
-		ty = &TyArr{to: ty, len: l}
+		ty = &TyArr{of: ty, len: l}
 		t.expect("]")
 	}
 	if t.consume(";") {

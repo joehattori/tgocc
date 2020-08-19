@@ -86,7 +86,10 @@ func (b *BlkNode) gen() {
 
 func (d *DerefNode) gen() {
 	d.ptr.gen()
-	load(d.loadType())
+	ty := d.loadType()
+	if _, isArr := ty.(*TyArr); !isArr {
+		load(ty)
+	}
 }
 
 func (e *ExprNode) gen() {
@@ -191,7 +194,10 @@ func (i *IfNode) gen() {
 
 func (l *LVarNode) gen() {
 	l.genAddr()
-	load(l.loadType())
+	ty := l.loadType()
+	if _, isArr := ty.(*TyArr); !isArr {
+		load(ty)
+	}
 }
 
 func (*NullNode) gen() {}

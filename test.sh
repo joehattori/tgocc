@@ -105,6 +105,9 @@ assert "int main() { int *x; *x = 20; return sizeof(*x); }" 4
 assert "int main() { return sizeof(1); }" 4
 assert "int main() { int *x; *x = 3; return sizeof(sizeof(*x)); }" 4
 
-assert "int main() { int i[10]; return 0; }" 0
+assert "int main() { int i[10]; *i = 1; *(i+1) = 2; return *i; }" 1
+assert "int main() { int i[10]; *i = 1; *(i+1) = 2; return *(i+1); }" 2
+assert "int main() { int i[10]; *i = 1; *(i+1) = 2; int *p = i; return *(p + 1); }" 2
+assert "int main() { int i[10]; return sizeof(i); }" 40
 
 echo OK

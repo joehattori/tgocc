@@ -15,7 +15,7 @@ type TyPtr struct {
 
 // TyArr represents array type
 type TyArr struct {
-	to  Type
+	of  Type
 	len int
 }
 
@@ -35,32 +35,28 @@ func (e *TyEmpty) size() int {
 }
 
 func (a *TyArr) size() int {
-	return a.len * a.to.size()
+	return a.len * a.of.size()
 }
 
 func (a *AddrNode) loadType() Type {
-	if a.ty != nil {
-		return a.ty
+	t := a.v.loadType()
+	if arrT, ok := t.(*TyArr); ok {
+		a.ty = &TyPtr{to: arrT.of}
+	} else {
+		a.ty = &TyPtr{to: t}
 	}
-	a.ty = &TyPtr{to: a.v.loadType()}
 	return a.ty
 }
 
 func (a *ArithNode) loadType() Type {
-	if a.ty != nil {
-		return a.ty
-	}
 	a.ty = a.lhs.loadType()
 	a.rhs.loadType()
 	return a.ty
 }
 
 func (a *AssignNode) loadType() Type {
-	if a.ty != nil {
-		return a.ty
-	}
-	a.ty = a.lhs.loadType()
 	a.rhs.loadType()
+	a.ty = a.lhs.loadType()
 	return a.ty
 }
 
@@ -72,14 +68,13 @@ func (b *BlkNode) loadType() Type {
 }
 
 func (d *DerefNode) loadType() Type {
-	if d.ty != nil {
-		return d.ty
-	}
 	switch v := d.ptr.loadType().(type) {
 	case *TyInt:
-		d.ty = &TyInt{}
+		d.ty = v
 	case *TyPtr:
 		d.ty = v.to
+	case *TyArr:
+		d.ty = v.of
 	}
 	return d.ty
 }
