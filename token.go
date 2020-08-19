@@ -32,6 +32,8 @@ type Tokenized struct {
 	curFn *FnNode
 }
 
+const idRegexp string = `^[a-zA-Z_]+\w*`
+
 // Tokenize returns the tokenized input
 func Tokenize(s string) *Tokenized {
 	var toks []*Token
@@ -76,7 +78,7 @@ func Tokenize(s string) *Tokenized {
 			continue
 		}
 
-		if strings.Contains("+-*/(){}<>;=,&", s[:1]) {
+		if strings.Contains("+-*/(){}<>;=,&[]", s[:1]) {
 			toks = append(toks, &Token{kind: tkReserved, str: s, length: 1})
 			s = s[1:]
 			continue
@@ -89,7 +91,7 @@ func Tokenize(s string) *Tokenized {
 			continue
 		}
 
-		if r := regexp.MustCompile(`^[a-zA-Z_]+\w*`); r.MatchString(s) {
+		if r := regexp.MustCompile(idRegexp); r.MatchString(s) {
 			varStr := r.FindString(s)
 			toks = append(toks, &Token{kind: tkID, str: s, length: len(varStr)})
 			s = s[len(varStr):]

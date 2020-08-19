@@ -26,7 +26,7 @@ func (t *Tokenized) consume(str string) bool {
 
 func (t *Tokenized) consumeID() (string, bool) {
 	cur := t.toks[0]
-	reg := regexp.MustCompile(`^[a-zA-Z]+[\w_]*`)
+	reg := regexp.MustCompile(idRegexp)
 	varName := reg.FindString(cur.str)
 	if cur.kind != tkID || varName == "" {
 		return "", false
@@ -54,7 +54,7 @@ func (t *Tokenized) expect(str string) {
 
 func (t *Tokenized) expectID() string {
 	cur := t.toks[0]
-	reg := regexp.MustCompile(`^[a-zA-Z]+[\w_]*`)
+	reg := regexp.MustCompile(idRegexp)
 	varName := reg.FindString(cur.str)
 	if cur.kind != tkID || varName == "" {
 		panic(fmt.Sprintf("ID was expected but got %s", cur.str))
