@@ -67,16 +67,20 @@ func (t *Tokenized) expectNum() int {
 	return cur.val
 }
 
+var tyArr = [...]struct {
+	string
+	Type
+}{
+	{"int", &TyInt{}},
+	{"char", &TyChar{}},
+}
+
 func (t *Tokenized) expectType() Type {
 	cur := t.toks[0]
 	if cur.kind != tkReserved {
 		panic(fmt.Sprintf("tkReserved was expected but got %d %s", cur.kind, cur.str))
 	}
-	arr := []struct {
-		string
-		Type
-	}{{"int", &TyInt{}}}
-	for _, a := range arr {
+	for _, a := range tyArr {
 		if strings.HasPrefix(cur.str, a.string) {
 			t.popToks()
 			return a.Type
@@ -90,11 +94,7 @@ func (t *Tokenized) peekType() bool {
 	if cur.kind != tkReserved {
 		return false
 	}
-	arr := []struct {
-		string
-		Type
-	}{{"int", &TyInt{}}}
-	for _, a := range arr {
+	for _, a := range tyArr {
 		if strings.HasPrefix(cur.str, a.string) {
 			return true
 		}

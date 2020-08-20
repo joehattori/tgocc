@@ -57,7 +57,7 @@ func Tokenize(s string) *Tokenized {
 			continue
 		}
 
-		if r := regexp.MustCompile(`^(int)\W`); r.MatchString(s) {
+		if r := regexp.MustCompile(`^(int|char)\W`); r.MatchString(s) {
 			typeStr := r.FindString(s)
 			toks = append(toks, &Token{kind: tkReserved, str: s, length: len(typeStr) - 1})
 			s = s[len(typeStr)-1:]

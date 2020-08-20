@@ -256,6 +256,8 @@ func (v *VarNode) genAddr() {
 func load(ty Type) {
 	fmt.Println("	pop rax")
 	switch ty.size() {
+	case 1:
+		fmt.Println("	movsx rax, byte ptr [rax]")
 	case 4:
 		fmt.Println("	movsxd rax, dword ptr [rax]")
 	case 8:
@@ -269,6 +271,8 @@ func store(ty Type) {
 	fmt.Println("	pop rax")
 	var r string
 	switch ty.size() {
+	case 1:
+		r = "dil"
 	case 4:
 		r = "edi"
 	case 8:

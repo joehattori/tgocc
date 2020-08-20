@@ -135,7 +135,7 @@ func NewAddNode(lhs Node, rhs Node) Node {
 	l := lhs.loadType()
 	r := rhs.loadType()
 	switch l.(type) {
-	case *TyInt:
+	case *TyInt, *TyChar:
 		switch r.(type) {
 		case *TyInt:
 			return &ArithNode{op: ndAdd, lhs: lhs, rhs: rhs}
@@ -144,7 +144,7 @@ func NewAddNode(lhs Node, rhs Node) Node {
 		}
 	case *TyPtr, *TyArr:
 		switch r.(type) {
-		case *TyInt:
+		case *TyInt, *TyChar:
 			return &ArithNode{op: ndPtrAdd, lhs: lhs, rhs: rhs}
 		}
 	}
@@ -253,7 +253,7 @@ func (t *Tokenized) FindVar(s string) Var {
 
 // BuildLVarNode builds LVarNode
 func (t *Tokenized) BuildLVarNode(s string, ty Type, isArg bool) Node {
-	if t.searchVar(s) != nil {
+	if _, isLVar := t.searchVar(s).(*LVar); isLVar {
 		panic(fmt.Sprintf("variable %s is already defined", s))
 	}
 	f := t.curFn

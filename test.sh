@@ -127,4 +127,8 @@ assert "int a; int main() { a=2; return a; }" 2
 assert "int a; int *p; int main() { a=2; p=alloc4(1,2,3,4); return a+p[2]; }" 5
 assert "int a; int b; int main() { a=2; b=3; return a+b; }" 5
 
+assert "int main() { char c=3; return c; }" 3
+assert "char c; int main() { int c=3; return sizeof(c); }" 4
+assert "int main() { char x[3]; x[0] = -1; x[1] = 2; int y=4; return x[0]+y;}" 3
+
 echo OK

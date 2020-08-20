@@ -11,13 +11,7 @@ type PtrType interface {
 	base() Type
 }
 
-// TyInt represents int type
-type TyInt struct{}
-
-// TyPtr represents pointer type
-type TyPtr struct {
-	to Type
-}
+// TODO: think of creating Number interface (TyInt and TyChar should implement this)
 
 // TyArr represents array type
 type TyArr struct {
@@ -28,6 +22,29 @@ type TyArr struct {
 // TyEmpty represents empty type. e.g) Block expression has this type
 type TyEmpty struct{}
 
+// TyInt represents int type
+type TyInt struct{}
+
+// TyPtr represents pointer type
+type TyPtr struct {
+	to Type
+}
+
+// TyChar represents char type
+type TyChar struct{}
+
+func (a *TyArr) size() int {
+	return a.len * a.of.size()
+}
+
+func (c *TyChar) size() int {
+	return 1
+}
+
+func (e *TyEmpty) size() int {
+	return 0
+}
+
 func (i *TyInt) size() int {
 	return 4
 }
@@ -36,20 +53,12 @@ func (p *TyPtr) size() int {
 	return 8
 }
 
-func (p *TyPtr) base() Type {
-	return p.to
-}
-
-func (e *TyEmpty) size() int {
-	return 0
-}
-
-func (a *TyArr) size() int {
-	return a.len * a.of.size()
-}
-
 func (a *TyArr) base() Type {
 	return a.of
+}
+
+func (p *TyPtr) base() Type {
+	return p.to
 }
 
 func (a *AddrNode) loadType() Type {
