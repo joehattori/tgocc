@@ -32,7 +32,7 @@ func (t *Tokenized) consumeID() (string, bool) {
 
 func (t *Tokenized) consumeSizeOf() bool {
 	cur := t.toks[0]
-	if cur.kind == tkSizeOf && strings.HasPrefix(cur.str, "sizeof") {
+	if cur.kind == tkReserved && strings.HasPrefix(cur.str, "sizeof") {
 		t.popToks()
 		return true
 	}

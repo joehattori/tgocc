@@ -263,6 +263,7 @@ func (t *Tokenized) BuildLVarNode(s string, ty Type, isArg bool) Node {
 	if isArg {
 		f.params = append(f.params, arg)
 	}
+	// TODO: align
 	f.stackSize = offset
 	return &NullNode{}
 }

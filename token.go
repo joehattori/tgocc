@@ -5,7 +5,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 )
 
 type tokenKind int
@@ -15,7 +14,6 @@ const (
 	tkNum
 	tkID
 	tkEOF
-	tkSizeOf
 )
 
 // Token is a type to describe token
@@ -51,19 +49,6 @@ func Tokenize(s string) *Tokenized {
 
 		s = strings.TrimSpace(s)
 
-		if r := regexp.MustCompile(`^return\W`); r.MatchString(s) {
-			toks = append(toks, &Token{kind: tkReserved, str: s, length: len("return")})
-			s = s[len("return"):]
-			continue
-		}
-
-		if r := regexp.MustCompile(`^(int|char)\W`); r.MatchString(s) {
-			typeStr := r.FindString(s)
-			toks = append(toks, &Token{kind: tkReserved, str: s, length: len(typeStr) - 1})
-			s = s[len(typeStr)-1:]
-			continue
-		}
-
 		if r := regexp.MustCompile(`^\d+`); r.MatchString(s) {
 			numStr := r.FindString(s)
 			num, _ := strconv.Atoi(numStr)
@@ -72,7 +57,7 @@ func Tokenize(s string) *Tokenized {
 			continue
 		}
 
-		if r := regexp.MustCompile(`^(if|else|while|for)\W`); r.MatchString(s) {
+		if r := regexp.MustCompile(`^(if|else|while|for|return|int|char|sizeof)\W`); r.MatchString(s) {
 			cStr := r.FindString(s)
 			toks = append(toks, &Token{kind: tkReserved, str: s, length: len(cStr) - 1})
 			s = s[len(cStr)-1:]
@@ -88,13 +73,6 @@ func Tokenize(s string) *Tokenized {
 		if strings.Contains("+-*/(){}[]<>;=,&", s[:1]) {
 			toks = append(toks, &Token{kind: tkReserved, str: s, length: 1})
 			s = s[1:]
-			continue
-		}
-
-		if strings.HasPrefix(s, "sizeof") {
-			c := utf8.RuneCountInString("sizeof")
-			toks = append(toks, &Token{kind: tkSizeOf, str: s, length: c})
-			s = s[c:]
 			continue
 		}
 
