@@ -30,6 +30,13 @@ type Token struct {
 type Tokenized struct {
 	toks  []*Token
 	curFn *FnNode
+	res   *Ast
+}
+
+// Ast is an array of nodes which represents whole program input (technically not a tree, but let's call this Ast still.)
+type Ast struct {
+	fns   []*FnNode
+	gvars []*GVar
 }
 
 const idRegexp string = `^[a-zA-Z_]+\w*`
@@ -101,7 +108,7 @@ func Tokenize(s string) *Tokenized {
 		panic(fmt.Sprintf("unexpected input %s\n", s))
 	}
 	toks = append(toks, &Token{kind: tkEOF, str: s})
-	return &Tokenized{toks: toks}
+	return &Tokenized{toks: toks, res: &Ast{}}
 }
 
 func hasMultipleCharactorOperator(s string) bool {

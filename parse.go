@@ -6,11 +6,6 @@ import (
 	"strings"
 )
 
-// Ast is an array of nodes which represents whole program input (technically not a tree, but let's call this Ast still.)
-type Ast struct {
-	nodes []Node
-}
-
 func (t *Tokenized) popToks() {
 	t.toks = t.toks[1:]
 }
@@ -107,15 +102,17 @@ func (t *Tokenized) peekType() bool {
 	return false
 }
 
-// program    = function*
-// function   = ident ("(" (ident ("," ident)* )? ")") "{" stmt* "}"
+// program    = (function | globalVar)*
+// function   = Type ident ("(" (ident ("," ident)* )? ")") "{" stmt* "}"
+// globalVar  = varDecl
 // stmt       = expr ";"
 //				| "{" stmt* "}"
 //			    | "return" expr ";"
 //				| "if" "(" expr ")" stmt ("else" stmt) ?
 //				| "while" "(" expr ")" stmt
 //				| "for" "(" expr? ";" expr? ";" expr? ")" stmt
-//				| Type ident ("[" expr "]")* ";"
+//				| varDecl
+// varDecl    = Type ident ("[" expr "]")* ";"
 // expr       = assign
 // assign     = equality ("=" assign) ?
 // equality   = relational ("==" relational | "!=" relational)*
@@ -126,22 +123,64 @@ func (t *Tokenized) peekType() bool {
 // postfix    = primary ("[" expr "]")*
 // primary    = num | ident ("(" (expr ("," expr)* )? ")")? | "(" expr ")"
 
-func (t *Tokenized) parse() *Ast {
-	var ast Ast
-	for t.toks[0].kind != tkEOF {
-		ast.nodes = append(ast.nodes, t.function())
+func (t *Tokenized) isFunction() bool {
+	orig := t.toks
+	ty := t.expectType()
+	for t.consume("*") {
+		ty = &TyPtr{to: ty}
 	}
-	return &ast
+	_, isID := t.consumeID()
+	ret := isID && t.consume("(")
+	t.toks = orig
+	return ret
 }
 
-func (t *Tokenized) function() Node {
+func (t *Tokenized) readVarSuffix(ty Type) Type {
+	if t.consume("[") {
+		l := t.expectNum()
+		t.expect("]")
+		ty = t.readVarSuffix(ty)
+		return &TyArr{of: ty, len: l}
+	}
+	return ty
+}
+
+func (t *Tokenized) varDecl() (id string, ty Type, rhs Node) {
+	ty = t.expectType()
+	for t.consume("*") {
+		ty = &TyPtr{to: ty}
+	}
+	id = t.expectID()
+	ty = t.readVarSuffix(ty)
+	if t.consume(";") {
+		return
+	}
+	t.expect("=")
+	rhs = t.expr()
+	t.expect(";")
+	return
+}
+
+func (t *Tokenized) parse() {
+	ast := t.res
+	for t.toks[0].kind != tkEOF {
+		if t.isFunction() {
+			ast.fns = append(ast.fns, t.function())
+		} else {
+			id, ty, _ := t.varDecl()
+			g := NewGVar(id, ty)
+			ast.gvars = append(ast.gvars, g)
+		}
+	}
+}
+
+func (t *Tokenized) function() *FnNode {
 	ty := t.expectType()
 	for t.consume("*") {
 		ty = &TyPtr{to: ty}
 	}
 	funcName := t.expectID()
 	t.expect("(")
-
 	fn := &FnNode{name: funcName, ty: ty}
 	t.curFn = fn
 
@@ -157,7 +196,7 @@ func (t *Tokenized) function() Node {
 			ty = &TyPtr{to: ty}
 		}
 		s := t.expectID()
-		fn.BuildLVarNode(s, ty, true)
+		t.BuildLVarNode(s, ty, true)
 	}
 	t.expect("{")
 	for !t.consume("}") {
@@ -236,39 +275,17 @@ func (t *Tokenized) stmt() Node {
 
 	// handle variable definition
 	if t.peekType() {
-		return t.varDef()
+		id, ty, rhs := t.varDecl()
+		lv := t.BuildLVarNode(id, ty, false)
+		if rhs == nil {
+			return lv
+		}
+		return NewAssignNode(NewVarNode(t.FindVar(id)).(AddressableNode), rhs)
 	}
 
 	node := t.expr()
 	t.expect(";")
-	return &ExprNode{body: node}
-}
-
-func (t *Tokenized) readVarSuffix(ty Type) Type {
-	if t.consume("[") {
-		l := t.expectNum()
-		t.expect("]")
-		ty = t.readVarSuffix(ty)
-		return &TyArr{of: ty, len: l}
-	}
-	return ty
-}
-
-func (t *Tokenized) varDef() Node {
-	ty := t.expectType()
-	for t.consume("*") {
-		ty = &TyPtr{to: ty}
-	}
-	id := t.expectID()
-	ty = t.readVarSuffix(ty)
-	if t.consume(";") {
-		return t.curFn.BuildLVarNode(id, ty, false)
-	}
-	t.expect("=")
-	rhs := t.expr()
-	t.expect(";")
-	t.curFn.BuildLVarNode(id, ty, false)
-	return NewAssignNode(t.curFn.FindLVarNode(id), rhs)
+	return NewExprNode(node)
 }
 
 func (t *Tokenized) expr() Node {
@@ -358,7 +375,7 @@ func (t *Tokenized) unary() Node {
 	}
 	if t.consume("&") {
 		node := t.unary()
-		return NewAddrNode(node.(*LVarNode))
+		return NewAddrNode(node.(AddressableNode))
 	}
 	return t.postfix()
 }
@@ -393,7 +410,7 @@ func (t *Tokenized) primary() Node {
 			t.expect(")")
 			return NewFnCallNode(id, params)
 		}
-		return t.curFn.FindLVarNode(id)
+		return NewVarNode(t.FindVar(id))
 	}
 
 	return NewNumNode(t.expectNum())

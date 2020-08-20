@@ -122,4 +122,9 @@ assert "int main() { int x[2][3]; int *y=x; *(y+5)=3; return x[1][2]; }" 3
 assert "int main() { int *p = alloc4(1,2,100,4); int *q = p + 2; return *q; }" 100
 assert "int main() { int x[2][3]; x[1][2]=1; return x[1][2]; }" 1
 
+assert "int a; int main() { return sizeof(a); }" 4
+assert "int a; int main() { a=2; return a; }" 2
+assert "int a; int *p; int main() { a=2; p=alloc4(1,2,3,4); return a+p[2]; }" 5
+assert "int a; int b; int main() { a=2; b=3; return a+b; }" 5
+
 echo OK

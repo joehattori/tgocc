@@ -9,9 +9,22 @@ var labelCount int
 
 func (a *Ast) gen() {
 	fmt.Println(".intel_syntax noprefix")
+	a.genData()
+	a.genText()
+}
 
-	for _, node := range a.nodes {
-		node.gen()
+func (a *Ast) genData() {
+	fmt.Println(".data")
+	for _, g := range a.gvars {
+		fmt.Printf("%s:\n", g.name)
+		fmt.Printf("	.zero %d\n", g.ty.size())
+	}
+}
+
+func (a *Ast) genText() {
+	fmt.Println(".text")
+	for _, f := range a.fns {
+		f.gen()
 	}
 }
 
@@ -151,7 +164,7 @@ func (f *FnNode) gen() {
 	fmt.Printf("	sub rsp, %d\n", f.stackSize)
 	for i, param := range f.params {
 		var r [6]string
-		switch param.loadType().size() {
+		switch param.ty.size() {
 		case 4:
 			r = paramRegs4
 		case 8:
@@ -192,9 +205,9 @@ func (i *IfNode) gen() {
 	fmt.Println("	push rax")
 }
 
-func (l *LVarNode) gen() {
-	l.genAddr()
-	ty := l.loadType()
+func (v *VarNode) gen() {
+	v.genAddr()
+	ty := v.loadType()
 	if _, isArr := ty.(*TyArr); !isArr {
 		load(ty)
 	}
@@ -229,9 +242,15 @@ func (d *DerefNode) genAddr() {
 	d.ptr.gen()
 }
 
-func (l *LVarNode) genAddr() {
-	fmt.Printf("	lea rax, [rbp-%d]\n", l.offset)
-	fmt.Println("	push rax")
+func (v *VarNode) genAddr() {
+	switch vr := v.v.(type) {
+	case *GVar:
+		fmt.Printf("	lea rax, %s[rip]\n", vr.name)
+		fmt.Println("	push rax")
+	case *LVar:
+		fmt.Printf("	lea rax, [rbp-%d]\n", vr.offset)
+		fmt.Println("	push rax")
+	}
 }
 
 func load(ty Type) {

@@ -122,9 +122,6 @@ func (f *FnCallNode) loadType() Type {
 }
 
 func (f *FnNode) loadType() Type {
-	for _, param := range f.params {
-		param.loadType()
-	}
 	for _, node := range f.body {
 		node.loadType()
 	}
@@ -140,8 +137,8 @@ func (i *IfNode) loadType() Type {
 	return &TyEmpty{}
 }
 
-func (l *LVarNode) loadType() Type {
-	return l.ty
+func (v *VarNode) loadType() Type {
+	return v.v.getType()
 }
 
 func (*NullNode) loadType() Type {

@@ -69,12 +69,17 @@ type (
 
 	// FnNode represents a node of function definition
 	FnNode struct {
-		params    []*LVarNode
+		params    []*LVar
 		body      []Node
-		lvars     []*LVarNode
+		lvars     []*LVar
 		name      string
 		stackSize int
 		ty        Type
+	}
+
+	// VarNode represents a node of variable
+	VarNode struct {
+		v Var
 	}
 
 	// IfNode represents a if statement node
@@ -82,13 +87,6 @@ type (
 		cond Node
 		then Node
 		els  Node
-	}
-
-	// LVarNode represents a node of local variable
-	LVarNode struct {
-		name   string
-		offset int
-		ty     Type
 	}
 
 	// NullNode is a node which doesn't emit assembly code
@@ -154,7 +152,7 @@ func NewAddNode(lhs Node, rhs Node) Node {
 }
 
 // NewAddrNode builds a AddrNode
-func NewAddrNode(v *LVarNode) Node {
+func NewAddrNode(v AddressableNode) Node {
 	return &AddrNode{v: v}
 }
 
@@ -178,6 +176,11 @@ func NewDerefNode(ptr Node) Node {
 	return &DerefNode{ptr: ptr}
 }
 
+// NewExprNode builds a DerefNode
+func NewExprNode(body Node) Node {
+	return &ExprNode{body}
+}
+
 // NewForNode builds a ForNode
 func NewForNode(init Node, cond Node, inc Node, body Node) Node {
 	return &ForNode{init, cond, inc, body}
@@ -192,6 +195,11 @@ func NewFnCallNode(name string, params []Node) Node {
 // NewIfNode builds a IfNode
 func NewIfNode(cond Node, then Node, els Node) Node {
 	return &IfNode{cond, then, els}
+}
+
+// NewVarNode builds a new LVarNode instance
+func NewVarNode(v Var) Node {
+	return &VarNode{v}
 }
 
 // NewNumNode builds NumNode
@@ -220,18 +228,23 @@ func NewSubNode(lhs Node, rhs Node) Node {
 	panic(fmt.Sprintf("Unexpected type: lhs: %T, rhs: %T", l, r))
 }
 
-func (f *FnNode) searchLVarNode(varName string) *LVarNode {
-	for _, v := range f.lvars {
-		if v.name == varName {
-			return v
+func (t *Tokenized) searchVar(varName string) Var {
+	for _, lv := range t.curFn.lvars {
+		if lv.name == varName {
+			return lv
+		}
+	}
+	for _, g := range t.res.gvars {
+		if g.name == varName {
+			return g
 		}
 	}
 	return nil
 }
 
-// FindLVarNode searches LVarNode named s
-func (f *FnNode) FindLVarNode(s string) *LVarNode {
-	v := f.searchLVarNode(s)
+// FindVar searches Var named s
+func (t *Tokenized) FindVar(s string) Var {
+	v := t.searchVar(s)
 	if v == nil {
 		panic(fmt.Sprintf("undefined variable %s", s))
 	}
@@ -239,12 +252,13 @@ func (f *FnNode) FindLVarNode(s string) *LVarNode {
 }
 
 // BuildLVarNode builds LVarNode
-func (f *FnNode) BuildLVarNode(s string, ty Type, isArg bool) Node {
-	if f.searchLVarNode(s) != nil {
+func (t *Tokenized) BuildLVarNode(s string, ty Type, isArg bool) Node {
+	if t.searchVar(s) != nil {
 		panic(fmt.Sprintf("variable %s is already defined", s))
 	}
+	f := t.curFn
 	offset := f.stackSize + ty.size()
-	arg := &LVarNode{name: s, ty: ty, offset: offset}
+	arg := &LVar{name: s, ty: ty, offset: offset}
 	f.lvars = append(f.lvars, arg)
 	if isArg {
 		f.params = append(f.params, arg)
