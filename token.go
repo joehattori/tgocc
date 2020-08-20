@@ -39,6 +39,20 @@ type Ast struct {
 
 const idRegexp string = `^[a-zA-Z_]+\w*`
 
+func tokenizeCharLiteral(s string) (*Token, string) {
+	if s[0] != '\'' {
+		panic(fmt.Sprintf("Expected char literal, but got %s", s))
+	}
+	s = s[1:]
+	c := int(s[0])
+	s = s[1:]
+	if s[0] != '\'' {
+		panic(fmt.Sprintf("Char literal is too long: %s", s))
+	}
+	s = s[1:]
+	return &Token{kind: tkNum, val: c, length: 1}, s
+}
+
 // Tokenize returns the tokenized input
 func Tokenize(s string) *Tokenized {
 	var toks []*Token
@@ -48,6 +62,13 @@ func Tokenize(s string) *Tokenized {
 		}
 
 		s = strings.TrimSpace(s)
+
+		if strings.HasPrefix(s, "'") {
+			tok, nxtStr := tokenizeCharLiteral(s)
+			toks = append(toks, tok)
+			s = nxtStr
+			continue
+		}
 
 		if r := regexp.MustCompile(`^\d+`); r.MatchString(s) {
 			numStr := r.FindString(s)
