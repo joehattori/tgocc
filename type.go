@@ -5,6 +5,12 @@ type Type interface {
 	size() int
 }
 
+// PtrType represents pointing type such as pointer and array
+type PtrType interface {
+	Type
+	base() Type
+}
+
 // TyInt represents int type
 type TyInt struct{}
 
@@ -30,12 +36,20 @@ func (p *TyPtr) size() int {
 	return 8
 }
 
+func (p *TyPtr) base() Type {
+	return p.to
+}
+
 func (e *TyEmpty) size() int {
 	return 0
 }
 
 func (a *TyArr) size() int {
 	return a.len * a.of.size()
+}
+
+func (a *TyArr) base() Type {
+	return a.of
 }
 
 func (a *AddrNode) loadType() Type {

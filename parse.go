@@ -244,17 +244,23 @@ func (t *Tokenized) stmt() Node {
 	return &ExprNode{body: node}
 }
 
+func (t *Tokenized) readVarSuffix(ty Type) Type {
+	if t.consume("[") {
+		l := t.expectNum()
+		t.expect("]")
+		ty = t.readVarSuffix(ty)
+		return &TyArr{of: ty, len: l}
+	}
+	return ty
+}
+
 func (t *Tokenized) varDef() Node {
 	ty := t.expectType()
 	for t.consume("*") {
 		ty = &TyPtr{to: ty}
 	}
 	id := t.expectID()
-	for t.consume("[") {
-		l := t.expectNum()
-		ty = &TyArr{of: ty, len: l}
-		t.expect("]")
-	}
+	ty = t.readVarSuffix(ty)
 	if t.consume(";") {
 		return t.curFn.BuildLVarNode(id, ty, false)
 	}
@@ -360,8 +366,7 @@ func (t *Tokenized) unary() Node {
 func (t *Tokenized) postfix() Node {
 	node := t.primary()
 	for t.consume("[") {
-		e := t.expr()
-		add := NewAddNode(node, e)
+		add := NewAddNode(node, t.expr())
 		node = NewDerefNode(add)
 		t.expect("]")
 	}

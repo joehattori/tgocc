@@ -61,10 +61,10 @@ func (a *ArithNode) gen() {
 		fmt.Println("	setle al")
 		fmt.Println("	movzb rax, al")
 	case ndPtrAdd:
-		fmt.Printf("	imul rdi, %d\n", a.rhs.loadType().size())
+		fmt.Printf("	imul rdi, %d\n", a.loadType().(PtrType).base().size())
 		fmt.Printf("	add rax, rdi\n")
 	case ndPtrSub:
-		fmt.Printf("	imul rdi, %d\n", a.rhs.loadType().size())
+		fmt.Printf("	imul rdi, %d\n", a.loadType().(PtrType).base().size())
 		fmt.Printf("	sub rax, rdi\n")
 	default:
 		panic("Unhandled node kind")

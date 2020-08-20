@@ -115,4 +115,11 @@ assert "int main() { int i[10]; i[0] = 1; i[3] = 2; return i[0]+i[3]; }" 3
 assert "int main() { int *i=alloc4(2,3,4,5); return i[0]; }" 2
 assert "int main() { int *i=alloc4(2,3,4,5); int s=0; int k; for(k=0;k<4;k=k+1) s=s+i[k]; return s; }" 14
 
+assert "int main() { int arr[2][2]; return sizeof(arr); }" 16
+assert "int main() { int arr[2][2]; arr[0][1]=1; arr[1][2]=2; return arr[0][1]+arr[1][2]; }" 3
+assert "int main() { int x[2][3]; int *y = x; *(y+5) = 3; return *((*x+1)+2); }" 0
+assert "int main() { int x[2][3]; int *y=x; *(y+5)=3; return x[1][2]; }" 3
+assert "int main() { int *p = alloc4(1,2,100,4); int *q = p + 2; return *q; }" 100
+assert "int main() { int x[2][3]; x[1][2]=1; return x[1][2]; }" 1
+
 echo OK
