@@ -115,14 +115,15 @@ func (t *Tokenized) peekType() bool {
 //				| "if" "(" expr ")" stmt ("else" stmt) ?
 //				| "while" "(" expr ")" stmt
 //				| "for" "(" expr? ";" expr? ";" expr? ")" stmt
-//				| Type ident ("[" expr "]")? ";"
+//				| Type ident ("[" expr "]")* ";"
 // expr       = assign
 // assign     = equality ("=" assign) ?
 // equality   = relational ("==" relational | "!=" relational)*
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 // add        = mul ("+" mul | "-" mul)*
 // mul        = unary ("*" unary | "/" unary)*
-// unary      = "sizeof" unary | ("+" | "-" | "*" | "&")? primary
+// unary      = "sizeof" unary | ("+" | "-" | "*" | "&")? unary | postfix
+// postfix    = primary ("[" expr "]")*
 // primary    = num | ident ("(" (expr ("," expr)* )? ")")? | "(" expr ")"
 
 func (t *Tokenized) parse() *Ast {
@@ -152,6 +153,9 @@ func (t *Tokenized) function() Node {
 		isFirstArg = false
 
 		ty := t.expectType()
+		for t.consume("*") {
+			ty = &TyPtr{to: ty}
+		}
 		s := t.expectID()
 		fn.BuildLVarNode(s, ty, true)
 	}
@@ -336,10 +340,10 @@ func (t *Tokenized) unary() Node {
 		return NewNumNode(t.unary().loadType().size())
 	}
 	if t.consume("+") {
-		return t.primary()
+		return t.unary()
 	}
 	if t.consume("-") {
-		node := t.primary()
+		node := t.unary()
 		return NewSubNode(NewNumNode(0), node)
 	}
 	if t.consume("*") {
@@ -350,7 +354,18 @@ func (t *Tokenized) unary() Node {
 		node := t.unary()
 		return NewAddrNode(node.(*LVarNode))
 	}
-	return t.primary()
+	return t.postfix()
+}
+
+func (t *Tokenized) postfix() Node {
+	node := t.primary()
+	for t.consume("[") {
+		e := t.expr()
+		add := NewAddNode(node, e)
+		node = NewDerefNode(add)
+		t.expect("]")
+	}
+	return node
 }
 
 func (t *Tokenized) primary() Node {

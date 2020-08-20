@@ -110,4 +110,9 @@ assert "int main() { int i[10]; *i = 1; *(i+1) = 2; return *(i+1); }" 2
 assert "int main() { int i[10]; *i = 1; *(i+1) = 2; int *p = i; return *(p + 1); }" 2
 assert "int main() { int i[10]; return sizeof(i); }" 40
 
+assert "int main() { int i[10]; i[0] = 100; return *i; }" 100
+assert "int main() { int i[10]; i[0] = 1; i[3] = 2; return i[0]+i[3]; }" 3
+assert "int main() { int *i=alloc4(2,3,4,5); return i[0]; }" 2
+assert "int main() { int *i=alloc4(2,3,4,5); int s=0; int k; for(k=0;k<4;k=k+1) s=s+i[k]; return s; }" 14
+
 echo OK
