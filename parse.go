@@ -12,58 +12,62 @@ func (t *tokenized) popToks() {
 }
 
 func (t *tokenized) consume(str string) bool {
-	cur := t.toks[0]
-	if cur.kind != tkReserved || cur.len != len(str) || !strings.HasPrefix(cur.str, str) {
-		return false
+	if r, isReserved := t.toks[0].(*reservedTok); isReserved &&
+		r.len == len(str) &&
+		strings.HasPrefix(r.str, str) {
+		t.popToks()
+		return true
 	}
-	t.popToks()
-	return true
+	return false
 }
 
 func (t *tokenized) consumeID() (string, bool) {
 	cur := t.toks[0]
-	id := idRegexp.FindString(cur.str)
-	if cur.kind != tkID || id == "" {
-		return "", false
+	id := idRegexp.FindString(cur.getStr())
+	if _, isID := cur.(*idTok); isID && id != "" {
+		t.popToks()
+		return id, true
 	}
-	t.popToks()
-	return id, true
+	return "", false
 }
 
 func (t *tokenized) consumeStr() (string, bool) {
-	cur := t.toks[0]
-	if cur.kind != tkStr {
-		return "", false
+	if s, isStr := t.toks[0].(*strTok); isStr {
+		t.popToks()
+		return s.content, true
 	}
-	t.popToks()
-	return cur.content, true
+	return "", false
 }
 
 func (t *tokenized) expect(str string) {
 	cur := t.toks[0]
-	if cur.kind != tkReserved || cur.len != len(str) || !strings.HasPrefix(cur.str, str) {
-		log.Fatalf("%s was expected but got %s", str, cur.str)
+	if r, isReserved := cur.(*reservedTok); isReserved &&
+		r.len == len(str) && strings.HasPrefix(cur.getStr(), str) {
+		t.popToks()
+		return
 	}
-	t.popToks()
+	log.Fatalf("%s was expected but got %s", str, cur.getStr())
 }
 
 func (t *tokenized) expectID() string {
 	cur := t.toks[0]
-	id := idRegexp.FindString(cur.str)
-	if cur.kind != tkID || id == "" {
-		log.Fatalf("ID was expected but got %s", cur.str)
+	id := idRegexp.FindString(cur.getStr())
+	if _, isID := cur.(*idTok); isID && id != "" {
+		t.popToks()
+		return id
 	}
-	t.popToks()
-	return id
+	log.Fatalf("ID was expected but got %s", cur.getStr())
+	return ""
 }
 
 func (t *tokenized) expectNum() int {
 	cur := t.toks[0]
-	if cur.kind != tkNum {
-		log.Fatalf("Number was expected but got %s", cur.str)
+	if n, isNum := cur.(*numTok); isNum {
+		t.popToks()
+		return n.val
 	}
-	t.popToks()
-	return cur.val
+	log.Fatalf("Number was expected but got %s", cur.getStr())
+	return -1
 }
 
 var tyMap = map[string]ty{
@@ -73,27 +77,25 @@ var tyMap = map[string]ty{
 
 func (t *tokenized) expectType() ty {
 	cur := t.toks[0]
-	if cur.kind != tkReserved {
-		log.Fatalf("tkReserved was expected but got %d %s", cur.kind, cur.str)
-	}
-	for key, val := range tyMap {
-		if strings.HasPrefix(cur.str, key) {
-			t.popToks()
-			return val
+	if r, isReserved := cur.(*reservedTok); isReserved {
+		for key, val := range tyMap {
+			if strings.HasPrefix(r.str, key) {
+				t.popToks()
+				return val
+			}
 		}
+		log.Fatalf("Unexpected type %s", r.str)
 	}
-	log.Fatalf("Unexpected type %s", cur.str)
+	log.Fatalf("tkReserved was expected but got %d %s", cur, cur.getStr())
 	return nil
 }
 
 func (t *tokenized) peekType() bool {
-	cur := t.toks[0]
-	if cur.kind != tkReserved {
-		return false
-	}
-	for key := range tyMap {
-		if strings.HasPrefix(cur.str, key) {
-			return true
+	if r, isReserved := t.toks[0].(*reservedTok); isReserved {
+		for key := range tyMap {
+			if strings.HasPrefix(r.str, key) {
+				return true
+			}
 		}
 	}
 	return false
@@ -168,7 +170,10 @@ func (t *tokenized) varDecl() (id string, ty ty, rhs node) {
 
 func (t *tokenized) parse() {
 	ast := t.res
-	for t.toks[0].kind != tkEOF {
+	for {
+		if _, isEOF := t.toks[0].(*eofTok); isEOF {
+			break
+		}
 		if t.isFunction() {
 			ast.fns = append(ast.fns, t.function())
 		} else {
