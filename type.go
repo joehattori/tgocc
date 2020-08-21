@@ -26,69 +26,44 @@ type tyPtr struct {
 	to ty
 }
 
-func newTyArr(of ty, len int) *tyArr {
-	return &tyArr{of, len}
-}
+func newTyArr(of ty, len int) *tyArr { return &tyArr{of, len} }
+func newTyChar() *tyChar             { return &tyChar{} }
+func newTyEmpty() *tyEmpty           { return &tyEmpty{} }
+func newTyInt() *tyInt               { return &tyInt{} }
+func newTyPtr(to ty) *tyPtr          { return &tyPtr{to} }
 
-func newTyChar() *tyChar {
-	return &tyChar{}
-}
+func (a *tyArr) size() int   { return a.len * a.of.size() }
+func (c *tyChar) size() int  { return 1 }
+func (e *tyEmpty) size() int { return 0 }
+func (i *tyInt) size() int   { return 4 }
+func (p *tyPtr) size() int   { return 8 }
 
-func newTyInt() *tyInt {
-	return &tyInt{}
-}
-
-func newTyPtr(to ty) *tyPtr {
-	return &tyPtr{to}
-}
-
-func (a *tyArr) size() int {
-	return a.len * a.of.size()
-}
-
-func (c *tyChar) size() int {
-	return 1
-}
-
-func (e *tyEmpty) size() int {
-	return 0
-}
-
-func (i *tyInt) size() int {
-	return 4
-}
-
-func (p *tyPtr) size() int {
-	return 8
-}
-
-func (a *tyArr) base() ty {
-	return a.of
-}
-
-func (p *tyPtr) base() ty {
-	return p.to
-}
+func (a *tyArr) base() ty { return a.of }
+func (p *tyPtr) base() ty { return p.to }
 
 func (a *addrNode) loadType() ty {
 	t := a.v.loadType()
 	if arrT, ok := t.(*tyArr); ok {
-		a.ty = &tyPtr{to: arrT.of}
+		a.ty = newTyPtr(arrT.of)
 	} else {
-		a.ty = &tyPtr{to: t}
+		a.ty = newTyPtr(t)
 	}
 	return a.ty
 }
 
 func (a *arithNode) loadType() ty {
-	a.ty = a.lhs.loadType()
+	if a.ty == nil {
+		a.ty = a.lhs.loadType()
+	}
 	a.rhs.loadType()
 	return a.ty
 }
 
 func (a *assignNode) loadType() ty {
+	if a.ty == nil {
+		a.ty = a.lhs.loadType()
+	}
 	a.rhs.loadType()
-	a.ty = a.lhs.loadType()
 	return a.ty
 }
 
@@ -96,7 +71,7 @@ func (b *blkNode) loadType() ty {
 	for _, st := range b.body {
 		st.loadType()
 	}
-	return &tyEmpty{}
+	return newTyEmpty()
 }
 
 func (d *derefNode) loadType() ty {
@@ -113,7 +88,7 @@ func (d *derefNode) loadType() ty {
 
 func (e *exprNode) loadType() ty {
 	e.body.loadType()
-	return &tyEmpty{}
+	return newTyEmpty()
 }
 
 func (f *forNode) loadType() ty {
@@ -129,7 +104,7 @@ func (f *forNode) loadType() ty {
 	if f.inc != nil {
 		f.inc.loadType()
 	}
-	return &tyEmpty{}
+	return newTyEmpty()
 }
 
 func (f *fnCallNode) loadType() ty {
@@ -152,7 +127,7 @@ func (i *ifNode) loadType() ty {
 	if i.els != nil {
 		i.els.loadType()
 	}
-	return &tyEmpty{}
+	return newTyEmpty()
 }
 
 func (v *varNode) loadType() ty {
@@ -160,21 +135,25 @@ func (v *varNode) loadType() ty {
 }
 
 func (*nullNode) loadType() ty {
-	return &tyEmpty{}
+	return newTyEmpty()
 }
 
 func (n *numNode) loadType() ty {
-	n.ty = &tyInt{}
+	if n.ty == nil {
+		n.ty = newTyInt()
+	}
 	return n.ty
 }
 
 func (r *retNode) loadType() ty {
-	r.ty = r.rhs.loadType()
+	if r.ty == nil {
+		r.ty = r.rhs.loadType()
+	}
 	return r.ty
 }
 
 func (w *whileNode) loadType() ty {
 	w.cond.loadType()
 	w.then.loadType()
-	return &tyEmpty{}
+	return newTyEmpty()
 }
