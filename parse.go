@@ -6,11 +6,11 @@ import (
 	"unicode/utf8"
 )
 
-func (t *Tokenized) popToks() {
+func (t *tokenized) popToks() {
 	t.toks = t.toks[1:]
 }
 
-func (t *Tokenized) consume(str string) bool {
+func (t *tokenized) consume(str string) bool {
 	cur := t.toks[0]
 	if cur.kind != tkReserved || cur.len != len(str) || !strings.HasPrefix(cur.str, str) {
 		return false
@@ -19,7 +19,7 @@ func (t *Tokenized) consume(str string) bool {
 	return true
 }
 
-func (t *Tokenized) consumeID() (string, bool) {
+func (t *tokenized) consumeID() (string, bool) {
 	cur := t.toks[0]
 	id := idRegexp.FindString(cur.str)
 	if cur.kind != tkID || id == "" {
@@ -29,7 +29,7 @@ func (t *Tokenized) consumeID() (string, bool) {
 	return id, true
 }
 
-func (t *Tokenized) consumeStr() (string, bool) {
+func (t *tokenized) consumeStr() (string, bool) {
 	cur := t.toks[0]
 	if cur.kind != tkStr {
 		return "", false
@@ -38,7 +38,7 @@ func (t *Tokenized) consumeStr() (string, bool) {
 	return cur.content, true
 }
 
-func (t *Tokenized) expect(str string) {
+func (t *tokenized) expect(str string) {
 	cur := t.toks[0]
 	if cur.kind != tkReserved || cur.len != len(str) || !strings.HasPrefix(cur.str, str) {
 		panic(fmt.Sprintf("%s was expected but got %s", str, cur.str))
@@ -46,7 +46,7 @@ func (t *Tokenized) expect(str string) {
 	t.popToks()
 }
 
-func (t *Tokenized) expectID() string {
+func (t *tokenized) expectID() string {
 	cur := t.toks[0]
 	id := idRegexp.FindString(cur.str)
 	if cur.kind != tkID || id == "" {
@@ -56,7 +56,7 @@ func (t *Tokenized) expectID() string {
 	return id
 }
 
-func (t *Tokenized) expectNum() int {
+func (t *tokenized) expectNum() int {
 	cur := t.toks[0]
 	if cur.kind != tkNum {
 		panic(fmt.Sprintf("Number was expected but got %s", cur.str))
@@ -65,35 +65,32 @@ func (t *Tokenized) expectNum() int {
 	return cur.val
 }
 
-var tyArr = [...]struct {
-	string
-	Type
-}{
-	{"int", &TyInt{}},
-	{"char", &TyChar{}},
+var tyMap = map[string]ty{
+	"int":  newTyInt(),
+	"char": newTyChar(),
 }
 
-func (t *Tokenized) expectType() Type {
+func (t *tokenized) expectType() ty {
 	cur := t.toks[0]
 	if cur.kind != tkReserved {
 		panic(fmt.Sprintf("tkReserved was expected but got %d %s", cur.kind, cur.str))
 	}
-	for _, a := range tyArr {
-		if strings.HasPrefix(cur.str, a.string) {
+	for key, val := range tyMap {
+		if strings.HasPrefix(cur.str, key) {
 			t.popToks()
-			return a.Type
+			return val
 		}
 	}
 	panic(fmt.Sprintf("Unexpected type %s", cur.str))
 }
 
-func (t *Tokenized) peekType() bool {
+func (t *tokenized) peekType() bool {
 	cur := t.toks[0]
 	if cur.kind != tkReserved {
 		return false
 	}
-	for _, a := range tyArr {
-		if strings.HasPrefix(cur.str, a.string) {
+	for key := range tyMap {
+		if strings.HasPrefix(cur.str, key) {
 			return true
 		}
 	}
@@ -109,7 +106,7 @@ func newGVarLabel() string {
 }
 
 // program    = (function | globalVar)*
-// function   = Type ident ("(" (ident ("," ident)* )? ")") "{" stmt* "}"
+// function   = ty ident ("(" (ident ("," ident)* )? ")") "{" stmt* "}"
 // globalVar  = varDecl
 // stmt       = expr ";"
 //				| "{" stmt* "}"
@@ -118,7 +115,7 @@ func newGVarLabel() string {
 //				| "while" "(" expr ")" stmt
 //				| "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //				| varDecl
-// varDecl    = Type ident ("[" expr "]")* "=" expr ;"
+// varDecl    = ty ident ("[" expr "]")* "=" expr ;"
 // expr       = assign
 // assign     = equality ("=" assign) ?
 // equality   = relational ("==" relational | "!=" relational)*
@@ -129,11 +126,11 @@ func newGVarLabel() string {
 // postfix    = primary ("[" expr "]")*
 // primary    = num | str | ident ("(" (expr ("," expr)* )? ")")? | "(" expr ")"
 
-func (t *Tokenized) isFunction() bool {
+func (t *tokenized) isFunction() bool {
 	orig := t.toks
 	ty := t.expectType()
 	for t.consume("*") {
-		ty = &TyPtr{to: ty}
+		ty = &tyPtr{to: ty}
 	}
 	_, isID := t.consumeID()
 	ret := isID && t.consume("(")
@@ -141,7 +138,7 @@ func (t *Tokenized) isFunction() bool {
 	return ret
 }
 
-func (t *Tokenized) readVarSuffix(ty Type) Type {
+func (t *tokenized) readVarSuffix(ty ty) ty {
 	if t.consume("[") {
 		l := t.expectNum()
 		t.expect("]")
@@ -151,10 +148,10 @@ func (t *Tokenized) readVarSuffix(ty Type) Type {
 	return ty
 }
 
-func (t *Tokenized) varDecl() (id string, ty Type, rhs Node) {
+func (t *tokenized) varDecl() (id string, ty ty, rhs node) {
 	ty = t.expectType()
 	for t.consume("*") {
-		ty = &TyPtr{to: ty}
+		ty = &tyPtr{to: ty}
 	}
 	id = t.expectID()
 	ty = t.readVarSuffix(ty)
@@ -167,27 +164,27 @@ func (t *Tokenized) varDecl() (id string, ty Type, rhs Node) {
 	return
 }
 
-func (t *Tokenized) parse() {
+func (t *tokenized) parse() {
 	ast := t.res
 	for t.toks[0].kind != tkEOF {
 		if t.isFunction() {
 			ast.fns = append(ast.fns, t.function())
 		} else {
 			id, ty, _ := t.varDecl()
-			g := NewGVar(id, ty, nil)
+			g := newGVar(id, ty, nil)
 			ast.gvars = append(ast.gvars, g)
 		}
 	}
 }
 
-func (t *Tokenized) function() *FnNode {
+func (t *tokenized) function() *fnNode {
 	ty := t.expectType()
 	for t.consume("*") {
-		ty = &TyPtr{to: ty}
+		ty = newTyPtr(ty)
 	}
 	funcName := t.expectID()
 	t.expect("(")
-	fn := &FnNode{name: funcName, ty: ty}
+	fn := &fnNode{name: funcName, ty: ty}
 	t.curFn = fn
 
 	isFirstArg := true
@@ -199,10 +196,10 @@ func (t *Tokenized) function() *FnNode {
 
 		ty := t.expectType()
 		for t.consume("*") {
-			ty = &TyPtr{to: ty}
+			ty = &tyPtr{to: ty}
 		}
 		s := t.expectID()
-		t.BuildLVarNode(s, ty, true)
+		t.buildLVarNode(s, ty, true)
 	}
 	t.expect("{")
 	for !t.consume("}") {
@@ -211,13 +208,13 @@ func (t *Tokenized) function() *FnNode {
 	return fn
 }
 
-func (t *Tokenized) stmt() Node {
+func (t *tokenized) stmt() node {
 	// handle block
 	if t.consume("{") {
-		var blkStmts []Node
+		var blkStmts []node
 		for {
 			if t.consume("}") {
-				return NewBlkNode(blkStmts)
+				return newBlkNode(blkStmts)
 			}
 			blkStmts = append(blkStmts, t.stmt())
 		}
@@ -225,7 +222,7 @@ func (t *Tokenized) stmt() Node {
 
 	// handle return
 	if t.consume("return") {
-		node := NewRetNode(t.expr(), t.curFn.name)
+		node := newRetNode(t.expr(), t.curFn.name)
 		t.expect(";")
 		return node
 	}
@@ -237,12 +234,12 @@ func (t *Tokenized) stmt() Node {
 		t.expect(")")
 		then := t.stmt()
 
-		var els Node
+		var els node
 		if t.consume("else") {
 			els = t.stmt()
 		}
 
-		return NewIfNode(cond, then, els)
+		return newIfNode(cond, then, els)
 	}
 
 	// handle while statement
@@ -251,14 +248,14 @@ func (t *Tokenized) stmt() Node {
 		condNode := t.expr()
 		t.expect(")")
 		thenNode := t.stmt()
-		return NewWhileNode(condNode, thenNode)
+		return newWhileNode(condNode, thenNode)
 	}
 
 	// handle for statement
 	if t.consume("for") {
 		t.expect("(")
 
-		var init, cond, inc, then Node
+		var init, cond, inc, then node
 
 		if !t.consume(";") {
 			init = t.expr()
@@ -276,127 +273,127 @@ func (t *Tokenized) stmt() Node {
 		}
 
 		then = t.stmt()
-		return NewForNode(init, cond, inc, then)
+		return newForNode(init, cond, inc, then)
 	}
 
 	// handle variable definition
 	if t.peekType() {
 		id, ty, rhs := t.varDecl()
-		lv := t.BuildLVarNode(id, ty, false)
+		lv := t.buildLVarNode(id, ty, false)
 		if rhs == nil {
 			return lv
 		}
-		return NewAssignNode(NewVarNode(t.FindVar(id)).(AddressableNode), rhs)
+		return newAssignNode(newVarNode(t.findVar(id)).(addressableNode), rhs)
 	}
 
 	node := t.expr()
 	t.expect(";")
-	return NewExprNode(node)
+	return newExprNode(node)
 }
 
-func (t *Tokenized) expr() Node {
+func (t *tokenized) expr() node {
 	return t.assign()
 }
 
-func (t *Tokenized) assign() Node {
+func (t *tokenized) assign() node {
 	node := t.equality()
 
 	if t.consume("=") {
 		assignNode := t.assign()
-		node = NewAssignNode(node.(AddressableNode), assignNode)
+		node = newAssignNode(node.(addressableNode), assignNode)
 	}
 	return node
 }
 
-func (t *Tokenized) equality() Node {
+func (t *tokenized) equality() node {
 	node := t.relational()
 	for {
 		if t.consume("==") {
-			node = NewArithNode(ndEq, node, t.relational())
+			node = newArithNode(ndEq, node, t.relational())
 		} else if t.consume("!=") {
-			node = NewArithNode(ndNeq, node, t.relational())
+			node = newArithNode(ndNeq, node, t.relational())
 		} else {
 			return node
 		}
 	}
 }
 
-func (t *Tokenized) relational() Node {
+func (t *tokenized) relational() node {
 	node := t.addSub()
 	for {
 		if t.consume("<=") {
-			node = NewArithNode(ndLeq, node, t.addSub())
+			node = newArithNode(ndLeq, node, t.addSub())
 		} else if t.consume(">=") {
-			node = NewArithNode(ndGeq, node, t.addSub())
+			node = newArithNode(ndGeq, node, t.addSub())
 		} else if t.consume("<") {
-			node = NewArithNode(ndLt, node, t.addSub())
+			node = newArithNode(ndLt, node, t.addSub())
 		} else if t.consume(">") {
-			node = NewArithNode(ndGt, node, t.addSub())
+			node = newArithNode(ndGt, node, t.addSub())
 		} else {
 			return node
 		}
 	}
 }
 
-func (t *Tokenized) addSub() Node {
+func (t *tokenized) addSub() node {
 	node := t.mulDiv()
 	for {
 		if t.consume("+") {
-			node = NewAddNode(node, t.mulDiv())
+			node = newAddNode(node, t.mulDiv())
 		} else if t.consume("-") {
-			node = NewSubNode(node, t.mulDiv())
+			node = newSubNode(node, t.mulDiv())
 		} else {
 			return node
 		}
 	}
 }
 
-func (t *Tokenized) mulDiv() Node {
+func (t *tokenized) mulDiv() node {
 	node := t.unary()
 	for {
 		if t.consume("*") {
-			node = NewArithNode(ndMul, node, t.unary())
+			node = newArithNode(ndMul, node, t.unary())
 		} else if t.consume("/") {
-			node = NewArithNode(ndDiv, node, t.unary())
+			node = newArithNode(ndDiv, node, t.unary())
 		} else {
 			return node
 		}
 	}
 }
 
-func (t *Tokenized) unary() Node {
+func (t *tokenized) unary() node {
 	if t.consume("sizeof") {
-		return NewNumNode(t.unary().loadType().size())
+		return newNumNode(t.unary().loadType().size())
 	}
 	if t.consume("+") {
 		return t.unary()
 	}
 	if t.consume("-") {
 		node := t.unary()
-		return NewSubNode(NewNumNode(0), node)
+		return newSubNode(newNumNode(0), node)
 	}
 	if t.consume("*") {
 		node := t.unary()
-		return NewDerefNode(node)
+		return newDerefNode(node)
 	}
 	if t.consume("&") {
 		node := t.unary()
-		return NewAddrNode(node.(AddressableNode))
+		return newAddrNode(node.(addressableNode))
 	}
 	return t.postfix()
 }
 
-func (t *Tokenized) postfix() Node {
+func (t *tokenized) postfix() node {
 	node := t.primary()
 	for t.consume("[") {
-		add := NewAddNode(node, t.expr())
-		node = NewDerefNode(add)
+		add := newAddNode(node, t.expr())
+		node = newDerefNode(add)
 		t.expect("]")
 	}
 	return node
 }
 
-func (t *Tokenized) primary() Node {
+func (t *tokenized) primary() node {
 	if t.consume("(") {
 		node := t.expr()
 		t.expect(")")
@@ -405,25 +402,25 @@ func (t *Tokenized) primary() Node {
 
 	if id, isID := t.consumeID(); isID {
 		if t.consume("(") {
-			var params []Node
+			var params []node
 			if t.consume(")") {
-				return NewFnCallNode(id, params)
+				return newFnCallNode(id, params)
 			}
 			params = append(params, t.expr())
 			for t.consume(",") {
 				params = append(params, t.expr())
 			}
 			t.expect(")")
-			return NewFnCallNode(id, params)
+			return newFnCallNode(id, params)
 		}
-		return NewVarNode(t.FindVar(id))
+		return newVarNode(t.findVar(id))
 	}
 
 	if str, isStr := t.consumeStr(); isStr {
-		s := NewGVar(newGVarLabel(), newTyArr(newTyChar(), utf8.RuneCountInString(str)), str)
+		s := newGVar(newGVarLabel(), newTyArr(newTyChar(), utf8.RuneCountInString(str)), str)
 		t.res.gvars = append(t.res.gvars, s)
-		return NewVarNode(s)
+		return newVarNode(s)
 	}
 
-	return NewNumNode(t.expectNum())
+	return newNumNode(t.expectNum())
 }

@@ -1,121 +1,122 @@
 package main
 
-// Type represents type
-type Type interface {
+type ty interface {
 	size() int
 }
 
-// PtrType represents pointing type such as pointer and array
-type PtrType interface {
-	Type
-	base() Type
+type ptr interface {
+	ty
+	base() ty
 }
 
-// TODO: think of creating Number interface (TyInt and TyChar should implement this)
+// TODO: think of creating Number interface (tyInt and TyChar should implement this)
 
-// TyArr represents array type
-type TyArr struct {
-	of  Type
+type tyArr struct {
+	of  ty
 	len int
 }
 
-func newTyArr(of Type, len int) *TyArr {
-	return &TyArr{of, len}
+type tyChar struct{}
+
+type tyEmpty struct{}
+
+type tyInt struct{}
+
+type tyPtr struct {
+	to ty
 }
 
-// TyEmpty represents empty type. e.g) Block expression has this type
-type TyEmpty struct{}
-
-// TyInt represents int type
-type TyInt struct{}
-
-// TyPtr represents pointer type
-type TyPtr struct {
-	to Type
+func newTyArr(of ty, len int) *tyArr {
+	return &tyArr{of, len}
 }
 
-// TyChar represents char type
-type TyChar struct{}
-
-func newTyChar() *TyChar {
-	return &TyChar{}
+func newTyChar() *tyChar {
+	return &tyChar{}
 }
 
-func (a *TyArr) size() int {
+func newTyInt() *tyInt {
+	return &tyInt{}
+}
+
+func newTyPtr(to ty) *tyPtr {
+	return &tyPtr{to}
+}
+
+func (a *tyArr) size() int {
 	return a.len * a.of.size()
 }
 
-func (c *TyChar) size() int {
+func (c *tyChar) size() int {
 	return 1
 }
 
-func (e *TyEmpty) size() int {
+func (e *tyEmpty) size() int {
 	return 0
 }
 
-func (i *TyInt) size() int {
+func (i *tyInt) size() int {
 	return 4
 }
 
-func (p *TyPtr) size() int {
+func (p *tyPtr) size() int {
 	return 8
 }
 
-func (a *TyArr) base() Type {
+func (a *tyArr) base() ty {
 	return a.of
 }
 
-func (p *TyPtr) base() Type {
+func (p *tyPtr) base() ty {
 	return p.to
 }
 
-func (a *AddrNode) loadType() Type {
+func (a *addrNode) loadType() ty {
 	t := a.v.loadType()
-	if arrT, ok := t.(*TyArr); ok {
-		a.ty = &TyPtr{to: arrT.of}
+	if arrT, ok := t.(*tyArr); ok {
+		a.ty = &tyPtr{to: arrT.of}
 	} else {
-		a.ty = &TyPtr{to: t}
+		a.ty = &tyPtr{to: t}
 	}
 	return a.ty
 }
 
-func (a *ArithNode) loadType() Type {
+func (a *arithNode) loadType() ty {
 	a.ty = a.lhs.loadType()
 	a.rhs.loadType()
 	return a.ty
 }
 
-func (a *AssignNode) loadType() Type {
+func (a *assignNode) loadType() ty {
 	a.rhs.loadType()
 	a.ty = a.lhs.loadType()
 	return a.ty
 }
 
-func (b *BlkNode) loadType() Type {
+func (b *blkNode) loadType() ty {
 	for _, st := range b.body {
 		st.loadType()
 	}
-	return &TyEmpty{}
+	return &tyEmpty{}
 }
 
-func (d *DerefNode) loadType() Type {
+func (d *derefNode) loadType() ty {
 	switch v := d.ptr.loadType().(type) {
-	case *TyInt:
+	case *tyInt:
 		d.ty = v
-	case *TyPtr:
+	case *tyPtr:
 		d.ty = v.to
-	case *TyArr:
+	case *tyArr:
 		d.ty = v.of
 	}
 	return d.ty
 }
 
-func (e *ExprNode) loadType() Type {
+func (e *exprNode) loadType() ty {
 	e.body.loadType()
-	return &TyEmpty{}
+	return &tyEmpty{}
 }
 
-func (f *ForNode) loadType() Type {
+func (f *forNode) loadType() ty {
 	if f.init != nil {
 		f.init.loadType()
 	}
@@ -128,52 +129,52 @@ func (f *ForNode) loadType() Type {
 	if f.inc != nil {
 		f.inc.loadType()
 	}
-	return &TyEmpty{}
+	return &tyEmpty{}
 }
 
-func (f *FnCallNode) loadType() Type {
+func (f *fnCallNode) loadType() ty {
 	for _, param := range f.params {
 		param.loadType()
 	}
 	return f.ty
 }
 
-func (f *FnNode) loadType() Type {
+func (f *fnNode) loadType() ty {
 	for _, node := range f.body {
 		node.loadType()
 	}
 	return f.ty
 }
 
-func (i *IfNode) loadType() Type {
+func (i *ifNode) loadType() ty {
 	i.cond.loadType()
 	i.then.loadType()
 	if i.els != nil {
 		i.els.loadType()
 	}
-	return &TyEmpty{}
+	return &tyEmpty{}
 }
 
-func (v *VarNode) loadType() Type {
+func (v *varNode) loadType() ty {
 	return v.v.getType()
 }
 
-func (*NullNode) loadType() Type {
-	return &TyEmpty{}
+func (*nullNode) loadType() ty {
+	return &tyEmpty{}
 }
 
-func (n *NumNode) loadType() Type {
-	n.ty = &TyInt{}
+func (n *numNode) loadType() ty {
+	n.ty = &tyInt{}
 	return n.ty
 }
 
-func (r *RetNode) loadType() Type {
+func (r *retNode) loadType() ty {
 	r.ty = r.rhs.loadType()
 	return r.ty
 }
 
-func (w *WhileNode) loadType() Type {
+func (w *whileNode) loadType() ty {
 	w.cond.loadType()
 	w.then.loadType()
-	return &TyEmpty{}
+	return &tyEmpty{}
 }

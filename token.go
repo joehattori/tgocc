@@ -21,10 +21,9 @@ const (
 
 var idRegexp = regexp.MustCompile(`^[a-zA-Z_]+\w*`)
 
-// TODO: make Token an interface
+// TODO: make token an interface
 
-// Token is a type to describe token
-type Token struct {
+type token struct {
 	kind    tokenKind
 	val     int
 	content string
@@ -32,39 +31,37 @@ type Token struct {
 	len     int
 }
 
-func newNumToken(val int, l int) *Token {
-	return &Token{kind: tkNum, val: val, len: l}
+func newNumtoken(val int, l int) *token {
+	return &token{kind: tkNum, val: val, len: l}
 }
 
-func newStrToken(content string, l int) *Token {
-	return &Token{kind: tkStr, content: content, len: l}
+func newStrtoken(content string, l int) *token {
+	return &token{kind: tkStr, content: content, len: l}
 }
 
-func newToken(kind tokenKind, str string, l int) *Token {
-	return &Token{kind: kind, str: str, len: l}
+func newToken(kind tokenKind, str string, l int) *token {
+	return &token{kind: kind, str: str, len: l}
 }
 
-// Tokenized represents tokenized input generated in token.go
-type Tokenized struct {
-	toks  []*Token
-	curFn *FnNode
-	res   *Ast
+type tokenized struct {
+	toks  []*token
+	curFn *fnNode
+	res   *ast
 }
 
-func newTokenized(toks []*Token) *Tokenized {
-	return &Tokenized{toks: toks, res: &Ast{}}
+func newTokenized(toks []*token) *tokenized {
+	return &tokenized{toks: toks, res: &ast{}}
 }
 
-// Ast is an array of nodes which represents whole program input (technically not a tree, but let's call this Ast still.)
-type Ast struct {
-	fns   []*FnNode
-	gvars []*GVar
+type ast struct {
+	fns   []*fnNode
+	gvars []*gVar
 }
 
 type tokenizer struct {
 	input string
 	pos   int
-	res   Tokenized
+	res   tokenized
 }
 
 func newTokenizer() *tokenizer {
@@ -90,7 +87,7 @@ func (t *tokenizer) isAny(s string) bool {
 	return strings.ContainsRune(s, t.head())
 }
 
-func (t *tokenizer) readCharLiteral() *Token {
+func (t *tokenizer) readCharLiteral() *token {
 	if t.head() != '\'' {
 		return nil
 	}
@@ -101,10 +98,10 @@ func (t *tokenizer) readCharLiteral() *Token {
 		panic(fmt.Sprintf("Char literal is too long: %s", t.input[t.pos:]))
 	}
 	t.pos++
-	return newNumToken(c, 1)
+	return newNumtoken(c, 1)
 }
 
-func (t *tokenizer) readDigit() *Token {
+func (t *tokenizer) readDigit() *token {
 	s := t.cur()
 	r := regexp.MustCompile(`^\d+`)
 	if !r.MatchString(s) {
@@ -113,10 +110,10 @@ func (t *tokenizer) readDigit() *Token {
 	numStr := r.FindString(s)
 	num, _ := strconv.Atoi(numStr)
 	t.pos += len(numStr)
-	return newNumToken(num, len(numStr))
+	return newNumtoken(num, len(numStr))
 }
 
-func (t *tokenizer) readID() *Token {
+func (t *tokenizer) readID() *token {
 	s := t.cur()
 	if !idRegexp.MatchString(s) {
 		return nil
@@ -126,7 +123,7 @@ func (t *tokenizer) readID() *Token {
 	return newToken(tkID, s, l)
 }
 
-func (t *tokenizer) readMultiCharOp() *Token {
+func (t *tokenizer) readMultiCharOp() *token {
 	ops := []string{"==", "!=", "<=", ">="}
 	s := t.cur()
 	for _, op := range ops {
@@ -138,7 +135,7 @@ func (t *tokenizer) readMultiCharOp() *Token {
 	return nil
 }
 
-func (t *tokenizer) readReserved() *Token {
+func (t *tokenizer) readReserved() *token {
 	s := t.cur()
 	r := regexp.MustCompile(`^(if|else|while|for|return|int|char|sizeof)\W`)
 	if !r.MatchString(s) {
@@ -149,7 +146,7 @@ func (t *tokenizer) readReserved() *Token {
 	return newToken(tkReserved, s, l)
 }
 
-func (t *tokenizer) readRuneFrom(s string) *Token {
+func (t *tokenizer) readRuneFrom(s string) *token {
 	if !strings.ContainsRune(s, t.head()) {
 		return nil
 	}
@@ -158,7 +155,7 @@ func (t *tokenizer) readRuneFrom(s string) *Token {
 	return newToken(tkReserved, cur, 1)
 }
 
-func (t *tokenizer) readStrLiteral() *Token {
+func (t *tokenizer) readStrLiteral() *token {
 	if t.head() != '"' {
 		return nil
 	}
@@ -170,12 +167,12 @@ func (t *tokenizer) readStrLiteral() *Token {
 		t.pos++
 	}
 	t.pos++
-	return newStrToken(s, len(s))
+	return newStrtoken(s, len(s))
 }
 
-func (t *tokenizer) tokenizeInput(input string) *Tokenized {
+func (t *tokenizer) tokenizeInput(input string) *tokenized {
 	t.input = input
-	var toks []*Token
+	var toks []*token
 	for {
 		t.trimSpace()
 		s := t.cur()

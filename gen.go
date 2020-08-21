@@ -7,13 +7,13 @@ var paramRegs8 = [...]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
 
 var labelCount int
 
-func (a *Ast) gen() {
+func (a *ast) gen() {
 	fmt.Println(".intel_syntax noprefix")
 	a.genData()
 	a.genText()
 }
 
-func (a *Ast) genData() {
+func (a *ast) genData() {
 	fmt.Println(".data")
 	for _, g := range a.gvars {
 		fmt.Printf("%s:\n", g.name)
@@ -32,18 +32,18 @@ func (a *Ast) genData() {
 	}
 }
 
-func (a *Ast) genText() {
+func (a *ast) genText() {
 	fmt.Println(".text")
 	for _, f := range a.fns {
 		f.gen()
 	}
 }
 
-func (a *AddrNode) gen() {
+func (a *addrNode) gen() {
 	a.v.genAddr()
 }
 
-func (a *ArithNode) gen() {
+func (a *arithNode) gen() {
 	a.lhs.gen()
 	a.rhs.gen()
 
@@ -85,10 +85,10 @@ func (a *ArithNode) gen() {
 		fmt.Println("	setle al")
 		fmt.Println("	movzb rax, al")
 	case ndPtrAdd:
-		fmt.Printf("	imul rdi, %d\n", a.loadType().(PtrType).base().size())
+		fmt.Printf("	imul rdi, %d\n", a.loadType().(ptr).base().size())
 		fmt.Printf("	add rax, rdi\n")
 	case ndPtrSub:
-		fmt.Printf("	imul rdi, %d\n", a.loadType().(PtrType).base().size())
+		fmt.Printf("	imul rdi, %d\n", a.loadType().(ptr).base().size())
 		fmt.Printf("	sub rax, rdi\n")
 	default:
 		panic("Unhandled node kind")
@@ -96,32 +96,32 @@ func (a *ArithNode) gen() {
 	fmt.Println("	push rax")
 }
 
-func (a *AssignNode) gen() {
+func (a *assignNode) gen() {
 	a.lhs.genAddr()
 	a.rhs.gen()
 	store(a.loadType())
 }
 
-func (b *BlkNode) gen() {
+func (b *blkNode) gen() {
 	for _, st := range b.body {
 		st.gen()
 	}
 }
 
-func (d *DerefNode) gen() {
+func (d *derefNode) gen() {
 	d.ptr.gen()
 	ty := d.loadType()
-	if _, isArr := ty.(*TyArr); !isArr {
+	if _, isArr := ty.(*tyArr); !isArr {
 		load(ty)
 	}
 }
 
-func (e *ExprNode) gen() {
+func (e *exprNode) gen() {
 	e.body.gen()
 	fmt.Println("	add rsp, 8")
 }
 
-func (f *ForNode) gen() {
+func (f *forNode) gen() {
 	c := labelCount
 	labelCount++
 	if f.init != nil {
@@ -144,7 +144,7 @@ func (f *ForNode) gen() {
 	fmt.Printf(".L.end.%d:\n", c)
 }
 
-func (f *FnCallNode) gen() {
+func (f *fnCallNode) gen() {
 	for i, param := range f.params {
 		param.gen()
 		fmt.Printf("	pop %s\n", paramRegs8[i])
@@ -166,7 +166,7 @@ func (f *FnCallNode) gen() {
 	labelCount++
 }
 
-func (f *FnNode) gen() {
+func (f *fnNode) gen() {
 	name := f.name
 	fmt.Printf(".globl %s\n", name)
 	fmt.Printf("%s:\n", name)
@@ -192,7 +192,7 @@ func (f *FnNode) gen() {
 	fmt.Println("	ret")
 }
 
-func (i *IfNode) gen() {
+func (i *ifNode) gen() {
 	c := labelCount
 	labelCount++
 	if i.els != nil {
@@ -216,27 +216,27 @@ func (i *IfNode) gen() {
 	fmt.Println("	push rax")
 }
 
-func (v *VarNode) gen() {
+func (v *varNode) gen() {
 	v.genAddr()
 	ty := v.loadType()
-	if _, isArr := ty.(*TyArr); !isArr {
+	if _, isArr := ty.(*tyArr); !isArr {
 		load(ty)
 	}
 }
 
-func (*NullNode) gen() {}
+func (*nullNode) gen() {}
 
-func (n *NumNode) gen() {
+func (n *numNode) gen() {
 	fmt.Printf("	push %d\n", n.val)
 }
 
-func (r *RetNode) gen() {
+func (r *retNode) gen() {
 	r.rhs.gen()
 	fmt.Println("	pop rax")
 	fmt.Printf("	jmp .L.return.%s\n", r.fnName)
 }
 
-func (w *WhileNode) gen() {
+func (w *whileNode) gen() {
 	c := labelCount
 	labelCount++
 	fmt.Printf(".L.begin.%d:\n", c)
@@ -249,21 +249,21 @@ func (w *WhileNode) gen() {
 	fmt.Printf(".L.end.%d:\n", c)
 }
 
-func (d *DerefNode) genAddr() {
+func (d *derefNode) genAddr() {
 	d.ptr.gen()
 }
 
-func (v *VarNode) genAddr() {
+func (v *varNode) genAddr() {
 	switch vr := v.v.(type) {
-	case *GVar:
+	case *gVar:
 		fmt.Printf("	push offset %s\n", vr.name)
-	case *LVar:
+	case *lVar:
 		fmt.Printf("	lea rax, [rbp-%d]\n", vr.offset)
 		fmt.Println("	push rax")
 	}
 }
 
-func load(ty Type) {
+func load(ty ty) {
 	fmt.Println("	pop rax")
 	switch ty.size() {
 	case 1:
@@ -276,7 +276,7 @@ func load(ty Type) {
 	fmt.Println("	push rax")
 }
 
-func store(ty Type) {
+func store(ty ty) {
 	fmt.Println("	pop rdi")
 	fmt.Println("	pop rax")
 	var r string

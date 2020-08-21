@@ -1,39 +1,34 @@
 package main
 
-// Var represents a variable
-type Var interface {
-	getType() Type
+type variable interface {
+	getType() ty
 }
 
-// LVar represents a local variable
-type LVar struct {
+type lVar struct {
 	name   string
-	ty     Type
+	ty     ty
 	offset int
 }
 
-// GVar represents a global variable
-type GVar struct {
+type gVar struct {
 	name string
-	ty   Type
+	ty   ty
 	// TODO: elaborate
 	content interface{}
 }
 
-func (v *LVar) getType() Type {
+func (v *lVar) getType() ty {
 	return v.ty
 }
 
-func (v *GVar) getType() Type {
+func (v *gVar) getType() ty {
 	return v.ty
 }
 
-// NewLVar creates a new instance of LVar
-func NewLVar(name string, ty Type, offset int) *LVar {
-	return &LVar{name, ty, offset}
+func newLVar(name string, ty ty, offset int) *lVar {
+	return &lVar{name, ty, offset}
 }
 
-// NewGVar creates a new instance of GVar
-func NewGVar(name string, ty Type, content interface{}) *GVar {
-	return &GVar{name, ty, content}
+func newGVar(name string, ty ty, content interface{}) *gVar {
+	return &gVar{name, ty, content}
 }
