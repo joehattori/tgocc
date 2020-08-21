@@ -12,7 +12,7 @@ func (t *Tokenized) popToks() {
 
 func (t *Tokenized) consume(str string) bool {
 	cur := t.toks[0]
-	if cur.kind != tkReserved || cur.length != len(str) || !strings.HasPrefix(cur.str, str) {
+	if cur.kind != tkReserved || cur.len != len(str) || !strings.HasPrefix(cur.str, str) {
 		return false
 	}
 	t.popToks()
@@ -41,7 +41,7 @@ func (t *Tokenized) consumeSizeOf() bool {
 
 func (t *Tokenized) expect(str string) {
 	cur := t.toks[0]
-	if cur.kind != tkReserved || cur.length != len(str) || !strings.HasPrefix(cur.str, str) {
+	if cur.kind != tkReserved || cur.len != len(str) || !strings.HasPrefix(cur.str, str) {
 		panic(fmt.Sprintf("%s was expected but got %s", str, cur.str))
 	}
 	t.popToks()
