@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"unicode/utf8"
 )
@@ -41,7 +42,7 @@ func (t *tokenized) consumeStr() (string, bool) {
 func (t *tokenized) expect(str string) {
 	cur := t.toks[0]
 	if cur.kind != tkReserved || cur.len != len(str) || !strings.HasPrefix(cur.str, str) {
-		panic(fmt.Sprintf("%s was expected but got %s", str, cur.str))
+		log.Fatalf("%s was expected but got %s", str, cur.str)
 	}
 	t.popToks()
 }
@@ -50,7 +51,7 @@ func (t *tokenized) expectID() string {
 	cur := t.toks[0]
 	id := idRegexp.FindString(cur.str)
 	if cur.kind != tkID || id == "" {
-		panic(fmt.Sprintf("ID was expected but got %s", cur.str))
+		log.Fatalf("ID was expected but got %s", cur.str)
 	}
 	t.popToks()
 	return id
@@ -59,7 +60,7 @@ func (t *tokenized) expectID() string {
 func (t *tokenized) expectNum() int {
 	cur := t.toks[0]
 	if cur.kind != tkNum {
-		panic(fmt.Sprintf("Number was expected but got %s", cur.str))
+		log.Fatalf("Number was expected but got %s", cur.str)
 	}
 	t.popToks()
 	return cur.val
@@ -73,7 +74,7 @@ var tyMap = map[string]ty{
 func (t *tokenized) expectType() ty {
 	cur := t.toks[0]
 	if cur.kind != tkReserved {
-		panic(fmt.Sprintf("tkReserved was expected but got %d %s", cur.kind, cur.str))
+		log.Fatalf("tkReserved was expected but got %d %s", cur.kind, cur.str)
 	}
 	for key, val := range tyMap {
 		if strings.HasPrefix(cur.str, key) {
@@ -81,7 +82,8 @@ func (t *tokenized) expectType() ty {
 			return val
 		}
 	}
-	panic(fmt.Sprintf("Unexpected type %s", cur.str))
+	log.Fatalf("Unexpected type %s", cur.str)
+	return nil
 }
 
 func (t *tokenized) peekType() bool {

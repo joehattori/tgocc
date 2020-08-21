@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -95,7 +95,7 @@ func (t *tokenizer) readCharLiteral() *token {
 	c := int(t.head())
 	t.pos++
 	if t.head() != '\'' {
-		panic(fmt.Sprintf("Char literal is too long: %s", t.input[t.pos:]))
+		log.Fatalf("Char literal is too long: %s", t.input[t.pos:])
 	}
 	t.pos++
 	return newNumtoken(c, 1)
@@ -215,7 +215,7 @@ func (t *tokenizer) tokenizeInput(input string) *tokenized {
 			continue
 		}
 
-		panic(fmt.Sprintf("unexpected input %s\n", s))
+		log.Fatalf("unexpected input %s\n", s)
 	}
 	toks = append(toks, newToken(tkEOF, t.cur(), 0))
 	return newTokenized(toks)

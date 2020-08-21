@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"log"
+)
 
 var paramRegs4 = [...]string{"edi", "esi", "edx", "ecx", "r8d", "r9d"}
 var paramRegs8 = [...]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
@@ -26,7 +29,7 @@ func (a *ast) genData() {
 			case int:
 				// TODO
 			default:
-				panic(fmt.Sprintf("unexpected type on gVar content: %T", c))
+				log.Fatalf("unexpected type on gVar content: %T", c)
 			}
 		}
 	}
@@ -91,7 +94,7 @@ func (a *arithNode) gen() {
 		fmt.Printf("	imul rdi, %d\n", a.loadType().(ptr).base().size())
 		fmt.Printf("	sub rax, rdi\n")
 	default:
-		panic("Unhandled node kind")
+		log.Fatal("Unhandled node kind")
 	}
 	fmt.Println("	push rax")
 }

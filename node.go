@@ -1,6 +1,8 @@
 package main
 
-import "fmt"
+import (
+	"log"
+)
 
 type (
 	// ast node
@@ -131,7 +133,8 @@ func newAddNode(lhs node, rhs node) node {
 			return &arithNode{op: ndPtrAdd, lhs: lhs, rhs: rhs}
 		}
 	}
-	panic(fmt.Sprintf("Unexpected type: lhs: %T %T, rhs: %T %T", lhs, l, rhs, r))
+	log.Fatalf("Unexpected type: lhs: %T %T, rhs: %T %T", lhs, l, rhs, r)
+	return nil
 }
 
 func newAddrNode(v addressableNode) node {
@@ -196,7 +199,8 @@ func newSubNode(lhs node, rhs node) node {
 			return &arithNode{op: ndPtrSub, lhs: lhs, rhs: rhs}
 		}
 	}
-	panic(fmt.Sprintf("Unexpected type: lhs: %T, rhs: %T", l, r))
+	log.Fatalf("Unexpected type: lhs: %T, rhs: %T", l, r)
+	return nil
 }
 
 func (t *tokenized) searchVar(varName string) variable {
@@ -216,14 +220,14 @@ func (t *tokenized) searchVar(varName string) variable {
 func (t *tokenized) findVar(s string) variable {
 	v := t.searchVar(s)
 	if v == nil {
-		panic(fmt.Sprintf("undefined variable %s", s))
+		log.Fatalf("undefined variable %s", s)
 	}
 	return v
 }
 
 func (t *tokenized) buildLVarNode(s string, ty ty, isArg bool) node {
 	if _, islVar := t.searchVar(s).(*lVar); islVar {
-		panic(fmt.Sprintf("variable %s is already defined", s))
+		log.Fatalf("variable %s is already defined", s)
 	}
 	f := t.curFn
 	offset := f.stackSize + ty.size()
