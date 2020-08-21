@@ -2,16 +2,22 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
 	"os"
 )
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintf(os.Stderr, "usage: ./tccgo <program>")
+		fmt.Fprintf(os.Stderr, "usage: ./tccgo <filename>")
 		return
 	}
 	t := newTokenizer()
-	toks := t.tokenizeInput(os.Args[1])
+	input, err := ioutil.ReadFile(os.Args[1])
+	if err != nil {
+		log.Fatal(err)
+	}
+	toks := t.tokenizeInput(string(input))
 	toks.parse()
 	toks.res.gen()
 }

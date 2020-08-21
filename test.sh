@@ -6,7 +6,7 @@ assert() {
     input="$1"
     expected="$2"
 
-    ./tgocc "$input" > tmp.s
+    ./tgocc <(echo "$input") > tmp.s
     cc -static -o tmp tmp.s tmp2.o
     ./tmp
     actual="$?"
