@@ -16,20 +16,28 @@ const (
 	tkNum
 	tkID
 	tkEOF
+	tkStr
 )
 
-const idRegexp string = `^[a-zA-Z_]+\w*`
+var idRegexp = regexp.MustCompile(`^[a-zA-Z_]+\w*`)
+
+// TODO: make Token an interface
 
 // Token is a type to describe token
 type Token struct {
-	kind tokenKind
-	val  int
-	str  string
-	len  int
+	kind    tokenKind
+	val     int
+	content string
+	str     string
+	len     int
 }
 
 func newNumToken(val int, l int) *Token {
 	return &Token{kind: tkNum, val: val, len: l}
+}
+
+func newStrToken(content string, l int) *Token {
+	return &Token{kind: tkStr, content: content, len: l}
 }
 
 func newToken(kind tokenKind, str string, l int) *Token {
@@ -93,7 +101,7 @@ func (t *tokenizer) readCharLiteral() *Token {
 		panic(fmt.Sprintf("Char literal is too long: %s", t.input[t.pos:]))
 	}
 	t.pos++
-	return &Token{kind: tkNum, val: c, len: 1}
+	return newNumToken(c, 1)
 }
 
 func (t *tokenizer) readDigit() *Token {
@@ -110,11 +118,10 @@ func (t *tokenizer) readDigit() *Token {
 
 func (t *tokenizer) readID() *Token {
 	s := t.cur()
-	r := regexp.MustCompile(idRegexp)
-	if !r.MatchString(s) {
+	if !idRegexp.MatchString(s) {
 		return nil
 	}
-	l := len(r.FindString(s))
+	l := len(idRegexp.FindString(s))
 	t.pos += l
 	return newToken(tkID, s, l)
 }
@@ -151,6 +158,21 @@ func (t *tokenizer) readRuneFrom(s string) *Token {
 	return newToken(tkReserved, cur, 1)
 }
 
+func (t *tokenizer) readStrLiteral() *Token {
+	if t.head() != '"' {
+		return nil
+	}
+	t.pos++
+	var s string
+	// TODO: escape charator
+	for t.head() != '"' {
+		s += string(t.head())
+		t.pos++
+	}
+	t.pos++
+	return newStrToken(s, len(s))
+}
+
 func (t *tokenizer) tokenizeInput(input string) *Tokenized {
 	t.input = input
 	var toks []*Token
@@ -159,6 +181,11 @@ func (t *tokenizer) tokenizeInput(input string) *Tokenized {
 		s := t.cur()
 		if s == "" {
 			break
+		}
+
+		if tok := t.readStrLiteral(); tok != nil {
+			toks = append(toks, tok)
+			continue
 		}
 
 		if tok := t.readCharLiteral(); tok != nil {

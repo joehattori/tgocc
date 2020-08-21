@@ -19,6 +19,10 @@ type TyArr struct {
 	len int
 }
 
+func newTyArr(of Type, len int) *TyArr {
+	return &TyArr{of, len}
+}
+
 // TyEmpty represents empty type. e.g) Block expression has this type
 type TyEmpty struct{}
 
@@ -32,6 +36,10 @@ type TyPtr struct {
 
 // TyChar represents char type
 type TyChar struct{}
+
+func newTyChar() *TyChar {
+	return &TyChar{}
+}
 
 func (a *TyArr) size() int {
 	return a.len * a.of.size()

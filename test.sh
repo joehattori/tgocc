@@ -132,4 +132,8 @@ assert "int main() { char c='3'; return c; }" 51
 assert "char c; int main() { int c=3; return sizeof(c); }" 4
 assert "int main() { char x[3]; x[0] = -1; x[1] = 2; int y=4; return x[0]+y;}" 3
 
+assert "int main() { char *a = \"test\"; return a[0]; }" 116
+assert "int main() { char a[4]; a= \"test\"; return sizeof(a); }" 4
+assert "int main() { char *a = \"test\"; a[1] = '0'; return a[1]; }" 48
+
 echo OK

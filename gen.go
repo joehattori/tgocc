@@ -17,7 +17,18 @@ func (a *Ast) genData() {
 	fmt.Println(".data")
 	for _, g := range a.gvars {
 		fmt.Printf("%s:\n", g.name)
-		fmt.Printf("	.zero %d\n", g.ty.size())
+		if c := g.content; c == nil {
+			fmt.Printf("	.zero %d\n", g.ty.size())
+		} else {
+			switch c.(type) {
+			case string:
+				fmt.Printf("	.string \"%s\"\n", c)
+			case int:
+				// TODO
+			default:
+				panic(fmt.Sprintf("unexpected type on gVar content: %T", c))
+			}
+		}
 	}
 }
 
@@ -245,8 +256,7 @@ func (d *DerefNode) genAddr() {
 func (v *VarNode) genAddr() {
 	switch vr := v.v.(type) {
 	case *GVar:
-		fmt.Printf("	lea rax, %s[rip]\n", vr.name)
-		fmt.Println("	push rax")
+		fmt.Printf("	push offset %s\n", vr.name)
 	case *LVar:
 		fmt.Printf("	lea rax, [rbp-%d]\n", vr.offset)
 		fmt.Println("	push rax")

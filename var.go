@@ -16,6 +16,8 @@ type LVar struct {
 type GVar struct {
 	name string
 	ty   Type
+	// TODO: elaborate
+	content interface{}
 }
 
 func (v *LVar) getType() Type {
@@ -32,6 +34,6 @@ func NewLVar(name string, ty Type, offset int) *LVar {
 }
 
 // NewGVar creates a new instance of GVar
-func NewGVar(name string, ty Type) *GVar {
-	return &GVar{name, ty}
+func NewGVar(name string, ty Type, content interface{}) *GVar {
+	return &GVar{name, ty, content}
 }

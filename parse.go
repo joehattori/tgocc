@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
+	"unicode/utf8"
 )
 
 func (t *Tokenized) popToks() {
@@ -21,22 +21,21 @@ func (t *Tokenized) consume(str string) bool {
 
 func (t *Tokenized) consumeID() (string, bool) {
 	cur := t.toks[0]
-	reg := regexp.MustCompile(idRegexp)
-	varName := reg.FindString(cur.str)
-	if cur.kind != tkID || varName == "" {
+	id := idRegexp.FindString(cur.str)
+	if cur.kind != tkID || id == "" {
 		return "", false
 	}
 	t.popToks()
-	return varName, true
+	return id, true
 }
 
-func (t *Tokenized) consumeSizeOf() bool {
+func (t *Tokenized) consumeStr() (string, bool) {
 	cur := t.toks[0]
-	if cur.kind == tkReserved && strings.HasPrefix(cur.str, "sizeof") {
-		t.popToks()
-		return true
+	if cur.kind != tkStr {
+		return "", false
 	}
-	return false
+	t.popToks()
+	return cur.content, true
 }
 
 func (t *Tokenized) expect(str string) {
@@ -49,13 +48,12 @@ func (t *Tokenized) expect(str string) {
 
 func (t *Tokenized) expectID() string {
 	cur := t.toks[0]
-	reg := regexp.MustCompile(idRegexp)
-	varName := reg.FindString(cur.str)
-	if cur.kind != tkID || varName == "" {
+	id := idRegexp.FindString(cur.str)
+	if cur.kind != tkID || id == "" {
 		panic(fmt.Sprintf("ID was expected but got %s", cur.str))
 	}
 	t.popToks()
-	return varName
+	return id
 }
 
 func (t *Tokenized) expectNum() int {
@@ -102,6 +100,14 @@ func (t *Tokenized) peekType() bool {
 	return false
 }
 
+var gVarLabelCount int
+
+func newGVarLabel() string {
+	ret := fmt.Sprintf(".L.data.%d", gVarLabelCount)
+	gVarLabelCount++
+	return ret
+}
+
 // program    = (function | globalVar)*
 // function   = Type ident ("(" (ident ("," ident)* )? ")") "{" stmt* "}"
 // globalVar  = varDecl
@@ -112,7 +118,7 @@ func (t *Tokenized) peekType() bool {
 //				| "while" "(" expr ")" stmt
 //				| "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //				| varDecl
-// varDecl    = Type ident ("[" expr "]")* ";"
+// varDecl    = Type ident ("[" expr "]")* "=" expr ;"
 // expr       = assign
 // assign     = equality ("=" assign) ?
 // equality   = relational ("==" relational | "!=" relational)*
@@ -121,7 +127,7 @@ func (t *Tokenized) peekType() bool {
 // mul        = unary ("*" unary | "/" unary)*
 // unary      = "sizeof" unary | ("+" | "-" | "*" | "&")? unary | postfix
 // postfix    = primary ("[" expr "]")*
-// primary    = num | ident ("(" (expr ("," expr)* )? ")")? | "(" expr ")"
+// primary    = num | str | ident ("(" (expr ("," expr)* )? ")")? | "(" expr ")"
 
 func (t *Tokenized) isFunction() bool {
 	orig := t.toks
@@ -140,7 +146,7 @@ func (t *Tokenized) readVarSuffix(ty Type) Type {
 		l := t.expectNum()
 		t.expect("]")
 		ty = t.readVarSuffix(ty)
-		return &TyArr{of: ty, len: l}
+		return newTyArr(ty, l)
 	}
 	return ty
 }
@@ -168,7 +174,7 @@ func (t *Tokenized) parse() {
 			ast.fns = append(ast.fns, t.function())
 		} else {
 			id, ty, _ := t.varDecl()
-			g := NewGVar(id, ty)
+			g := NewGVar(id, ty, nil)
 			ast.gvars = append(ast.gvars, g)
 		}
 	}
@@ -359,7 +365,7 @@ func (t *Tokenized) mulDiv() Node {
 }
 
 func (t *Tokenized) unary() Node {
-	if t.consumeSizeOf() {
+	if t.consume("sizeof") {
 		return NewNumNode(t.unary().loadType().size())
 	}
 	if t.consume("+") {
@@ -411,6 +417,12 @@ func (t *Tokenized) primary() Node {
 			return NewFnCallNode(id, params)
 		}
 		return NewVarNode(t.FindVar(id))
+	}
+
+	if str, isStr := t.consumeStr(); isStr {
+		s := NewGVar(newGVarLabel(), newTyArr(newTyChar(), utf8.RuneCountInString(str)), str)
+		t.res.gvars = append(t.res.gvars, s)
+		return NewVarNode(s)
 	}
 
 	return NewNumNode(t.expectNum())
