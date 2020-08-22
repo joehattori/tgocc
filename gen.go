@@ -148,8 +148,10 @@ func (f *forNode) gen() {
 }
 
 func (f *fnCallNode) gen() {
-	for i, param := range f.params {
+	for _, param := range f.params {
 		param.gen()
+	}
+	for i := len(f.params) - 1; i >= 0; i-- {
 		fmt.Printf("	pop %s\n", paramRegs8[i])
 	}
 	// align rsp to 16 byte boundary
