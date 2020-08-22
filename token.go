@@ -176,11 +176,37 @@ func (t *tokenizer) readStrLiteral() token {
 	return newStrTok(s, len(s))
 }
 
-func (t *tokenizer) tokenizeInput(input string) *tokenized {
+func (t *tokenizer) isComment() bool {
+	if strings.HasPrefix(t.cur(), "//") {
+		t.pos += 2
+		for t.head() != '\n' {
+			t.pos++
+		}
+		t.pos++
+		return true
+	}
+	if strings.HasPrefix(t.cur(), "/*") {
+		t.pos += 2
+		for !strings.HasPrefix(t.cur(), "*/") {
+			if t.cur() == "" {
+				log.Fatalf("comment unclosed: %s", t.input)
+			}
+			t.pos++
+		}
+		t.pos += 2
+		return true
+	}
+	return false
+}
+
+func (t *tokenizer) tokenize(input string) *tokenized {
 	t.input = input
 	var toks []token
 	for {
 		t.trimSpace()
+		if t.isComment() {
+			continue
+		}
 		s := t.cur()
 		if s == "" {
 			break

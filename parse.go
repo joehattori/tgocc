@@ -177,6 +177,7 @@ func (t *tokenized) parse() {
 		if t.isFunction() {
 			ast.fns = append(ast.fns, t.function())
 		} else {
+			// TODO: gvar init
 			id, ty, _ := t.varDecl()
 			g := newGVar(id, ty, nil)
 			ast.gvars = append(ast.gvars, g)

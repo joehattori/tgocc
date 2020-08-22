@@ -136,4 +136,12 @@ assert "int main() { char *a = \"test\"; return a[0]; }" 116
 assert "int main() { char a[4]; a= \"test\"; return sizeof(a); }" 4
 assert "int main() { char *a = \"test\"; a[1] = '0'; return a[1]; }" 48
 
+assert "int main() { //this shouldn't be read.
+return 0; }" 0
+assert "int main() { int t =/*this shouldn't be read.*/3; return t; }" 3
+assert "int main() { int /*this shouldn't be read.*/
+// another line comment
+a = 2;
+return a; }" 2
+
 echo OK
