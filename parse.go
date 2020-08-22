@@ -408,8 +408,7 @@ func (t *tokenized) stmtExpr() node {
 		body = append(body, t.stmt())
 	}
 	t.expect(")")
-	last := body[len(body)-1]
-	if ex, isExpr := last.(*exprNode); !isExpr {
+	if ex, isExpr := body[len(body)-1].(*exprNode); !isExpr {
 		log.Fatal("statement expression returning void is not supported")
 	} else {
 		body[len(body)-1] = ex.body
