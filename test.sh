@@ -144,4 +144,9 @@ assert "int main() { int /*this shouldn't be read.*/
 a = 2;
 return a; }" 2
 
+assert "int main() { int a=({3;}); return a; }" 3
+assert "int main() { int a=({1;2;3;}); return a; }" 3
+assert "int main() { int a=({1;return 2;3;}); return a+100; }" 2
+assert "int main() { return ({int x=2; x;}); }" 2
+
 echo OK

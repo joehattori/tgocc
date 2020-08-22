@@ -130,10 +130,6 @@ func (i *ifNode) loadType() ty {
 	return newTyEmpty()
 }
 
-func (v *varNode) loadType() ty {
-	return v.v.getType()
-}
-
 func (*nullNode) loadType() ty {
 	return newTyEmpty()
 }
@@ -150,6 +146,17 @@ func (r *retNode) loadType() ty {
 		r.ty = r.rhs.loadType()
 	}
 	return r.ty
+}
+
+func (s *stmtExprNode) loadType() ty {
+	if s.ty == nil {
+		s.ty = s.body[len(s.body)-1].loadType()
+	}
+	return s.ty
+}
+
+func (v *varNode) loadType() ty {
+	return v.v.getType()
 }
 
 func (w *whileNode) loadType() ty {

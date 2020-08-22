@@ -219,14 +219,6 @@ func (i *ifNode) gen() {
 	fmt.Println("	push rax")
 }
 
-func (v *varNode) gen() {
-	v.genAddr()
-	ty := v.loadType()
-	if _, isArr := ty.(*tyArr); !isArr {
-		load(ty)
-	}
-}
-
 func (*nullNode) gen() {}
 
 func (n *numNode) gen() {
@@ -237,6 +229,20 @@ func (r *retNode) gen() {
 	r.rhs.gen()
 	fmt.Println("	pop rax")
 	fmt.Printf("	jmp .L.return.%s\n", r.fnName)
+}
+
+func (s *stmtExprNode) gen() {
+	for _, st := range s.body {
+		st.gen()
+	}
+}
+
+func (v *varNode) gen() {
+	v.genAddr()
+	ty := v.loadType()
+	if _, isArr := ty.(*tyArr); !isArr {
+		load(ty)
+	}
 }
 
 func (w *whileNode) gen() {

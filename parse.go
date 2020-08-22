@@ -121,6 +121,7 @@ func newGVarLabel() string {
 //				| varDecl
 // varDecl    = ty ident ("[" expr "]")* "=" expr ;"
 // expr       = assign
+// stmtExpr   = "(" "{" stmt+ "}" ")"
 // assign     = equality ("=" assign) ?
 // equality   = relational ("==" relational | "!=" relational)*
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
@@ -128,7 +129,7 @@ func newGVarLabel() string {
 // mul        = unary ("*" unary | "/" unary)*
 // unary      = "sizeof" unary | ("+" | "-" | "*" | "&")? unary | postfix
 // postfix    = primary ("[" expr "]")*
-// primary    = num | str | ident ("(" (expr ("," expr)* )? ")")? | "(" expr ")"
+// primary    = num | str | ident ("(" (expr ("," expr)* )? ")")? | "(" expr ")" | stmtExpr
 
 func (t *tokenized) isFunction() bool {
 	orig := t.toks
@@ -220,12 +221,10 @@ func (t *tokenized) stmt() node {
 	// handle block
 	if t.consume("{") {
 		var blkStmts []node
-		for {
-			if t.consume("}") {
-				return newBlkNode(blkStmts)
-			}
+		for !t.consume("}") {
 			blkStmts = append(blkStmts, t.stmt())
 		}
+		return newBlkNode(blkStmts)
 	}
 
 	// handle return
@@ -401,8 +400,28 @@ func (t *tokenized) postfix() node {
 	return node
 }
 
+func (t *tokenized) stmtExpr() node {
+	// "(" and "{" is already read.
+	body := make([]node, 0)
+	body = append(body, t.stmt())
+	for !t.consume("}") {
+		body = append(body, t.stmt())
+	}
+	t.expect(")")
+	last := body[len(body)-1]
+	if ex, isExpr := last.(*exprNode); !isExpr {
+		log.Fatal("statement expression returning void is not supported")
+	} else {
+		body[len(body)-1] = ex.body
+	}
+	return newStmtExprNode(body)
+}
+
 func (t *tokenized) primary() node {
 	if t.consume("(") {
+		if t.consume("{") {
+			return t.stmtExpr()
+		}
 		node := t.expr()
 		t.expect(")")
 		return node

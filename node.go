@@ -67,10 +67,6 @@ type (
 		ty        ty
 	}
 
-	varNode struct {
-		v variable
-	}
-
 	ifNode struct {
 		cond node
 		then node
@@ -88,6 +84,15 @@ type (
 		rhs    node
 		fnName string
 		ty     ty
+	}
+
+	stmtExprNode struct {
+		body []node
+		ty   ty
+	}
+
+	varNode struct {
+		v variable
 	}
 
 	whileNode struct {
@@ -203,6 +208,10 @@ func newSubNode(lhs node, rhs node) node {
 
 func newRetNode(rhs node, fnName string) node {
 	return &retNode{rhs: rhs, fnName: fnName}
+}
+
+func newStmtExprNode(body []node) node {
+	return &stmtExprNode{body: body}
 }
 
 func newWhileNode(cond node, then node) node {
