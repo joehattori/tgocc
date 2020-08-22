@@ -206,7 +206,7 @@ func (i *ifNode) gen() {
 		fmt.Println("	cmp rax, 0")
 		fmt.Printf("	je .L.else.%d\n", c)
 		i.then.gen()
-		fmt.Printf("	je .L.end.%d\n", c)
+		fmt.Printf("	jmp .L.end.%d\n", c)
 		fmt.Printf(".L.else.%d:\n", c)
 		i.els.gen()
 		fmt.Printf(".L.end.%d:\n", c)
