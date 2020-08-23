@@ -179,8 +179,12 @@ func (t *tokenizer) readStrLiteral() token {
 	}
 	t.pos++
 	var s string
-	// TODO: escape charator
+	// TODO: escape charator for others. e.g) \t
 	for t.head() != '"' {
+		if t.head() == '\\' {
+			s += string(t.head())
+			t.pos++
+		}
 		s += string(t.head())
 		t.pos++
 	}
