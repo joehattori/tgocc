@@ -218,7 +218,6 @@ func (i *ifNode) gen() {
 		i.then.gen()
 		fmt.Printf(".L.end.%d:\n", c)
 	}
-	fmt.Println("	push rax")
 }
 
 func (*nullNode) gen() {}

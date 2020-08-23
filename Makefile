@@ -8,8 +8,7 @@ clean:
 
 test: tgocc
 	./tgocc test.c > tmp.s
-	cc -xc -c -o tmp2.o example/predefined_functions.c
-	cc -static -o tmp tmp.s tmp2.o
+	cc -static -o tmp tmp.s
 	./tmp
 
 test_old: tgocc
