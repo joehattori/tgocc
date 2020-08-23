@@ -1,3 +1,7 @@
+// test written in C code.
+/* Compile this code,
+ * and see if it passes! */
+
 int test(int expected, int actual, char *input) {
     if (actual == expected) {
         printf("%s => %d\n", input, actual);
@@ -11,6 +15,16 @@ int ret2() {
     return 2;
     return 1;
 }
+
+int add2(int x, int y) { return x+y; }
+int sub2(int x, int y) { return x-y; }
+int add6(int a, int b, int c, int d, int e, int f) { return a+b+c+d+e+f; }
+int fib(int x) { if (x<=1) return 1; return fib(x-1) + fib(x-2); }
+int addx(int *x, int y) { return *x+y; }
+int sub_char(char a, char b, char c) { return a-b-c; }
+
+int g1;
+int g2[4];
 
 int main() {
     test(0, 0, "0");
@@ -40,6 +54,107 @@ int main() {
     test(3, ({ int x; x=3; x; }), "int x; x=3; x;");
     test(8, ({ int a; int b; a=3; b=5; a+b; }), "int a; int b; a=3; b=5; a+b;");
     test(6, ({ int f_oo2=1; int bar=2; f_oo2=4; f_oo2+bar; }), "int f_oo2=1; int bar=2; f_oo2=4; f_oo2+bar;");
+
+    test(3, ({ int x=2; if (1) x=3; x; }), "int x=2; if (1) x=3; x;");
+    test(3, ({ int x=0; if (2-2) x=2; else x=3; x; }), "int x=0; if (0) x=2; else x=3; x;");
+    test(4, ({ int x=1; if (1==3) x=5; else if (1) x=4; x; }), "int x=1; if (1==3) x=5; else if (1) x=4; x;");
+    test(3, ({ int x=({ int x=0; if (0) x=2; else x=3; x; }); x; }), "int x=({ int x=0; if (0) x=2; else x=3; x; }); x;");
+    test(4, ({ int a=2; int x; if (a==3) x=5; else if (a==2) x=4; else x=3; x; }),
+        "int a=2; int x; if (a==3) x=5; else if (a==2) x=4; else x=3; x;");
+    test(3, ({ int x=5; if (0) x=2; else if (1-1) x=1; else x=3; x; }), "int x=5; if (0) x=2; else if (1-1) x=1; else x=3; x;");
+
+    test(0, ({ int t = 100; while (t) t = t - 1; t; }), "int t = 100; while (t) t = t - 1; t;");
+    test(10, ({ int t = 0; while (t != 10) t = t + 1; t; }), "int t = 0; while (t != 10) t = t + 1; return t;");
+
+    test(10, ({ int t=100; for(t=0; t<10; t=t+1) 1; t; }), "int t=100; for(t=0; t<10; t=t+1) 1; t;");
+    test(80, ({ int t=100; int i; for(i=0; i<10; i=i+1) {t=t-2;} t; }), "int t=100; int i; for(i=0; i<10; i=i+1) t=t-2; t;");
+    test(3, ({ int a=0; int i; for(i=0; i<10; i=i+1) if(i==3) a=i; a; }),
+        "int a=0; int i; for(i=0; i<10; i=i+1) if(i==3) a=i; a;");
+    test(15, ({ int i=0; int v=0; for (; i<10; i=i+2) v=v+3; v; }),
+        "int i=0; int v=0; for(; i<10; i=i+2) v=v+3; v;");
+    test(55, ({ int i=0; int j=0; for (i=0; i<=10; i=i+1) j=i+j; j; }), "int i=0; int j=0; for (i=0; i<=10; i=i+1) j=i+j; j;");
+
+    test(8, add2(3, 5), "add2(3, 5)");
+    test(2, sub2(5, 3), "sub2(5, 3)");
+    test(21, add6(1,2,3,4,5,6), "add6(1,2,3,4,5,6)");
+    test(55, fib(9), "fib(9)");
+
+    test(3, ({ int x=3; *&x; }), "int x=3; *&x;");
+    test(3, ({ int x=3; int *y=&x; int **z=&y; **z; }), "int x=3; int *y=&x; int **z=&y; **z;");
+    test(2, ({ int x=3; (&x+2)-&x; }), "int x=3; (&x+2)-&x;");
+
+    test(5, ({ int x=3; int *y=&x; *y=5; x; }), "int x=3; int *y=&x; *y=5; x;");
+    test(8, ({ int x=3; int y=5; addx(&x, y); }), "int x=3; int y=5; addx(&x, y);");
+
+    test(3, ({ int x[2]; int *y=&x; *y=3; *x; }), "int x[2]; int *y=&x; *y=3; *x;");
+
+    test(3, ({ int x[3]; *x=3; *(x+1)=4; *(x+2)=5; *x; }), "int x[3]; *x=3; *(x+1)=4; *(x+2)=5; *x;");
+    test(4, ({ int x[3]; *x=3; *(x+1)=4; *(x+2)=5; *(x+1); }), "int x[3]; *x=3; *(x+1)=4; *(x+2)=5; *(x+1);");
+    test(5, ({ int x[3]; *x=3; *(x+1)=4; *(x+2)=5; *(x+2); }), "int x[3]; *x=3; *(x+1)=4; *(x+2)=5; *(x+2);");
+
+    test(0, ({ int x[2][3]; int *y=x; *y=0; **x; }), "int x[2][3]; int *y=x; *y=0; **x;");
+    test(1, ({ int x[2][3]; int *y=x; *(y+1)=1; *(*x+1); }), "int x[2][3]; int *y=x; *(y+1)=1; *(*x+1);");
+    test(2, ({ int x[2][3]; int *y=x; *(y+2)=2; *(*x+2); }), "int x[2][3]; int *y=x; *(y+2)=2; *(*x+2);");
+    test(3, ({ int x[2][3]; int *y=x; *(y+3)=3; **(x+1); }), "int x[2][3]; int *y=x; *(y+3)=3; **(x+1);");
+    test(4, ({ int x[2][3]; int *y=x; *(y+4)=4; *(*(x+1)+1); }), "int x[2][3]; int *y=x; *(y+4)=4; *(*(x+1)+1);");
+    test(5, ({ int x[2][3]; int *y=x; *(y+5)=5; *(*(x+1)+2); }), "int x[2][3]; int *y=x; *(y+5)=5; *(*(x+1)+2);");
+    test(6, ({ int x[2][3]; int *y=x; *(y+6)=6; **(x+2); }), "int x[2][3]; int *y=x; *(y+6)=6; **(x+2);");
+
+    test(3, ({ int x[3]; *x=3; x[1]=4; x[2]=5; *x; }), "int x[3]; *x=3; x[1]=4; x[2]=5; *x;");
+    test(4, ({ int x[3]; *x=3; x[1]=4; x[2]=5; *(x+1); }), "int x[3]; *x=3; x[1]=4; x[2]=5; *(x+1);");
+    test(5, ({ int x[3]; *x=3; x[1]=4; x[2]=5; *(x+2); }), "int x[3]; *x=3; x[1]=4; x[2]=5; *(x+2);");
+    test(5, ({ int x[3]; *x=3; x[1]=4; x[2]=5; *(x+2); }), "int x[3]; *x=3; x[1]=4; x[2]=5; *(x+2);");
+    test(5, ({ int x[3]; *x=3; x[1]=4; 2[x]=5; *(x+2); }), "int x[3]; *x=3; x[1]=4; 2[x]=5; *(x+2);");
+
+    test(0, ({ int x[2][3]; int *y=x; y[0]=0; x[0][0]; }), "int x[2][3]; int *y=x; y[0]=0; x[0][0];");
+    test(1, ({ int x[2][3]; int *y=x; y[1]=1; x[0][1]; }), "int x[2][3]; int *y=x; y[1]=1; x[0][1];");
+    test(2, ({ int x[2][3]; int *y=x; y[2]=2; x[0][2]; }), "int x[2][3]; int *y=x; y[2]=2; x[0][2];");
+    test(3, ({ int x[2][3]; int *y=x; y[3]=3; x[1][0]; }), "int x[2][3]; int *y=x; y[3]=3; x[1][0];");
+    test(4, ({ int x[2][3]; int *y=x; y[4]=4; x[1][1]; }), "int x[2][3]; int *y=x; y[4]=4; x[1][1];");
+    test(5, ({ int x[2][3]; int *y=x; y[5]=5; x[1][2]; }), "int x[2][3]; int *y=x; y[5]=5; x[1][2];");
+    test(6, ({ int x[2][3]; int *y=x; y[6]=6; x[2][0]; }), "int x[2][3]; int *y=x; y[6]=6; x[2][0];");
+
+    test(4, ({ int x; sizeof(x); }), "int x; sizeof(x);");
+    test(4, ({ int x; sizeof x; }), "int x; sizeof x;");
+    test(8, ({ int *x; sizeof(x); }), "int *x; sizeof(x);");
+    test(16, ({ int x[4]; sizeof(x); }), "int x[4]; sizeof(x);");
+    test(48, ({ int x[3][4]; sizeof(x); }), "int x[3][4]; sizeof(x);");
+    test(16, ({ int x[3][4]; sizeof(*x); }), "int x[3][4]; sizeof(*x);");
+    test(4, ({ int x[3][4]; sizeof(**x); }), "int x[3][4]; sizeof(**x);");
+    test(5, ({ int x[3][4]; sizeof(**x) + 1; }), "int x[3][4]; sizeof(**x) + 1;");
+    test(5, ({ int x[3][4]; sizeof **x + 1; }), "int x[3][4]; sizeof **x + 1;");
+    test(4, ({ int x[3][4]; sizeof(**x + 1); }), "int x[3][4]; sizeof(**x + 1);");
+
+    test(0, g1, "g1");
+    g1=3;
+    test(3, g1, "g1");
+
+    g2[0]=0; g2[1]=1; g2[2]=2; g2[3]=3;
+    test(0, g2[0], "g2[0]");
+    test(1, g2[1], "g2[1]");
+    test(2, g2[2], "g2[2]");
+    test(3, g2[3], "g2[3]");
+
+    test(4, sizeof(g1), "sizeof(g1)");
+    test(16, sizeof(g2), "sizeof(g2)");
+
+    test(1, ({ char x=1; x; }), "char x=1; x;");
+    test(1, ({ char x=1; char y=2; x; }), "char x=1; char y=2; x;");
+    test(2, ({ char x=1; char y=2; y; }), "char x=1; char y=2; y;");
+
+    test(1, ({ char x; sizeof(x); }), "char x; sizeof(x);");
+    test(10, ({ char x[10]; sizeof(x); }), "char x[10]; sizeof(x);");
+    test(1, sub_char(7, 3, 3), "sub_char(7, 3, 3)");
+
+    test(97, "abc"[0], "\"abc\"[0]");
+    test(98, "abc"[1], "\"abc\"[1]");
+    test(99, "abc"[2], "\"abc\"[2]");
+    test(0, "abc"[3], "\"abc\"[3]");
+    test(3, sizeof("abc"), "sizeof(\"abc\")");
+
+    test(2, ({ int x=2; { int x=3; } x; }), "int x=2; { int x=3; } x;");
+    test(2, ({ int x=2; { int x=3; } int y=4; x; }), "int x=2; { int x=3; } int y=4; x;");
+    test(3, ({ int x=2; { x=3; } x; }), "int x=2; { x=3; } x;");
 
     printf("OK\n");
     return 0;

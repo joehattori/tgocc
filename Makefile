@@ -12,6 +12,7 @@ test: tgocc
 	./tmp
 
 test_old: tgocc
+	cc -xc -c -o tmp2.o example/predefined_functions.c
 	./test.sh
 
 .PHONY: clean test tgocc
