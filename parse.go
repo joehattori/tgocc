@@ -194,7 +194,7 @@ func (t *tokenized) function() *fnNode {
 	}
 	fnName := t.expectID()
 	t.curFnName = fnName
-	fn := &fnNode{name: fnName, ty: ty}
+	fn := newFnNode(fnName, ty)
 	t.spawnScope()
 	t.readFnParams(fn)
 	t.expect("{")
@@ -204,6 +204,7 @@ func (t *tokenized) function() *fnNode {
 	t.setFnLVars(fn)
 	t.rewindScope()
 	// TODO: align
+	fn.stackSize = t.curScope.curOffset
 	return fn
 }
 
@@ -235,16 +236,25 @@ func (t *tokenized) setFnLVars(fn *fnNode) {
 			fn.lVars = append(fn.lVars, v)
 		}
 	}
-	fn.stackSize = offset
+	// TODO: set offset in rewind && set proper stackSize
 }
 
 func (t *tokenized) spawnScope() {
-	cur := t.curScope
-	t.curScope = newScope(cur)
+	t.curScope = newScope(t.curScope)
 }
 
 func (t *tokenized) rewindScope() {
+	offset := t.curScope.curOffset
+	base := t.curScope.baseOffset
+	for _, v := range t.curScope.vars {
+		offset += v.getType().size()
+		if lv, isLVar := v.(*lVar); isLVar {
+			lv.offset = offset + base
+		}
+	}
+	t.curScope.curOffset += offset
 	t.curScope = t.curScope.super
+	t.curScope.curOffset += offset
 }
 
 func (t *tokenized) stmt() node {
@@ -322,7 +332,8 @@ func (t *tokenized) stmt() node {
 		if rhs == nil {
 			return newNullNode()
 		}
-		return newAssignNode(newVarNode(t.findVar(id)).(addressableNode), rhs)
+		node := newAssignNode(newVarNode(t.findVar(id)), rhs)
+		return newExprNode(node)
 	}
 
 	node := t.expr()
@@ -336,7 +347,6 @@ func (t *tokenized) expr() node {
 
 func (t *tokenized) assign() node {
 	node := t.equality()
-
 	if t.consume("=") {
 		assignNode := t.assign()
 		node = newAssignNode(node.(addressableNode), assignNode)

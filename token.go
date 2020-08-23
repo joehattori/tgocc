@@ -61,12 +61,14 @@ func newTokenized(toks []token) *tokenized {
 }
 
 type scope struct {
-	vars  []variable
-	super *scope
+	baseOffset int
+	curOffset  int
+	super      *scope
+	vars       []variable
 }
 
 func newScope(super *scope) *scope {
-	return &scope{nil, super}
+	return &scope{super.curOffset, 0, super, nil}
 }
 
 type ast struct {

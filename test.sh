@@ -152,5 +152,6 @@ assert "int main() { return ({int x=2; x;}); }" 2
 assert "int main() { int x=2; { int x=3; } return x; }" 2
 assert "int main() { int x=2; { int x=3; } { int y=4; return x; }}" 2
 assert "int main() { int x=2; { x=3; } return x; }" 3
+assert "int main() { int x=({ int y=({ int *z; *z=2; *z+1; }); y+2; }); return x; }" 5
 
 echo OK
