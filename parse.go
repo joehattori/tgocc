@@ -181,7 +181,8 @@ func (t *tokenized) parse() {
 			// TODO: gvar init
 			id, ty, _ := t.varDecl()
 			g := newGVar(id, ty, nil)
-			ast.gvars = append(ast.gvars, g)
+			ast.gVars = append(ast.gVars, g)
+			t.curScope.vars = append(t.curScope.vars, g)
 		}
 	}
 }
@@ -191,11 +192,23 @@ func (t *tokenized) function() *fnNode {
 	for t.consume("*") {
 		ty = newTyPtr(ty)
 	}
-	funcName := t.expectID()
-	t.expect("(")
-	fn := &fnNode{name: funcName, ty: ty}
-	t.curFn = fn
+	fnName := t.expectID()
+	t.curFnName = fnName
+	fn := &fnNode{name: fnName, ty: ty}
+	t.spawnScope()
+	t.readFnParams(fn)
+	t.expect("{")
+	for !t.consume("}") {
+		fn.body = append(fn.body, t.stmt())
+	}
+	t.setFnLVars(fn)
+	t.rewindScope()
+	// TODO: align
+	return fn
+}
 
+func (t *tokenized) readFnParams(fn *fnNode) {
+	t.expect("(")
 	isFirstArg := true
 	for !t.consume(")") {
 		if !isFirstArg {
@@ -207,29 +220,48 @@ func (t *tokenized) function() *fnNode {
 		for t.consume("*") {
 			ty = &tyPtr{to: ty}
 		}
-		s := t.expectID()
-		t.buildLVarNode(s, ty, true)
+		lv := t.addLVarToScope(t.expectID(), ty)
+		fn.params = append(fn.params, lv)
 	}
-	t.expect("{")
-	for !t.consume("}") {
-		fn.body = append(fn.body, t.stmt())
+}
+
+func (t *tokenized) setFnLVars(fn *fnNode) {
+	offset := 0
+	for _, sv := range t.curScope.vars {
+		switch v := sv.(type) {
+		case *lVar:
+			offset += v.getType().size()
+			v.offset = offset
+			fn.lVars = append(fn.lVars, v)
+		}
 	}
-	return fn
+	fn.stackSize = offset
+}
+
+func (t *tokenized) spawnScope() {
+	cur := t.curScope
+	t.curScope = newScope(cur)
+}
+
+func (t *tokenized) rewindScope() {
+	t.curScope = t.curScope.super
 }
 
 func (t *tokenized) stmt() node {
 	// handle block
 	if t.consume("{") {
 		var blkStmts []node
+		t.spawnScope()
 		for !t.consume("}") {
 			blkStmts = append(blkStmts, t.stmt())
 		}
+		t.rewindScope()
 		return newBlkNode(blkStmts)
 	}
 
 	// handle return
 	if t.consume("return") {
-		node := newRetNode(t.expr(), t.curFn.name)
+		node := newRetNode(t.expr(), t.curFnName)
 		t.expect(";")
 		return node
 	}
@@ -286,9 +318,9 @@ func (t *tokenized) stmt() node {
 	// handle variable definition
 	if t.peekType() {
 		id, ty, rhs := t.varDecl()
-		lv := t.buildLVarNode(id, ty, false)
+		t.addLVarToScope(id, ty)
 		if rhs == nil {
-			return lv
+			return newNullNode()
 		}
 		return newAssignNode(newVarNode(t.findVar(id)).(addressableNode), rhs)
 	}
@@ -402,6 +434,7 @@ func (t *tokenized) postfix() node {
 
 func (t *tokenized) stmtExpr() node {
 	// "(" and "{" is already read.
+	t.spawnScope()
 	body := make([]node, 0)
 	body = append(body, t.stmt())
 	for !t.consume("}") {
@@ -413,6 +446,7 @@ func (t *tokenized) stmtExpr() node {
 	} else {
 		body[len(body)-1] = ex.body
 	}
+	t.rewindScope()
 	return newStmtExprNode(body)
 }
 
@@ -444,7 +478,7 @@ func (t *tokenized) primary() node {
 
 	if str, isStr := t.consumeStr(); isStr {
 		s := newGVar(newGVarLabel(), newTyArr(newTyChar(), utf8.RuneCountInString(str)), str)
-		t.res.gvars = append(t.res.gvars, s)
+		t.res.gVars = append(t.res.gVars, s)
 		return newVarNode(s)
 	}
 

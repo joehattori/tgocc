@@ -149,4 +149,8 @@ assert "int main() { int a=({1;2;3;}); return a; }" 3
 assert "int main() { int a=({1;return 2;3;}); return a+100; }" 2
 assert "int main() { return ({int x=2; x;}); }" 2
 
+assert "int main() { int x=2; { int x=3; } return x; }" 2
+assert "int main() { int x=2; { int x=3; } { int y=4; return x; }}" 2
+assert "int main() { int x=2; { x=3; } return x; }" 3
+
 echo OK

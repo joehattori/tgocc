@@ -18,7 +18,7 @@ func (a *ast) gen() {
 
 func (a *ast) genData() {
 	fmt.Println(".data")
-	for _, g := range a.gvars {
+	for _, g := range a.gVars {
 		fmt.Printf("%s:\n", g.name)
 		if c := g.content; c == nil {
 			fmt.Printf("	.zero %d\n", g.ty.size())

@@ -50,18 +50,28 @@ func newReservedTok(str string, l int) *reservedTok { return &reservedTok{str, l
 func newStrTok(content string, l int) *strTok       { return &strTok{content, l} }
 
 type tokenized struct {
-	toks  []token
-	curFn *fnNode
-	res   *ast
+	curFnName string
+	curScope  *scope
+	res       *ast
+	toks      []token
 }
 
 func newTokenized(toks []token) *tokenized {
-	return &tokenized{toks: toks, res: &ast{}}
+	return &tokenized{curScope: &scope{}, res: &ast{}, toks: toks}
+}
+
+type scope struct {
+	vars  []variable
+	super *scope
+}
+
+func newScope(super *scope) *scope {
+	return &scope{nil, super}
 }
 
 type ast struct {
 	fns   []*fnNode
-	gvars []*gVar
+	gVars []*gVar
 }
 
 type tokenizer struct {

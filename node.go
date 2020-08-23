@@ -181,6 +181,10 @@ func newVarNode(v variable) node {
 	return &varNode{v}
 }
 
+func newNullNode() node {
+	return &numNode{}
+}
+
 func newNumNode(val int) node {
 	return &numNode{val: val}
 }
