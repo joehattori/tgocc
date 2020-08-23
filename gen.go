@@ -283,6 +283,8 @@ func load(ty ty) {
 		fmt.Println("	movsxd rax, dword ptr [rax]")
 	case 8:
 		fmt.Println("	mov rax, [rax]")
+	default:
+		log.Fatalf("unhandled type size: %d", ty.size())
 	}
 	fmt.Println("	push rax")
 }
@@ -298,6 +300,8 @@ func store(ty ty) {
 		r = "edi"
 	case 8:
 		r = "rdi"
+	default:
+		log.Fatalf("unhandled type size: %d", ty.size())
 	}
 	fmt.Printf("	mov [rax], %s\n", r)
 	fmt.Println("	push rdi")
