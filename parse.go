@@ -219,7 +219,7 @@ func (t *tokenized) readFnParams(fn *fnNode) {
 
 		ty := t.expectType()
 		for t.consume("*") {
-			ty = &tyPtr{to: ty}
+			ty = newTyPtr(ty)
 		}
 		lv := t.addLVarToScope(t.expectID(), ty)
 		fn.params = append(fn.params, lv)
@@ -236,7 +236,6 @@ func (t *tokenized) setFnLVars(fn *fnNode) {
 			fn.lVars = append(fn.lVars, v)
 		}
 	}
-	// TODO: set offset in rewind && set proper stackSize
 }
 
 func (t *tokenized) spawnScope() {
@@ -254,6 +253,7 @@ func (t *tokenized) rewindScope() {
 	}
 	t.curScope.curOffset += offset
 	t.curScope = t.curScope.super
+	// TODO: maybe this is not necessary if we zero out the memory for child scope?
 	t.curScope.curOffset += offset
 }
 
@@ -307,7 +307,7 @@ func (t *tokenized) stmt() node {
 		var init, cond, inc, then node
 
 		if !t.consume(";") {
-			init = t.expr()
+			init = newExprNode(t.expr())
 			t.expect(";")
 		}
 
@@ -317,7 +317,7 @@ func (t *tokenized) stmt() node {
 		}
 
 		if !t.consume(")") {
-			inc = t.expr()
+			inc = newExprNode(t.expr())
 			t.expect(")")
 		}
 
