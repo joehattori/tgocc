@@ -117,6 +117,7 @@ const (
 	ndGeq
 	ndPtrAdd
 	ndPtrSub
+	ndPtrDiff
 )
 
 func newAddNode(lhs node, rhs node) *arithNode {
@@ -125,7 +126,7 @@ func newAddNode(lhs node, rhs node) *arithNode {
 	switch l.(type) {
 	case *tyInt, *tyChar:
 		switch r.(type) {
-		case *tyInt:
+		case *tyInt, *tyChar:
 			return &arithNode{op: ndAdd, lhs: lhs, rhs: rhs}
 		case *tyPtr, *tyArr:
 			return &arithNode{op: ndPtrAdd, lhs: rhs, rhs: lhs}
@@ -197,17 +198,19 @@ func newSubNode(lhs node, rhs node) *arithNode {
 	l := lhs.loadType()
 	r := rhs.loadType()
 	switch l.(type) {
-	case *tyInt:
+	case *tyInt, *tyChar:
 		switch r.(type) {
-		case *tyInt:
+		case *tyInt, *tyChar:
 			return &arithNode{op: ndSub, lhs: lhs, rhs: rhs}
 		case *tyPtr, *tyArr:
 			return &arithNode{op: ndPtrSub, lhs: rhs, rhs: lhs}
 		}
 	case *tyPtr, *tyArr:
 		switch r.(type) {
-		case *tyInt:
+		case *tyInt, *tyChar:
 			return &arithNode{op: ndPtrSub, lhs: lhs, rhs: rhs}
+		case *tyPtr, *tyArr:
+			return &arithNode{op: ndPtrDiff, lhs: lhs, rhs: rhs}
 		}
 	}
 	log.Fatalf("Unexpected type: lhs: %T, rhs: %T", l, r)

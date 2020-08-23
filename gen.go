@@ -5,6 +5,7 @@ import (
 	"log"
 )
 
+var paramRegs1 = [...]string{"dil", "sil", "dl", "cl", "r8b", "r9b"}
 var paramRegs4 = [...]string{"edi", "esi", "edx", "ecx", "r8d", "r9d"}
 var paramRegs8 = [...]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
 
@@ -93,6 +94,11 @@ func (a *arithNode) gen() {
 	case ndPtrSub:
 		fmt.Printf("	imul rdi, %d\n", a.loadType().(ptr).base().size())
 		fmt.Printf("	sub rax, rdi\n")
+	case ndPtrDiff:
+		fmt.Printf("	sub rax, rdi\n")
+		fmt.Printf("	cqo\n")
+		fmt.Printf("	mov rdi, %d\n", a.lhs.loadType().(ptr).base().size())
+		fmt.Println("	idiv rdi")
 	default:
 		log.Fatal("Unhandled node kind")
 	}
@@ -181,10 +187,14 @@ func (f *fnNode) gen() {
 	for i, param := range f.params {
 		var r [6]string
 		switch param.ty.size() {
+		case 1:
+			r = paramRegs1
 		case 4:
 			r = paramRegs4
 		case 8:
 			r = paramRegs8
+		default:
+			log.Fatalf("unhandled type size: %d", param.ty.size())
 		}
 		fmt.Printf("	mov [rbp-%d], %s\n", param.offset, r[i])
 	}
