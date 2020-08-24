@@ -193,7 +193,7 @@ func (t *tokenizer) readID() token {
 }
 
 func (t *tokenizer) readMultiCharOp() token {
-	ops := []string{"==", "!=", "<=", ">="}
+	ops := []string{"==", "!=", "<=", ">=", "->"}
 	s := t.cur()
 	for _, op := range ops {
 		if strings.HasPrefix(s, op) {

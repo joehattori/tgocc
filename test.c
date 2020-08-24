@@ -172,6 +172,9 @@ int main() {
     test(5, ({ struct t {int x;}; int t=2; struct t y; y.x=3; t+y.x; }),
         "struct t {int x;}; int t=2; struct t y; y.x=3; t+y.x;");
 
+    test(3, ({ struct t {char a;} x; struct t *y=&x; x.a=3; y->a; }), "struct t {char a;} x; struct t *y=&x; x.a=3; y->a;");
+    test(3, ({ struct t {char a;} x; struct t *y=&x; y->a=3; x.a; }), "struct t {char a;} x; struct t *y=&x; y->a=3; x.a;");
+
     printf("OK\n");
     return 0;
 }

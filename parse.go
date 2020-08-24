@@ -454,13 +454,19 @@ func (t *tokenized) postfix() node {
 		}
 		if t.consume(".") {
 			if s, ok := node.loadType().(*tyStruct); ok {
-				id := t.expectID()
-				mem := s.findMember(id)
+				mem := s.findMember(t.expectID())
 				node = newMemberNode(node.(addressableNode), mem)
 				continue
-			} else {
-				log.Fatalf("expected struct but got %T", s)
 			}
+			log.Fatalf("expected struct but got %T", node.loadType())
+		}
+		if t.consume("->") {
+			if p, ok := node.loadType().(*tyPtr); ok {
+				mem := p.to.(*tyStruct).findMember(t.expectID())
+				node = newMemberNode(newDerefNode(node.(addressableNode)), mem)
+				continue
+			}
+			log.Fatalf("expected struct but got %T", node.loadType())
 		}
 		return node
 	}
