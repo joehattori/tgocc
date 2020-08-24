@@ -79,6 +79,36 @@ func (t *tokenized) rewindScope() {
 	t.curScope.curOffset += offset
 }
 
+func (t *tokenized) findVar(s string) variable {
+	v := t.searchVar(s)
+	if v == nil {
+		log.Fatalf("undefined variable %s", s)
+	}
+	return v
+}
+
+func (t *tokenized) searchStructTag(tag string) *structTag {
+	scope := t.curScope
+	for scope != nil {
+		if tag := scope.searchStructTag(tag); tag != nil {
+			return tag
+		}
+		scope = scope.super
+	}
+	return nil
+}
+
+func (t *tokenized) searchVar(varName string) variable {
+	scope := t.curScope
+	for scope != nil {
+		if v := scope.searchVar(varName); v != nil {
+			return v
+		}
+		scope = scope.super
+	}
+	return nil
+}
+
 type ast struct {
 	fns   []*fnNode
 	gVars []*gVar
@@ -167,7 +197,7 @@ func (t *tokenizer) readMultiCharOp() token {
 	s := t.cur()
 	for _, op := range ops {
 		if strings.HasPrefix(s, op) {
-			t.pos += 2
+			t.pos += utf8.RuneCountInString(op)
 			return newReservedTok(s, len(op))
 		}
 	}

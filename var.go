@@ -1,7 +1,5 @@
 package main
 
-import "log"
-
 type variable interface {
 	getName() string
 	getType() ty
@@ -31,34 +29,4 @@ func newLVar(name string, ty ty) *lVar {
 
 func newGVar(name string, ty ty, content interface{}) *gVar {
 	return &gVar{name, ty, content}
-}
-
-func (t *tokenized) findVar(s string) variable {
-	v := t.searchVar(s)
-	if v == nil {
-		log.Fatalf("undefined variable %s", s)
-	}
-	return v
-}
-
-func (t *tokenized) searchVar(varName string) variable {
-	scope := t.curScope
-	for scope != nil {
-		if v := scope.searchVar(varName); v != nil {
-			return v
-		}
-		scope = scope.super
-	}
-	return nil
-}
-
-func (t *tokenized) searchStructTag(tag string) *structTag {
-	scope := t.curScope
-	for scope != nil {
-		if tag := scope.searchStructTag(tag); tag != nil {
-			return tag
-		}
-		scope = scope.super
-	}
-	return nil
 }
