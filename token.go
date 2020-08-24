@@ -75,19 +75,8 @@ func (t *tokenized) rewindScope() {
 	}
 	t.curScope.curOffset += offset
 	t.curScope = t.curScope.super
-	// TODO: maybe this is not necessary if we zero out the memory for child scope?
+	// maybe this is not necessary if we zero out the memory for child scope?
 	t.curScope.curOffset += offset
-}
-
-type scope struct {
-	baseOffset int
-	curOffset  int
-	super      *scope
-	vars       []variable
-}
-
-func newScope(super *scope) *scope {
-	return &scope{super.curOffset, 0, super, nil}
 }
 
 type ast struct {

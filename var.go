@@ -33,15 +33,6 @@ func newGVar(name string, ty ty, content interface{}) *gVar {
 	return &gVar{name, ty, content}
 }
 
-func (t *tokenized) addLVarToScope(id string, ty ty) *lVar {
-	if _, islVar := t.curScope.searchVar(id).(*lVar); islVar {
-		log.Fatalf("variable %s is already defined", id)
-	}
-	v := newLVar(id, ty)
-	t.curScope.vars = append(t.curScope.vars, v)
-	return v
-}
-
 func (t *tokenized) findVar(s string) variable {
 	v := t.searchVar(s)
 	if v == nil {
@@ -61,23 +52,13 @@ func (t *tokenized) searchVar(varName string) variable {
 	return nil
 }
 
-func (s *scope) searchVar(varName string) variable {
-	for _, v := range s.vars {
-		if v.getName() == varName {
-			return v
+func (t *tokenized) searchStructTag(tag string) *structTag {
+	scope := t.curScope
+	for scope != nil {
+		if tag := scope.searchStructTag(tag); tag != nil {
+			return tag
 		}
+		scope = scope.super
 	}
 	return nil
-}
-
-func (s *scope) segregateScopeVars() (lVars []*lVar, gVars []*gVar) {
-	for _, sv := range s.vars {
-		switch v := sv.(type) {
-		case *lVar:
-			lVars = append(lVars, v)
-		case *gVar:
-			gVars = append(gVars, v)
-		}
-	}
-	return
 }

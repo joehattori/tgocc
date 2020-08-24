@@ -9,6 +9,7 @@ int test(int expected, int actual, char *input) {
         printf("%s => %d expected, but got %d\n", input, expected, actual);
         exit(1);
     }
+    return 0;
 }
 
 int ret2() {
@@ -163,6 +164,13 @@ int main() {
     test(24, ({ struct {int a[3];} x[2]; sizeof(x); }), "struct {int a[3];} x[2]; sizeof(x)};");
     test(2, ({ struct {char a; char b;} x; sizeof(x); }), "struct {char a; char b;} x; sizeof(x);");
     test(5, ({ struct {char a; int b;} x; sizeof(x); }), "struct {char a; int b;} x; sizeof(x);");
+
+    test(8, ({ struct t {int a; int b;} x; struct t y; sizeof(y); }), "struct t {int a; int b;} x; struct t y; sizeof(y);");
+    test(8, ({ struct t {int a; int b;}; struct t y; sizeof(y); }), "struct t {int a; int b;}; struct t y; sizeof(y);");
+    test(2, ({ struct t {char a[2];}; { struct t {char a[4];}; } struct t y; sizeof(y); }),
+        "struct t {char a[2];}; { struct t {char a[4];}; } struct t y; sizeof(y);");
+    test(5, ({ struct t {int x;}; int t=2; struct t y; y.x=3; t+y.x; }),
+        "struct t {int x;}; int t=2; struct t y; y.x=3; t+y.x;");
 
     printf("OK\n");
     return 0;

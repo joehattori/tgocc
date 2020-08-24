@@ -26,27 +26,22 @@ type tyPtr struct {
 
 type tyStruct struct {
 	members []*member
+	sz      int
 }
 
-func newTyArr(of ty, len int) *tyArr    { return &tyArr{of, len} }
-func newTyChar() *tyChar                { return &tyChar{} }
-func newTyEmpty() *tyEmpty              { return &tyEmpty{} }
-func newTyInt() *tyInt                  { return &tyInt{} }
-func newTyPtr(to ty) *tyPtr             { return &tyPtr{to} }
-func newTyStruct(m []*member) *tyStruct { return &tyStruct{m} }
+func newTyArr(of ty, len int) *tyArr              { return &tyArr{of, len} }
+func newTyChar() *tyChar                          { return &tyChar{} }
+func newTyEmpty() *tyEmpty                        { return &tyEmpty{} }
+func newTyInt() *tyInt                            { return &tyInt{} }
+func newTyPtr(to ty) *tyPtr                       { return &tyPtr{to} }
+func newTyStruct(m []*member, size int) *tyStruct { return &tyStruct{m, size} }
 
-func (a *tyArr) size() int   { return a.len * a.of.size() }
-func (c *tyChar) size() int  { return 1 }
-func (e *tyEmpty) size() int { return 0 }
-func (i *tyInt) size() int   { return 4 }
-func (p *tyPtr) size() int   { return 8 }
-func (s *tyStruct) size() int {
-	ret := 0
-	for _, member := range s.members {
-		ret += member.ty.size()
-	}
-	return ret
-}
+func (a *tyArr) size() int    { return a.len * a.of.size() }
+func (c *tyChar) size() int   { return 1 }
+func (e *tyEmpty) size() int  { return 0 }
+func (i *tyInt) size() int    { return 4 }
+func (p *tyPtr) size() int    { return 8 }
+func (s *tyStruct) size() int { return s.sz }
 
 func (a *tyArr) base() ty { return a.of }
 func (p *tyPtr) base() ty { return p.to }

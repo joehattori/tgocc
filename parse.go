@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 )
@@ -70,6 +71,31 @@ func (t *tokenized) expectNum() int {
 	return -1
 }
 
+func (t *tokenized) expectStructDecl() ty {
+	t.expect("struct")
+	tagStr, tagExists := t.consumeID()
+	if tagExists && !t.beginsWith("{") {
+		if tag := t.searchStructTag(tagStr); tag != nil {
+			return tag.ty
+		}
+		log.Fatalf("no such struct tag %s", tagStr)
+	}
+	t.expect("{")
+	var members []*member
+	offset := 0
+	for !t.consume("}") {
+		// TODO: handle when rhs is not null
+		ty, tag, _ := t.decl()
+		members = append(members, newMember(tag, offset, ty))
+		offset += ty.size()
+	}
+	tyStruct := newTyStruct(members, offset)
+	if tagExists {
+		t.curScope.addStructTag(newStructTag(tagStr, tyStruct))
+	}
+	return tyStruct
+}
+
 func (t *tokenized) expectType() ty {
 	cur := t.toks[0]
 	rs, isReserved := cur.(*reservedTok)
@@ -90,18 +116,8 @@ func (t *tokenized) expectType() ty {
 	return nil
 }
 
-func (t *tokenized) expectStructDecl() ty {
-	t.expect("struct")
-	t.expect("{")
-	var members []*member
-	offset := 0
-	for !t.consume("}") {
-		// TODO: handle when rhs is not null
-		ty, id, _ := t.varDecl()
-		offset += ty.size()
-		members = append(members, newMember(id, offset, ty))
-	}
-	return newTyStruct(members)
+func (t *tokenized) beginsWith(s string) bool {
+	return strings.HasPrefix(t.toks[0].getStr(), s)
 }
 
 func (t *tokenized) isFunction() bool {
@@ -117,19 +133,8 @@ func (t *tokenized) isFunction() bool {
 }
 
 func (t *tokenized) isType() bool {
-	var tyMap = map[string]ty{
-		"int":    newTyInt(),
-		"char":   newTyChar(),
-		"struct": newTyStruct(nil),
-	}
-	if r, isReserved := t.toks[0].(*reservedTok); isReserved {
-		for key := range tyMap {
-			if strings.HasPrefix(r.str, key) {
-				return true
-			}
-		}
-	}
-	return false
+	r := regexp.MustCompile(`^(int|char|struct)\W`)
+	return r.MatchString(t.toks[0].getStr())
 }
 
 var gVarLabelCount int
@@ -142,15 +147,15 @@ func newGVarLabel() string {
 
 // program    = (function | globalVar)*
 // function   = ty ident ("(" (ident ("," ident)* )? ")") "{" stmt* "}"
-// globalVar  = varDecl
+// globalVar  = decl
 // stmt       = expr ";"
 //				| "{" stmt* "}"
 //			    | "return" expr ";"
 //				| "if" "(" expr ")" stmt ("else" stmt) ?
 //				| "while" "(" expr ")" stmt
 //				| "for" "(" expr? ";" expr? ";" expr? ")" stmt
-//				| varDecl
-// varDecl    = ty ident ("[" expr "]")* "=" expr ;"
+//				| decl
+// decl       = ty ident ("[" expr "]")* "=" expr ;" | ty ";"
 // expr       = assign
 // stmtExpr   = "(" "{" stmt+ "}" ")"
 // assign     = equality ("=" assign) ?
@@ -172,10 +177,13 @@ func (t *tokenized) readVarSuffix(ty ty) ty {
 	return ty
 }
 
-func (t *tokenized) varDecl() (ty ty, id string, rhs node) {
+func (t *tokenized) decl() (ty ty, id string, rhs node) {
 	ty = t.expectType()
 	for t.consume("*") {
 		ty = newTyPtr(ty)
+	}
+	if t.consume(";") {
+		return
 	}
 	id = t.expectID()
 	ty = t.readVarSuffix(ty)
@@ -198,7 +206,7 @@ func (t *tokenized) parse() {
 			ast.fns = append(ast.fns, t.function())
 		} else {
 			// TODO: gvar init
-			ty, id, _ := t.varDecl()
+			ty, id, _ := t.decl()
 			g := newGVar(id, ty, nil)
 			ast.gVars = append(ast.gVars, g)
 			t.curScope.vars = append(t.curScope.vars, g)
@@ -240,7 +248,7 @@ func (t *tokenized) readFnParams(fn *fnNode) {
 		for t.consume("*") {
 			ty = newTyPtr(ty)
 		}
-		lv := t.addLVarToScope(t.expectID(), ty)
+		lv := t.curScope.addLVar(t.expectID(), ty)
 		fn.params = append(fn.params, lv)
 	}
 }
@@ -327,8 +335,11 @@ func (t *tokenized) stmt() node {
 
 	// handle variable definition
 	if t.isType() {
-		ty, id, rhs := t.varDecl()
-		t.addLVarToScope(id, ty)
+		ty, id, rhs := t.decl()
+		if id == "" {
+			return newNullNode()
+		}
+		t.curScope.addLVar(id, ty)
 		if rhs == nil {
 			return newNullNode()
 		}
