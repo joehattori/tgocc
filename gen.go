@@ -120,7 +120,7 @@ func (b *blkNode) gen() {
 func (d *derefNode) gen() {
 	d.ptr.gen()
 	ty := d.loadType()
-	if _, isArr := ty.(*tyArr); !isArr {
+	if _, ok := ty.(*tyArr); !ok {
 		load(ty)
 	}
 }
@@ -233,7 +233,7 @@ func (i *ifNode) gen() {
 func (m *memberNode) gen() {
 	m.genAddr()
 	ty := m.loadType()
-	if _, isArr := ty.(*tyArr); !isArr {
+	if _, ok := ty.(*tyArr); !ok {
 		load(ty)
 	}
 }
@@ -259,7 +259,7 @@ func (s *stmtExprNode) gen() {
 func (v *varNode) gen() {
 	v.genAddr()
 	ty := v.loadType()
-	if _, isArr := ty.(*tyArr); !isArr {
+	if _, ok := ty.(*tyArr); !ok {
 		load(ty)
 	}
 }

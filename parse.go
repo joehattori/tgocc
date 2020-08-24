@@ -13,7 +13,7 @@ func (t *tokenized) popToks() {
 }
 
 func (t *tokenized) consume(str string) bool {
-	if r, isReserved := t.toks[0].(*reservedTok); isReserved &&
+	if r, ok := t.toks[0].(*reservedTok); ok &&
 		r.len == len(str) &&
 		strings.HasPrefix(r.str, str) {
 		t.popToks()
@@ -25,7 +25,7 @@ func (t *tokenized) consume(str string) bool {
 func (t *tokenized) consumeID() (string, bool) {
 	cur := t.toks[0]
 	id := idRegexp.FindString(cur.getStr())
-	if _, isID := cur.(*idTok); isID && id != "" {
+	if _, ok := cur.(*idTok); ok && id != "" {
 		t.popToks()
 		return id, true
 	}
@@ -33,7 +33,7 @@ func (t *tokenized) consumeID() (string, bool) {
 }
 
 func (t *tokenized) consumeStr() (string, bool) {
-	if s, isStr := t.toks[0].(*strTok); isStr {
+	if s, ok := t.toks[0].(*strTok); ok {
 		t.popToks()
 		return s.content, true
 	}
@@ -42,7 +42,7 @@ func (t *tokenized) consumeStr() (string, bool) {
 
 func (t *tokenized) expect(str string) {
 	cur := t.toks[0]
-	if r, isReserved := cur.(*reservedTok); isReserved &&
+	if r, ok := cur.(*reservedTok); ok &&
 		r.len == len(str) && strings.HasPrefix(cur.getStr(), str) {
 		t.popToks()
 		return
@@ -53,7 +53,7 @@ func (t *tokenized) expect(str string) {
 func (t *tokenized) expectID() string {
 	cur := t.toks[0]
 	id := idRegexp.FindString(cur.getStr())
-	if _, isID := cur.(*idTok); isID && id != "" {
+	if _, ok := cur.(*idTok); ok && id != "" {
 		t.popToks()
 		return id
 	}
@@ -63,7 +63,7 @@ func (t *tokenized) expectID() string {
 
 func (t *tokenized) expectNum() int {
 	cur := t.toks[0]
-	if n, isNum := cur.(*numTok); isNum {
+	if n, ok := cur.(*numTok); ok {
 		t.popToks()
 		return n.val
 	}
@@ -98,8 +98,8 @@ func (t *tokenized) expectStructDecl() ty {
 
 func (t *tokenized) expectType() ty {
 	cur := t.toks[0]
-	rs, isReserved := cur.(*reservedTok)
-	if !isReserved {
+	rs, ok := cur.(*reservedTok)
+	if !ok {
 		log.Fatalf("tkReserved was expected but got %d %s", cur, cur.getStr())
 	}
 	if strings.HasPrefix(rs.str, "int") {
@@ -199,7 +199,7 @@ func (t *tokenized) decl() (ty ty, id string, rhs node) {
 func (t *tokenized) parse() {
 	ast := t.res
 	for {
-		if _, isEOF := t.toks[0].(*eofTok); isEOF {
+		if _, ok := t.toks[0].(*eofTok); ok {
 			break
 		}
 		if t.isFunction() {
@@ -453,14 +453,11 @@ func (t *tokenized) postfix() node {
 			continue
 		}
 		if t.consume(".") {
-			if s, isStruct := node.loadType().(*tyStruct); isStruct {
+			if s, ok := node.loadType().(*tyStruct); ok {
 				id := t.expectID()
 				mem := s.findMember(id)
-				if addr, isAddr := node.(addressableNode); isAddr {
-					node = newMemberNode(addr, mem)
-					continue
-				}
-				log.Fatalf("expected addressableNode for lhs of member but got %T", node)
+				node = newMemberNode(node.(addressableNode), mem)
+				continue
 			} else {
 				log.Fatalf("expected struct but got %T", s)
 			}
@@ -478,7 +475,7 @@ func (t *tokenized) stmtExpr() node {
 		body = append(body, t.stmt())
 	}
 	t.expect(")")
-	if ex, isExpr := body[len(body)-1].(*exprNode); !isExpr {
+	if ex, ok := body[len(body)-1].(*exprNode); !ok {
 		log.Fatal("statement expression returning void is not supported")
 	} else {
 		body[len(body)-1] = ex.body
