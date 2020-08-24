@@ -10,6 +10,7 @@ import (
 )
 
 var idRegexp = regexp.MustCompile(`^[a-zA-Z_]+\w*`)
+var typeRegexp = regexp.MustCompile(`^(int|char|long|short|struct)\W`)
 
 type token interface {
 	getStr() string
@@ -206,13 +207,18 @@ func (t *tokenizer) readMultiCharOp() token {
 
 func (t *tokenizer) readReserved() token {
 	s := t.cur()
-	r := regexp.MustCompile(`^(if|else|while|for|return|int|char|sizeof|struct)\W`)
-	if !r.MatchString(s) {
-		return nil
+	r := regexp.MustCompile(`^(if|else|while|for|return|sizeof)\W`)
+	if r.MatchString(s) {
+		l := len(r.FindString(s)) - 1
+		t.pos += l
+		return newReservedTok(s, l)
 	}
-	l := len(r.FindString(s)) - 1
-	t.pos += l
-	return newReservedTok(s, l)
+	if typeRegexp.MatchString(s) {
+		l := len(typeRegexp.FindString(s)) - 1
+		t.pos += l
+		return newReservedTok(s, l)
+	}
+	return nil
 }
 
 func (t *tokenizer) readRuneFrom(s string) token {

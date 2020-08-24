@@ -23,6 +23,8 @@ int add6(int a, int b, int c, int d, int e, int f) { return a+b+c+d+e+f; }
 int fib(int x) { if (x<=1) return 1; return fib(x-1) + fib(x-2); }
 int addx(int *x, int y) { return *x+y; }
 int sub_char(char a, char b, char c) { return a-b-c; }
+int sub_short(short a, short b, short c) { return a-b-c; }
+int sub_long(long a, long b, long c) { return a-b-c; }
 
 int g1;
 int g2[4];
@@ -174,6 +176,15 @@ int main() {
 
     test(3, ({ struct t {char a;} x; struct t *y=&x; x.a=3; y->a; }), "struct t {char a;} x; struct t *y=&x; x.a=3; y->a;");
     test(3, ({ struct t {char a;} x; struct t *y=&x; y->a=3; x.a; }), "struct t {char a;} x; struct t *y=&x; y->a=3; x.a;");
+
+    test(2, ({ short x; sizeof(x); }), "short x; sizeof(x);");
+    test(3, ({ struct {char a; short b;} x; sizeof(x); }), "struct {char a; short b;} x; sizeof(x);");
+
+    test(8, ({ long x; sizeof(x); }), "long x; sizeof(x);");
+    test(9, ({ struct {char a; long b;} x; sizeof(x); }), "struct {char a; long b} x; sizeof(x);");
+
+    test(1, sub_short(7, 3, 3), "sub_short(7, 3, 3)");
+    test(1, sub_long(7, 3, 3), "sub_long(7, 3, 3)");
 
     printf("OK\n");
     return 0;

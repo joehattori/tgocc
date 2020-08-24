@@ -1,5 +1,7 @@
 package main
 
+import "log"
+
 type ty interface {
 	size() int
 }
@@ -13,17 +15,14 @@ type tyArr struct {
 	of  ty
 	len int
 }
-
 type tyChar struct{}
-
 type tyEmpty struct{}
-
 type tyInt struct{}
-
+type tyLong struct{}
 type tyPtr struct {
 	to ty
 }
-
+type tyShort struct{}
 type tyStruct struct {
 	members []*member
 	sz      int
@@ -33,14 +32,18 @@ func newTyArr(of ty, len int) *tyArr              { return &tyArr{of, len} }
 func newTyChar() *tyChar                          { return &tyChar{} }
 func newTyEmpty() *tyEmpty                        { return &tyEmpty{} }
 func newTyInt() *tyInt                            { return &tyInt{} }
+func newTyLong() *tyLong                          { return &tyLong{} }
 func newTyPtr(to ty) *tyPtr                       { return &tyPtr{to} }
+func newTyShort() *tyShort                        { return &tyShort{} }
 func newTyStruct(m []*member, size int) *tyStruct { return &tyStruct{m, size} }
 
 func (a *tyArr) size() int    { return a.len * a.of.size() }
 func (c *tyChar) size() int   { return 1 }
 func (e *tyEmpty) size() int  { return 0 }
 func (i *tyInt) size() int    { return 4 }
+func (l *tyLong) size() int   { return 8 }
 func (p *tyPtr) size() int    { return 8 }
+func (s *tyShort) size() int  { return 2 }
 func (s *tyStruct) size() int { return s.sz }
 
 func (a *tyArr) base() ty { return a.of }
@@ -90,12 +93,14 @@ func (b *blkNode) loadType() ty {
 
 func (d *derefNode) loadType() ty {
 	switch v := d.ptr.loadType().(type) {
-	case *tyInt:
+	case *tyChar, *tyInt, *tyShort, *tyLong:
 		d.ty = v
 	case *tyPtr:
 		d.ty = v.to
 	case *tyArr:
 		d.ty = v.of
+	default:
+		log.Fatalf("unhandled type %T", d.ptr.loadType())
 	}
 	return d.ty
 }
@@ -154,7 +159,7 @@ func (m *memberNode) loadType() ty {
 
 func (n *numNode) loadType() ty {
 	if n.ty == nil {
-		n.ty = newTyInt()
+		n.ty = newTyLong()
 	}
 	return n.ty
 }

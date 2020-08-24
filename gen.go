@@ -6,6 +6,7 @@ import (
 )
 
 var paramRegs1 = [...]string{"dil", "sil", "dl", "cl", "r8b", "r9b"}
+var paramRegs2 = [...]string{"di", "si", "dx", "cx", "r8w", "r9w"}
 var paramRegs4 = [...]string{"edi", "esi", "edx", "ecx", "r8d", "r9d"}
 var paramRegs8 = [...]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
 
@@ -189,6 +190,8 @@ func (f *fnNode) gen() {
 		switch param.ty.size() {
 		case 1:
 			r = paramRegs1
+		case 2:
+			r = paramRegs2
 		case 4:
 			r = paramRegs4
 		case 8:
@@ -303,6 +306,8 @@ func load(ty ty) {
 	switch ty.size() {
 	case 1:
 		fmt.Println("	movsx rax, byte ptr [rax]")
+	case 2:
+		fmt.Println("	movsx rax, word ptr [rax]")
 	case 4:
 		fmt.Println("	movsxd rax, dword ptr [rax]")
 	case 8:
@@ -320,6 +325,8 @@ func store(ty ty) {
 	switch ty.size() {
 	case 1:
 		r = "dil"
+	case 2:
+		r = "di"
 	case 4:
 		r = "edi"
 	case 8:

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"regexp"
 	"strings"
 	"unicode/utf8"
 )
@@ -110,6 +109,14 @@ func (t *tokenized) expectType() ty {
 		t.popToks()
 		return newTyChar()
 	}
+	if strings.HasPrefix(rs.str, "short") {
+		t.popToks()
+		return newTyShort()
+	}
+	if strings.HasPrefix(rs.str, "long") {
+		t.popToks()
+		return newTyLong()
+	}
 	if strings.HasPrefix(rs.str, "struct") {
 		return t.expectStructDecl()
 	}
@@ -133,8 +140,7 @@ func (t *tokenized) isFunction() bool {
 }
 
 func (t *tokenized) isType() bool {
-	r := regexp.MustCompile(`^(int|char|struct)\W`)
-	return r.MatchString(t.toks[0].getStr())
+	return typeRegexp.MatchString(t.toks[0].getStr())
 }
 
 var gVarLabelCount int
