@@ -53,8 +53,8 @@ type (
 	}
 
 	fnCallNode struct {
-		params []node
 		name   string
+		params []node
 		ty     ty
 	}
 
@@ -186,7 +186,7 @@ func newForNode(init node, cond node, inc node, body node) *forNode {
 
 func newFnCallNode(name string, params []node) *fnCallNode {
 	// TODO: change type dynamically
-	return &fnCallNode{name: name, params: params, ty: &tyInt{}}
+	return &fnCallNode{name, params, newTyInt()}
 }
 
 func newFnNode(name string, ty ty) *fnNode {

@@ -14,9 +14,8 @@ type lVar struct {
 }
 
 type gVar struct {
-	name string
-	ty   ty
-	// TODO: elaborate
+	name    string
+	ty      ty
 	content interface{}
 }
 

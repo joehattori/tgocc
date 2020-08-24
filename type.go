@@ -9,8 +9,6 @@ type ptr interface {
 	base() ty
 }
 
-// TODO: think of creating Number interface (tyInt and TyChar should implement this)
-
 type tyArr struct {
 	of  ty
 	len int
