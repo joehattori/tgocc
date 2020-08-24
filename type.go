@@ -26,20 +26,41 @@ type tyPtr struct {
 	to ty
 }
 
-func newTyArr(of ty, len int) *tyArr { return &tyArr{of, len} }
-func newTyChar() *tyChar             { return &tyChar{} }
-func newTyEmpty() *tyEmpty           { return &tyEmpty{} }
-func newTyInt() *tyInt               { return &tyInt{} }
-func newTyPtr(to ty) *tyPtr          { return &tyPtr{to} }
+type tyStruct struct {
+	members []*member
+}
+
+func newTyArr(of ty, len int) *tyArr    { return &tyArr{of, len} }
+func newTyChar() *tyChar                { return &tyChar{} }
+func newTyEmpty() *tyEmpty              { return &tyEmpty{} }
+func newTyInt() *tyInt                  { return &tyInt{} }
+func newTyPtr(to ty) *tyPtr             { return &tyPtr{to} }
+func newTyStruct(m []*member) *tyStruct { return &tyStruct{m} }
 
 func (a *tyArr) size() int   { return a.len * a.of.size() }
 func (c *tyChar) size() int  { return 1 }
 func (e *tyEmpty) size() int { return 0 }
 func (i *tyInt) size() int   { return 4 }
 func (p *tyPtr) size() int   { return 8 }
+func (s *tyStruct) size() int {
+	ret := 0
+	for _, member := range s.members {
+		ret += member.ty.size()
+	}
+	return ret
+}
 
 func (a *tyArr) base() ty { return a.of }
 func (p *tyPtr) base() ty { return p.to }
+
+func (s *tyStruct) findMember(name string) *member {
+	for _, member := range s.members {
+		if name == member.name {
+			return member
+		}
+	}
+	return nil
+}
 
 func (a *addrNode) loadType() ty {
 	t := a.v.loadType()
@@ -132,6 +153,10 @@ func (i *ifNode) loadType() ty {
 
 func (*nullNode) loadType() ty {
 	return newTyEmpty()
+}
+
+func (m *memberNode) loadType() ty {
+	return m.mem.ty
 }
 
 func (n *numNode) loadType() ty {

@@ -70,27 +70,58 @@ func (t *tokenized) expectNum() int {
 	return -1
 }
 
-var tyMap = map[string]ty{
-	"int":  newTyInt(),
-	"char": newTyChar(),
-}
-
 func (t *tokenized) expectType() ty {
 	cur := t.toks[0]
-	if r, isReserved := cur.(*reservedTok); isReserved {
-		for key, val := range tyMap {
-			if strings.HasPrefix(r.str, key) {
-				t.popToks()
-				return val
-			}
-		}
-		log.Fatalf("Unexpected type %s", r.str)
+	rs, isReserved := cur.(*reservedTok)
+	if !isReserved {
+		log.Fatalf("tkReserved was expected but got %d %s", cur, cur.getStr())
 	}
-	log.Fatalf("tkReserved was expected but got %d %s", cur, cur.getStr())
+	if strings.HasPrefix(rs.str, "int") {
+		t.popToks()
+		return newTyInt()
+	}
+	if strings.HasPrefix(rs.str, "char") {
+		t.popToks()
+		return newTyChar()
+	}
+	if strings.HasPrefix(rs.str, "struct") {
+		return t.expectStructDecl()
+	}
 	return nil
 }
 
-func (t *tokenized) peekType() bool {
+func (t *tokenized) expectStructDecl() ty {
+	t.expect("struct")
+	t.expect("{")
+	var members []*member
+	offset := 0
+	for !t.consume("}") {
+		// TODO: handle when rhs is not null
+		ty, id, _ := t.varDecl()
+		offset += ty.size()
+		members = append(members, newMember(id, offset, ty))
+	}
+	return newTyStruct(members)
+}
+
+func (t *tokenized) isFunction() bool {
+	orig := t.toks
+	ty := t.expectType()
+	for t.consume("*") {
+		ty = newTyPtr(ty)
+	}
+	_, isID := t.consumeID()
+	ret := isID && t.consume("(")
+	t.toks = orig
+	return ret
+}
+
+func (t *tokenized) isType() bool {
+	var tyMap = map[string]ty{
+		"int":    newTyInt(),
+		"char":   newTyChar(),
+		"struct": newTyStruct(nil),
+	}
 	if r, isReserved := t.toks[0].(*reservedTok); isReserved {
 		for key := range tyMap {
 			if strings.HasPrefix(r.str, key) {
@@ -128,20 +159,8 @@ func newGVarLabel() string {
 // add        = mul ("+" mul | "-" mul)*
 // mul        = unary ("*" unary | "/" unary)*
 // unary      = "sizeof" unary | ("+" | "-" | "*" | "&")? unary | postfix
-// postfix    = primary ("[" expr "]")*
+// postfix    = primary (("[" expr "]") | ("." | id))*
 // primary    = num | str | ident ("(" (expr ("," expr)* )? ")")? | "(" expr ")" | stmtExpr
-
-func (t *tokenized) isFunction() bool {
-	orig := t.toks
-	ty := t.expectType()
-	for t.consume("*") {
-		ty = &tyPtr{to: ty}
-	}
-	_, isID := t.consumeID()
-	ret := isID && t.consume("(")
-	t.toks = orig
-	return ret
-}
 
 func (t *tokenized) readVarSuffix(ty ty) ty {
 	if t.consume("[") {
@@ -153,10 +172,10 @@ func (t *tokenized) readVarSuffix(ty ty) ty {
 	return ty
 }
 
-func (t *tokenized) varDecl() (id string, ty ty, rhs node) {
+func (t *tokenized) varDecl() (ty ty, id string, rhs node) {
 	ty = t.expectType()
 	for t.consume("*") {
-		ty = &tyPtr{to: ty}
+		ty = newTyPtr(ty)
 	}
 	id = t.expectID()
 	ty = t.readVarSuffix(ty)
@@ -179,7 +198,7 @@ func (t *tokenized) parse() {
 			ast.fns = append(ast.fns, t.function())
 		} else {
 			// TODO: gvar init
-			id, ty, _ := t.varDecl()
+			ty, id, _ := t.varDecl()
 			g := newGVar(id, ty, nil)
 			ast.gVars = append(ast.gVars, g)
 			t.curScope.vars = append(t.curScope.vars, g)
@@ -236,25 +255,6 @@ func (t *tokenized) setFnLVars(fn *fnNode) {
 			fn.lVars = append(fn.lVars, v)
 		}
 	}
-}
-
-func (t *tokenized) spawnScope() {
-	t.curScope = newScope(t.curScope)
-}
-
-func (t *tokenized) rewindScope() {
-	offset := t.curScope.curOffset
-	base := t.curScope.baseOffset
-	for _, v := range t.curScope.vars {
-		offset += v.getType().size()
-		if lv, isLVar := v.(*lVar); isLVar {
-			lv.offset = offset + base
-		}
-	}
-	t.curScope.curOffset += offset
-	t.curScope = t.curScope.super
-	// TODO: maybe this is not necessary if we zero out the memory for child scope?
-	t.curScope.curOffset += offset
 }
 
 func (t *tokenized) stmt() node {
@@ -326,8 +326,8 @@ func (t *tokenized) stmt() node {
 	}
 
 	// handle variable definition
-	if t.peekType() {
-		id, ty, rhs := t.varDecl()
+	if t.isType() {
+		ty, id, rhs := t.varDecl()
 		t.addLVarToScope(id, ty)
 		if rhs == nil {
 			return newNullNode()
@@ -434,12 +434,28 @@ func (t *tokenized) unary() node {
 
 func (t *tokenized) postfix() node {
 	node := t.primary()
-	for t.consume("[") {
-		add := newAddNode(node, t.expr())
-		node = newDerefNode(add)
-		t.expect("]")
+	for {
+		if t.consume("[") {
+			add := newAddNode(node, t.expr())
+			node = newDerefNode(add)
+			t.expect("]")
+			continue
+		}
+		if t.consume(".") {
+			if s, isStruct := node.loadType().(*tyStruct); isStruct {
+				id := t.expectID()
+				mem := s.findMember(id)
+				if addr, isAddr := node.(addressableNode); isAddr {
+					node = newMemberNode(addr, mem)
+					continue
+				}
+				log.Fatalf("expected addressableNode for lhs of member but got %T", node)
+			} else {
+				log.Fatalf("expected struct but got %T", s)
+			}
+		}
+		return node
 	}
-	return node
 }
 
 func (t *tokenized) stmtExpr() node {

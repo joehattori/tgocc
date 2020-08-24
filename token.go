@@ -60,6 +60,25 @@ func newTokenized(toks []token) *tokenized {
 	return &tokenized{curScope: &scope{}, res: &ast{}, toks: toks}
 }
 
+func (t *tokenized) spawnScope() {
+	t.curScope = newScope(t.curScope)
+}
+
+func (t *tokenized) rewindScope() {
+	offset := t.curScope.curOffset
+	base := t.curScope.baseOffset
+	for _, v := range t.curScope.vars {
+		offset += v.getType().size()
+		if lv, isLVar := v.(*lVar); isLVar {
+			lv.offset = offset + base
+		}
+	}
+	t.curScope.curOffset += offset
+	t.curScope = t.curScope.super
+	// TODO: maybe this is not necessary if we zero out the memory for child scope?
+	t.curScope.curOffset += offset
+}
+
 type scope struct {
 	baseOffset int
 	curOffset  int
@@ -86,23 +105,36 @@ func newTokenizer() *tokenizer {
 	return new(tokenizer)
 }
 
+func (t *tokenizer) cur() string {
+	return t.input[t.pos:]
+}
+
 func (t *tokenizer) head() rune {
 	r, _ := utf8.DecodeRuneInString(t.cur())
 	return r
 }
 
-func (t *tokenizer) cur() string {
-	return t.input[t.pos:]
-}
-
-func (t *tokenizer) trimSpace() {
-	for unicode.IsSpace(t.head()) {
+func (t *tokenizer) isComment() bool {
+	if strings.HasPrefix(t.cur(), "//") {
+		t.pos += 2
+		for t.head() != '\n' {
+			t.pos++
+		}
 		t.pos++
+		return true
 	}
-}
-
-func (t *tokenizer) isAny(s string) bool {
-	return strings.ContainsRune(s, t.head())
+	if strings.HasPrefix(t.cur(), "/*") {
+		t.pos += 2
+		for !strings.HasPrefix(t.cur(), "*/") {
+			if t.cur() == "" {
+				log.Fatalf("comment unclosed: %s", t.input)
+			}
+			t.pos++
+		}
+		t.pos += 2
+		return true
+	}
+	return false
 }
 
 func (t *tokenizer) readCharLiteral() token {
@@ -155,7 +187,7 @@ func (t *tokenizer) readMultiCharOp() token {
 
 func (t *tokenizer) readReserved() token {
 	s := t.cur()
-	r := regexp.MustCompile(`^(if|else|while|for|return|int|char|sizeof)\W`)
+	r := regexp.MustCompile(`^(if|else|while|for|return|int|char|sizeof|struct)\W`)
 	if !r.MatchString(s) {
 		return nil
 	}
@@ -192,27 +224,10 @@ func (t *tokenizer) readStrLiteral() token {
 	return newStrTok(s, len(s))
 }
 
-func (t *tokenizer) isComment() bool {
-	if strings.HasPrefix(t.cur(), "//") {
-		t.pos += 2
-		for t.head() != '\n' {
-			t.pos++
-		}
+func (t *tokenizer) trimSpace() {
+	for unicode.IsSpace(t.head()) {
 		t.pos++
-		return true
 	}
-	if strings.HasPrefix(t.cur(), "/*") {
-		t.pos += 2
-		for !strings.HasPrefix(t.cur(), "*/") {
-			if t.cur() == "" {
-				log.Fatalf("comment unclosed: %s", t.input)
-			}
-			t.pos++
-		}
-		t.pos += 2
-		return true
-	}
-	return false
 }
 
 func (t *tokenizer) tokenize(input string) *tokenized {
@@ -253,7 +268,7 @@ func (t *tokenizer) tokenize(input string) *tokenized {
 			continue
 		}
 
-		if tok := t.readRuneFrom("+-*/(){}[]<>;=,&"); tok != nil {
+		if tok := t.readRuneFrom("+-*/(){}[]<>;=,&."); tok != nil {
 			toks = append(toks, tok)
 			continue
 		}

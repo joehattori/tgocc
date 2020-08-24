@@ -156,6 +156,14 @@ int main() {
     test(2, ({ int x=2; { int x=3; } int y=4; x; }), "int x=2; { int x=3; } int y=4; x;");
     test(3, ({ int x=2; { x=3; } x; }), "int x=2; { x=3; } x;");
 
+    test(2, ({ struct { int first; int second; } s; s.first=2; s.first; }),
+        "struct { int first; int second; } s; s.first=2; s.first");
+    test(12, ({ struct {int a[3];} x; sizeof(x); }), "struct {int a[3];} x; sizeof(x);");
+    test(16, ({ struct {int a;} x[4]; sizeof(x); }), "struct {int a;} x[4]; sizeof(x);");
+    test(24, ({ struct {int a[3];} x[2]; sizeof(x); }), "struct {int a[3];} x[2]; sizeof(x)};");
+    test(2, ({ struct {char a; char b;} x; sizeof(x); }), "struct {char a; char b;} x; sizeof(x);");
+    test(5, ({ struct {char a; int b;} x; sizeof(x); }), "struct {char a; int b;} x; sizeof(x);");
+
     printf("OK\n");
     return 0;
 }

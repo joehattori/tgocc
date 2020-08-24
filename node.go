@@ -73,6 +73,17 @@ type (
 		els  node
 	}
 
+	memberNode struct {
+		lhs addressableNode
+		mem *member
+	}
+
+	member struct {
+		name   string
+		offset int
+		ty     ty
+	}
+
 	nullNode struct{}
 
 	numNode struct {
@@ -100,6 +111,10 @@ type (
 		then node
 	}
 )
+
+func newMember(name string, offset int, ty ty) *member {
+	return &member{name, offset, ty}
+}
 
 type nodeKind int
 
@@ -182,8 +197,8 @@ func newIfNode(cond node, then node, els node) *ifNode {
 	return &ifNode{cond, then, els}
 }
 
-func newVarNode(v variable) *varNode {
-	return &varNode{v}
+func newMemberNode(lhs addressableNode, m *member) *memberNode {
+	return &memberNode{lhs, m}
 }
 
 func newNullNode() *nullNode {
@@ -223,6 +238,10 @@ func newRetNode(rhs node, fnName string) *retNode {
 
 func newStmtExprNode(body []node) *stmtExprNode {
 	return &stmtExprNode{body: body}
+}
+
+func newVarNode(v variable) *varNode {
+	return &varNode{v}
 }
 
 func newWhileNode(cond node, then node) *whileNode {

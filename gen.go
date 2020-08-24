@@ -230,6 +230,14 @@ func (i *ifNode) gen() {
 	}
 }
 
+func (m *memberNode) gen() {
+	m.genAddr()
+	ty := m.loadType()
+	if _, isArr := ty.(*tyArr); !isArr {
+		load(ty)
+	}
+}
+
 func (*nullNode) gen() {}
 
 func (n *numNode) gen() {
@@ -271,6 +279,13 @@ func (w *whileNode) gen() {
 
 func (d *derefNode) genAddr() {
 	d.ptr.gen()
+}
+
+func (m *memberNode) genAddr() {
+	m.lhs.genAddr()
+	fmt.Println("	pop rax")
+	fmt.Printf("	add rax, %d\n", m.mem.offset)
+	fmt.Println("	push rax")
 }
 
 func (v *varNode) genAddr() {
