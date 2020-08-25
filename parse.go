@@ -70,35 +70,6 @@ func (t *tokenized) expectNum() int {
 	return -1
 }
 
-func (t *tokenized) expectStructDecl() ty {
-	t.expect("struct")
-	tagStr, tagExists := t.consumeID()
-	if tagExists && !t.beginsWith("{") {
-		if tag := t.searchStructTag(tagStr); tag != nil {
-			return tag.ty
-		}
-		log.Fatalf("no such struct tag %s", tagStr)
-	}
-	t.expect("{")
-	var members []*member
-	offset, align := 0, 0
-	for !t.consume("}") {
-		// TODO: handle when rhs is not null
-		ty, tag, _ := t.decl()
-		offset = alignTo(offset, ty.alignment())
-		members = append(members, newMember(tag, offset, ty))
-		offset += ty.size()
-		if align < ty.size() {
-			align = ty.size()
-		}
-	}
-	tyStruct := newTyStruct(align, members, alignTo(offset, align))
-	if tagExists {
-		t.curScope.addStructTag(newStructTag(tagStr, tyStruct))
-	}
-	return tyStruct
-}
-
 func (t *tokenized) expectType() ty {
 	cur := t.toks[0]
 	switch tok := cur.(type) {
@@ -126,7 +97,7 @@ func (t *tokenized) expectType() ty {
 			return newTyLong()
 		}
 		if strings.HasPrefix(tok.str, "struct") {
-			return t.expectStructDecl()
+			return t.structDecl()
 		}
 	}
 	log.Fatalf("type expected but got %T", cur)
@@ -288,6 +259,35 @@ func (t *tokenized) setFnLVars(fn *fnNode) {
 			fn.lVars = append(fn.lVars, v)
 		}
 	}
+}
+
+func (t *tokenized) structDecl() ty {
+	t.expect("struct")
+	tagStr, tagExists := t.consumeID()
+	if tagExists && !t.beginsWith("{") {
+		if tag := t.searchStructTag(tagStr); tag != nil {
+			return tag.ty
+		}
+		log.Fatalf("no such struct tag %s", tagStr)
+	}
+	t.expect("{")
+	var members []*member
+	offset, align := 0, 0
+	for !t.consume("}") {
+		// TODO: handle when rhs is not null
+		ty, tag, _ := t.decl()
+		offset = alignTo(offset, ty.alignment())
+		members = append(members, newMember(tag, offset, ty))
+		offset += ty.size()
+		if align < ty.size() {
+			align = ty.size()
+		}
+	}
+	tyStruct := newTyStruct(align, members, alignTo(offset, align))
+	if tagExists {
+		t.curScope.addStructTag(newStructTag(tagStr, tyStruct))
+	}
+	return tyStruct
 }
 
 func (t *tokenized) stmt() node {
@@ -540,7 +540,7 @@ func (t *tokenized) primary() node {
 			if fn, ok := t.searchVar(id).(*gVar); ok {
 				ty = fn.ty.(*tyFn).retTy
 			} else {
-				log.Printf("implicit declareation of function %s", id)
+				log.Printf("implicit declaration of function %s", id)
 				ty = newTyInt()
 			}
 			var params []node
