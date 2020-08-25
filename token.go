@@ -207,7 +207,7 @@ func (t *tokenizer) readMultiCharOp() token {
 
 func (t *tokenizer) readReserved() token {
 	s := t.cur()
-	r := regexp.MustCompile(`^(if|else|while|for|return|sizeof)\W`)
+	r := regexp.MustCompile(`^(if|else|while|for|return|sizeof|typedef)\W`)
 	if r.MatchString(s) {
 		l := len(r.FindString(s)) - 1
 		t.pos += l

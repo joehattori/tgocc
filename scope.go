@@ -6,8 +6,8 @@ type scope struct {
 	baseOffset int
 	curOffset  int
 	super      *scope
-	vars       []variable
 	structTags []*structTag
+	vars       []variable
 }
 
 type structTag struct {
@@ -28,6 +28,15 @@ func (s *scope) addLVar(id string, ty ty) *lVar {
 		log.Fatalf("variable %s is already defined", id)
 	}
 	v := newLVar(id, ty)
+	s.vars = append(s.vars, v)
+	return v
+}
+
+func (s *scope) addTypeDef(id string, ty ty) *typeDef {
+	if _, exists := s.searchVar(id).(*typeDef); exists {
+		log.Fatalf("typedef %s is already defined", id)
+	}
+	v := newTypeDef(id, ty)
 	s.vars = append(s.vars, v)
 	return v
 }
@@ -57,13 +66,16 @@ func (s *scope) searchStructTag(tagStr string) *structTag {
 	return nil
 }
 
-func (s *scope) segregateScopeVars() (lVars []*lVar, gVars []*gVar) {
+// currently unused
+func (s *scope) segregateScopeVars() (lVars []*lVar, gVars []*gVar, typeDefs []*typeDef) {
 	for _, sv := range s.vars {
 		switch v := sv.(type) {
 		case *lVar:
 			lVars = append(lVars, v)
 		case *gVar:
 			gVars = append(gVars, v)
+		case *typeDef:
+			typeDefs = append(typeDefs, v)
 		}
 	}
 	return

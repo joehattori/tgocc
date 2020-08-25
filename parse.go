@@ -7,8 +7,17 @@ import (
 	"unicode/utf8"
 )
 
-func (t *tokenized) popToks() {
-	t.toks = t.toks[1:]
+func (t *tokenized) beginsWith(s string) bool {
+	return strings.HasPrefix(t.toks[0].getStr(), s)
+}
+
+func (t *tokenized) beginsWithID() (string, bool) {
+	cur := t.toks[0]
+	id := idRegexp.FindString(cur.getStr())
+	if _, ok := cur.(*idTok); ok && id != "" {
+		return id, true
+	}
+	return "", false
 }
 
 func (t *tokenized) consume(str string) bool {
@@ -96,10 +105,15 @@ func (t *tokenized) expectStructDecl() ty {
 }
 
 func (t *tokenized) expectType() ty {
+	id, isID := t.beginsWithID()
+	if tyDef, ok := t.searchVar(id).(*typeDef); isID && ok {
+		t.popToks()
+		return tyDef.ty
+	}
 	cur := t.toks[0]
 	rs, ok := cur.(*reservedTok)
 	if !ok {
-		log.Fatalf("tkReserved was expected but got %d %s", cur, cur.getStr())
+		log.Fatalf("tkReserved was expected but got %T %s", cur, cur.getStr())
 	}
 	if strings.HasPrefix(rs.str, "int") {
 		t.popToks()
@@ -123,10 +137,6 @@ func (t *tokenized) expectType() ty {
 	return nil
 }
 
-func (t *tokenized) beginsWith(s string) bool {
-	return strings.HasPrefix(t.toks[0].getStr(), s)
-}
-
 func (t *tokenized) isFunction() bool {
 	orig := t.toks
 	ty := t.expectType()
@@ -140,7 +150,15 @@ func (t *tokenized) isFunction() bool {
 }
 
 func (t *tokenized) isType() bool {
+	if id, isID := t.beginsWithID(); isID {
+		_, ok := t.searchVar(id).(*typeDef)
+		return ok
+	}
 	return typeRegexp.MatchString(t.toks[0].getStr())
+}
+
+func (t *tokenized) popToks() {
+	t.toks = t.toks[1:]
 }
 
 var gVarLabelCount int
@@ -160,6 +178,7 @@ func newGVarLabel() string {
 //				| "if" "(" expr ")" stmt ("else" stmt) ?
 //				| "while" "(" expr ")" stmt
 //				| "for" "(" expr? ";" expr? ";" expr? ")" stmt
+//				| "typedef" ty ident ("[" num "]")* ";"
 //				| decl
 // decl       = ty ident ("[" expr "]")* "=" expr ;" | ty ";"
 // expr       = assign
@@ -337,6 +356,15 @@ func (t *tokenized) stmt() node {
 
 		then = t.stmt()
 		return newForNode(init, cond, inc, then)
+	}
+
+	// handle typedef
+	if t.consume("typedef") {
+		ty := t.expectType()
+		id := t.expectID()
+		t.expect(";")
+		t.curScope.addTypeDef(id, ty)
+		return newNullNode()
 	}
 
 	// handle variable definition

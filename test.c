@@ -186,6 +186,10 @@ int main() {
     test(1, sub_short(7, 3, 3), "sub_short(7, 3, 3)");
     test(1, sub_long(7, 3, 3), "sub_long(7, 3, 3)");
 
+    test(1, ({ typedef int t; t x=1; x; }), "typedef int t; t x=1; x;");
+    test(1, ({ typedef struct {int a;} t; t x; x.a=1; x.a; }), "typedef struct {int a;} t; t x; x.a=1; x.a;");
+    test(2, ({ typedef struct {int a;} t; { typedef int t; } t x; x.a=2; x.a; }), "typedef struct {int a;} t; { typedef int t; } t x; x.a=2; x.a;");
+
     printf("OK\n");
     return 0;
 }
