@@ -165,7 +165,8 @@ int main() {
     test(16, ({ struct {int a;} x[4]; sizeof(x); }), "struct {int a;} x[4]; sizeof(x);");
     test(24, ({ struct {int a[3];} x[2]; sizeof(x); }), "struct {int a[3];} x[2]; sizeof(x)};");
     test(2, ({ struct {char a; char b;} x; sizeof(x); }), "struct {char a; char b;} x; sizeof(x);");
-    test(5, ({ struct {char a; int b;} x; sizeof(x); }), "struct {char a; int b;} x; sizeof(x);");
+    test(8, ({ struct {char a; int b;} x; sizeof(x); }), "struct {char a; int b;} x; sizeof(x);");
+    test(8, ({ struct {int a; char b;} x; sizeof(x); }), "struct {int a; char b;} x; sizeof(x);");
 
     test(8, ({ struct t {int a; int b;} x; struct t y; sizeof(y); }), "struct t {int a; int b;} x; struct t y; sizeof(y);");
     test(8, ({ struct t {int a; int b;}; struct t y; sizeof(y); }), "struct t {int a; int b;}; struct t y; sizeof(y);");
@@ -178,10 +179,10 @@ int main() {
     test(3, ({ struct t {char a;} x; struct t *y=&x; y->a=3; x.a; }), "struct t {char a;} x; struct t *y=&x; y->a=3; x.a;");
 
     test(2, ({ short x; sizeof(x); }), "short x; sizeof(x);");
-    test(3, ({ struct {char a; short b;} x; sizeof(x); }), "struct {char a; short b;} x; sizeof(x);");
+    test(4, ({ struct {char a; short b;} x; sizeof(x); }), "struct {char a; short b;} x; sizeof(x);");
 
     test(8, ({ long x; sizeof(x); }), "long x; sizeof(x);");
-    test(9, ({ struct {char a; long b;} x; sizeof(x); }), "struct {char a; long b} x; sizeof(x);");
+    test(16, ({ struct {char a; long b;} x; sizeof(x); }), "struct {char a; long b} x; sizeof(x);");
 
     test(1, sub_short(7, 3, 3), "sub_short(7, 3, 3)");
     test(1, sub_long(7, 3, 3), "sub_long(7, 3, 3)");

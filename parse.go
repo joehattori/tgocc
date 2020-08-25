@@ -81,14 +81,18 @@ func (t *tokenized) expectStructDecl() ty {
 	}
 	t.expect("{")
 	var members []*member
-	offset := 0
+	offset, align := 0, 0
 	for !t.consume("}") {
 		// TODO: handle when rhs is not null
 		ty, tag, _ := t.decl()
+		offset = alignTo(offset, ty.alignment())
 		members = append(members, newMember(tag, offset, ty))
 		offset += ty.size()
+		if align < ty.size() {
+			align = ty.size()
+		}
 	}
-	tyStruct := newTyStruct(members, offset)
+	tyStruct := newTyStruct(members, alignTo(offset, align), align)
 	if tagExists {
 		t.curScope.addStructTag(newStructTag(tagStr, tyStruct))
 	}

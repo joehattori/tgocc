@@ -3,6 +3,7 @@ package main
 import "log"
 
 type ty interface {
+	alignment() int
 	size() int
 }
 
@@ -24,18 +25,34 @@ type tyPtr struct {
 }
 type tyShort struct{}
 type tyStruct struct {
+	align   int
 	members []*member
 	sz      int
 }
 
-func newTyArr(of ty, len int) *tyArr              { return &tyArr{of, len} }
-func newTyChar() *tyChar                          { return &tyChar{} }
-func newTyEmpty() *tyEmpty                        { return &tyEmpty{} }
-func newTyInt() *tyInt                            { return &tyInt{} }
-func newTyLong() *tyLong                          { return &tyLong{} }
-func newTyPtr(to ty) *tyPtr                       { return &tyPtr{to} }
-func newTyShort() *tyShort                        { return &tyShort{} }
-func newTyStruct(m []*member, size int) *tyStruct { return &tyStruct{m, size} }
+func newTyArr(of ty, len int) *tyArr { return &tyArr{of, len} }
+func newTyChar() *tyChar             { return &tyChar{} }
+func newTyEmpty() *tyEmpty           { return &tyEmpty{} }
+func newTyInt() *tyInt               { return &tyInt{} }
+func newTyLong() *tyLong             { return &tyLong{} }
+func newTyPtr(to ty) *tyPtr          { return &tyPtr{to} }
+func newTyShort() *tyShort           { return &tyShort{} }
+func newTyStruct(m []*member, size int, align int) *tyStruct {
+	return &tyStruct{align, m, size}
+}
+
+func alignTo(n int, align int) int {
+	return (n + align - 1) / align * align
+}
+
+func (a *tyArr) alignment() int    { return a.of.alignment() }
+func (c *tyChar) alignment() int   { return 1 }
+func (e *tyEmpty) alignment() int  { return 0 }
+func (i *tyInt) alignment() int    { return 4 }
+func (l *tyLong) alignment() int   { return 8 }
+func (p *tyPtr) alignment() int    { return 8 }
+func (s *tyShort) alignment() int  { return 2 }
+func (s *tyStruct) alignment() int { return s.align }
 
 func (a *tyArr) size() int    { return a.len * a.of.size() }
 func (c *tyChar) size() int   { return 1 }
