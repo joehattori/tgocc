@@ -283,6 +283,7 @@ func (t *tokenized) setFnLVars(fn *fnNode) {
 	for _, sv := range t.curScope.vars {
 		switch v := sv.(type) {
 		case *lVar:
+			offset = alignTo(offset, v.getType().alignment())
 			offset += v.getType().size()
 			v.offset = offset
 			fn.lVars = append(fn.lVars, v)

@@ -69,6 +69,7 @@ func (t *tokenized) rewindScope() {
 	offset := t.curScope.curOffset
 	base := t.curScope.baseOffset
 	for _, v := range t.curScope.vars {
+		offset = alignTo(offset, v.getType().size())
 		offset += v.getType().size()
 		if lv, ok := v.(*lVar); ok {
 			lv.offset = offset + base

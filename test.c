@@ -168,6 +168,9 @@ int main() {
     test(8, ({ struct {char a; int b;} x; sizeof(x); }), "struct {char a; int b;} x; sizeof(x);");
     test(8, ({ struct {int a; char b;} x; sizeof(x); }), "struct {int a; char b;} x; sizeof(x);");
 
+    test(1, ({ int x; char y; long a=&x; long b=&y; a-b; }), "int x; char y; long a=&x; long b=&y; a-b;");
+    test(7, ({ char x; int y; long a=&x; long b=&y; a-b; }), "char x; int y; long a=&x; long b=&y; a-b;");
+
     test(8, ({ struct t {int a; int b;} x; struct t y; sizeof(y); }), "struct t {int a; int b;} x; struct t y; sizeof(y);");
     test(8, ({ struct t {int a; int b;}; struct t y; sizeof(y); }), "struct t {int a; int b;}; struct t y; sizeof(y);");
     test(2, ({ struct t {char a[2];}; { struct t {char a[4];}; } struct t y; sizeof(y); }),
