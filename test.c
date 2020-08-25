@@ -29,6 +29,14 @@ int sub_long(long a, long b, long c) { return a-b-c; }
 int g1;
 int g2[4];
 
+int *gref() {
+    return &g1;
+}
+
+char *ret_string() {
+    return "test";
+}
+
 int main() {
     test(0, 0, "0");
     test(42, 42, "42");
@@ -193,6 +201,11 @@ int main() {
     test(1, ({ typedef int t; t x=1; x; }), "typedef int t; t x=1; x;");
     test(1, ({ typedef struct {int a;} t; t x; x.a=1; x.a; }), "typedef struct {int a;} t; t x; x.a=1; x.a;");
     test(2, ({ typedef struct {int a;} t; { typedef int t; } t x; x.a=2; x.a; }), "typedef struct {int a;} t; { typedef int t; } t x; x.a=2; x.a;");
+
+    test(3, ({ *gref(); }), "*gref()");
+    test(8, ({ sizeof gref(); }), "sizeof gref();");
+    test(116, ({ ret_string()[0]; }), "ret_string()[0];");
+    test(115, ({ ret_string()[2]; }), "ret_string()[2];");
 
     printf("OK\n");
     return 0;

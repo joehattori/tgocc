@@ -92,7 +92,7 @@ func (t *tokenized) expectStructDecl() ty {
 			align = ty.size()
 		}
 	}
-	tyStruct := newTyStruct(members, alignTo(offset, align), align)
+	tyStruct := newTyStruct(align, members, alignTo(offset, align))
 	if tagExists {
 		t.curScope.addStructTag(newStructTag(tagStr, tyStruct))
 	}
@@ -128,9 +128,8 @@ func (t *tokenized) expectType() ty {
 		if strings.HasPrefix(tok.str, "struct") {
 			return t.expectStructDecl()
 		}
-	default:
-		log.Fatalf("type expected but got %T", cur)
 	}
+	log.Fatalf("type expected but got %T", cur)
 	return nil
 }
 
@@ -232,9 +231,8 @@ func (t *tokenized) parse() {
 		} else {
 			// TODO: gvar init
 			ty, id, _ := t.decl()
-			g := newGVar(id, ty, nil)
-			ast.gVars = append(ast.gVars, g)
-			t.curScope.vars = append(t.curScope.vars, g)
+			t.curScope.addGVar(id, ty, nil)
+			ast.gVars = append(ast.gVars, newGVar(id, ty, nil))
 		}
 	}
 }
@@ -246,6 +244,7 @@ func (t *tokenized) function() *fnNode {
 	}
 	fnName := t.expectID()
 	t.curFnName = fnName
+	t.curScope.addGVar(fnName, newTyFn(ty), nil)
 	fn := newFnNode(fnName, ty)
 	t.spawnScope()
 	t.readFnParams(fn)
@@ -537,16 +536,23 @@ func (t *tokenized) primary() node {
 
 	if id, isID := t.consumeID(); isID {
 		if t.consume("(") {
+			var ty ty
+			if fn, ok := t.searchVar(id).(*gVar); ok {
+				ty = fn.ty.(*tyFn).retTy
+			} else {
+				log.Printf("implicit declareation of function %s", id)
+				ty = newTyInt()
+			}
 			var params []node
 			if t.consume(")") {
-				return newFnCallNode(id, params)
+				return newFnCallNode(id, params, ty)
 			}
 			params = append(params, t.expr())
 			for t.consume(",") {
 				params = append(params, t.expr())
 			}
 			t.expect(")")
-			return newFnCallNode(id, params)
+			return newFnCallNode(id, params, ty)
 		}
 		return newVarNode(t.findVar(id))
 	}

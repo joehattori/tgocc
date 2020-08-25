@@ -23,6 +23,15 @@ func newStructTag(name string, ty ty) *structTag {
 	return &structTag{name, ty}
 }
 
+func (s *scope) addGVar(id string, ty ty, content interface{}) *gVar {
+	if _, exists := s.searchVar(id).(*gVar); exists {
+		log.Fatalf("variable %s is already defined", id)
+	}
+	v := newGVar(id, ty, content)
+	s.vars = append(s.vars, v)
+	return v
+}
+
 func (s *scope) addLVar(id string, ty ty) *lVar {
 	if _, exists := s.searchVar(id).(*lVar); exists {
 		log.Fatalf("variable %s is already defined", id)
