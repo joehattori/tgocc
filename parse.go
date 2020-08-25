@@ -11,15 +11,6 @@ func (t *tokenized) beginsWith(s string) bool {
 	return strings.HasPrefix(t.toks[0].getStr(), s)
 }
 
-func (t *tokenized) beginsWithID() (string, bool) {
-	cur := t.toks[0]
-	id := idRegexp.FindString(cur.getStr())
-	if _, ok := cur.(*idTok); ok && id != "" {
-		return id, true
-	}
-	return "", false
-}
-
 func (t *tokenized) consume(str string) bool {
 	if r, ok := t.toks[0].(*reservedTok); ok &&
 		r.len == len(str) &&
@@ -105,56 +96,62 @@ func (t *tokenized) expectStructDecl() ty {
 }
 
 func (t *tokenized) expectType() ty {
-	id, isID := t.beginsWithID()
-	if tyDef, ok := t.searchVar(id).(*typeDef); isID && ok {
-		t.popToks()
-		return tyDef.ty
-	}
 	cur := t.toks[0]
-	rs, ok := cur.(*reservedTok)
-	if !ok {
-		log.Fatalf("tkReserved was expected but got %T %s", cur, cur.getStr())
-	}
-	if strings.HasPrefix(rs.str, "int") {
-		t.popToks()
-		return newTyInt()
-	}
-	if strings.HasPrefix(rs.str, "char") {
-		t.popToks()
-		return newTyChar()
-	}
-	if strings.HasPrefix(rs.str, "short") {
-		t.popToks()
-		return newTyShort()
-	}
-	if strings.HasPrefix(rs.str, "long") {
-		t.popToks()
-		return newTyLong()
-	}
-	if strings.HasPrefix(rs.str, "struct") {
-		return t.expectStructDecl()
+	switch tok := cur.(type) {
+	case *idTok:
+		id := idRegexp.FindString(tok.id)
+		if tyDef, ok := t.searchVar(id).(*typeDef); ok {
+			t.popToks()
+			return tyDef.ty
+		}
+	case *reservedTok:
+		if strings.HasPrefix(tok.str, "int") {
+			t.popToks()
+			return newTyInt()
+		}
+		if strings.HasPrefix(tok.str, "char") {
+			t.popToks()
+			return newTyChar()
+		}
+		if strings.HasPrefix(tok.str, "short") {
+			t.popToks()
+			return newTyShort()
+		}
+		if strings.HasPrefix(tok.str, "long") {
+			t.popToks()
+			return newTyLong()
+		}
+		if strings.HasPrefix(tok.str, "struct") {
+			return t.expectStructDecl()
+		}
+	default:
+		log.Fatalf("type expected but got %T", cur)
 	}
 	return nil
 }
 
 func (t *tokenized) isFunction() bool {
 	orig := t.toks
+	defer func() { t.toks = orig }()
 	ty := t.expectType()
 	for t.consume("*") {
 		ty = newTyPtr(ty)
 	}
 	_, isID := t.consumeID()
-	ret := isID && t.consume("(")
-	t.toks = orig
-	return ret
+	return isID && t.consume("(")
 }
 
 func (t *tokenized) isType() bool {
-	if id, isID := t.beginsWithID(); isID {
+	cur := t.toks[0]
+	switch tok := cur.(type) {
+	case *idTok:
+		id := idRegexp.FindString(tok.id)
 		_, ok := t.searchVar(id).(*typeDef)
 		return ok
+	case *reservedTok:
+		return typeRegexp.MatchString(tok.str)
 	}
-	return typeRegexp.MatchString(t.toks[0].getStr())
+	return false
 }
 
 func (t *tokenized) popToks() {
@@ -164,9 +161,8 @@ func (t *tokenized) popToks() {
 var gVarLabelCount int
 
 func newGVarLabel() string {
-	ret := fmt.Sprintf(".L.data.%d", gVarLabelCount)
-	gVarLabelCount++
-	return ret
+	defer func() { gVarLabelCount++ }()
+	return fmt.Sprintf(".L.data.%d", gVarLabelCount)
 }
 
 // program    = (function | globalVar)*
