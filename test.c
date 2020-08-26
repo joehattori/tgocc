@@ -215,6 +215,12 @@ int main() {
     test(3, ({ int *x[3]; int y; x[0]=&y; y=3; x[0][0]; }), "int *x[3]; int y; x[0]=&y; y=3; x[0][0];");
     test(4, ({ int x[3]; int (*y)[3]=x; y[0][0]=4; y[0][0]; }), "int x[3]; int (*y)[3]=x; y[0][0]=4; y[0][0];");
 
+    test(1, sizeof(void), "sizeof(void)");
+    test(1, sizeof(char), "sizeof(void)");
+    test(2, sizeof(short), "sizeof(void)");
+    test(4, sizeof(int), "sizeof(void)");
+    test(8, sizeof(long), "sizeof(void)");
+
     { void *x; }
 
     printf("OK\n");

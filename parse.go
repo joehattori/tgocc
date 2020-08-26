@@ -630,6 +630,15 @@ func (p *parser) primary() node {
 	}
 
 	if p.consume("sizeof") {
+		orig := p.toks
+		if p.consume("(") {
+			if p.isType() {
+				n := p.baseType().size()
+				p.expect(")")
+				return newNumNode(n)
+			}
+			p.toks = orig
+		}
 		return newNumNode(p.unary().loadType().size())
 	}
 
