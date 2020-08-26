@@ -202,10 +202,15 @@ int main() {
     test(1, ({ typedef struct {int a;} t; t x; x.a=1; x.a; }), "typedef struct {int a;} t; t x; x.a=1; x.a;");
     test(2, ({ typedef struct {int a;} t; { typedef int t; } t x; x.a=2; x.a; }), "typedef struct {int a;} t; { typedef int t; } t x; x.a=2; x.a;");
 
-    test(3, ({ *gref(); }), "*gref()");
-    test(8, ({ sizeof gref(); }), "sizeof gref();");
-    test(116, ({ ret_string()[0]; }), "ret_string()[0];");
-    test(115, ({ ret_string()[2]; }), "ret_string()[2];");
+    test(3, *gref(), "*gref()");
+    test(8, sizeof gref(), "sizeof gref();");
+    test(116, ret_string()[0], "ret_string()[0];");
+    test(115, ret_string()[2], "ret_string()[2];");
+
+    test(24, ({ int *x[3]; sizeof(x); }), "int *x[3]; sizeof(x);");
+    test(8, ({ int (*x)[3]; sizeof(x); }), "int (*x)[3]; sizeof(x);");
+    test(3, ({ int *x[3]; int y; x[0]=&y; y=3; x[0][0]; }), "int *x[3]; int y; x[0]=&y; y=3; x[0][0];");
+    test(4, ({ int x[3]; int (*y)[3]=x; y[0][0]=4; y[0][0]; }), "int x[3]; int (*y)[3]=x; y[0][0]=4; y[0][0];");
 
     printf("OK\n");
     return 0;

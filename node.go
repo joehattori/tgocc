@@ -152,7 +152,7 @@ func newAddNode(lhs node, rhs node) *arithNode {
 			return &arithNode{op: ndPtrAdd, lhs: lhs, rhs: rhs}
 		}
 	}
-	log.Fatalf("Unexpected type: lhs: %T %T, rhs: %T %T", lhs, l, rhs, r)
+	log.Fatalf("Unexpected type for addition: lhs: %T %T, rhs: %T %T", lhs, l, rhs, r)
 	return nil
 }
 
@@ -226,7 +226,7 @@ func newSubNode(lhs node, rhs node) *arithNode {
 			return &arithNode{op: ndPtrDiff, lhs: lhs, rhs: rhs}
 		}
 	}
-	log.Fatalf("Unexpected type: lhs: %T, rhs: %T", l, r)
+	log.Fatalf("Unexpected type for subtraction: lhs: %T, rhs: %T", l, r)
 	return nil
 }
 

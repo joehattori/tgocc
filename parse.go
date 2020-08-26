@@ -70,7 +70,86 @@ func (t *tokenized) expectNum() int {
 	return -1
 }
 
-func (t *tokenized) expectType() ty {
+func (t *tokenized) isFunction() bool {
+	orig := t.toks
+	defer func() { t.toks = orig }()
+	_ = t.baseType()
+	for t.consume("*") {
+	}
+	_, isID := t.consumeID()
+	return isID && t.consume("(")
+}
+
+func (t *tokenized) isType() bool {
+	cur := t.toks[0]
+	switch tok := cur.(type) {
+	case *idTok:
+		id := idRegexp.FindString(tok.id)
+		_, ok := t.searchVar(id).(*typeDef)
+		return ok
+	case *reservedTok:
+		return typeRegexp.MatchString(tok.str)
+	}
+	return false
+}
+
+func (t *tokenized) popToks() {
+	t.toks = t.toks[1:]
+}
+
+var gVarLabelCount int
+
+func newGVarLabel() string {
+	defer func() { gVarLabelCount++ }()
+	return fmt.Sprintf(".L.data.%d", gVarLabelCount)
+}
+
+// program    = (function | globalVar)*
+// function   = baseType tyDecl "(" (ident ("," ident)* )? ")" "{" stmt* "}"
+// globalVar  = decl
+// stmt       = expr ";"
+//				| "{" stmt* "}"
+//			    | "return" expr ";"
+//				| "if" "(" expr ")" stmt ("else" stmt) ?
+//				| "while" "(" expr ")" stmt
+//				| "for" "(" expr? ";" expr? ";" expr? ")" stmt
+//				| "typedef" ty ident ("[" num "]")* ";"
+//				| decl
+// decl       = baseType tyDecl ("[" expr "]")* "=" expr ;" | baseTy ";"
+// tyDecl     = "*"* (ident | "(" declarator ")")
+// expr       = assign
+// stmtExpr   = "(" "{" stmt+ "}" ")"
+// assign     = equality ("=" assign) ?
+// equality   = relational ("==" relational | "!=" relational)*
+// relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+// add        = mul ("+" mul | "-" mul)*
+// mul        = unary ("*" unary | "/" unary)*
+// unary      = ("+" | "-" | "*" | "&")? unary | postfix
+// postfix    = primary (("[" expr "]") | ("." | id))*
+// primary    =  num
+//				| "sizeof" unary
+//				| str
+//				| ident ("(" (expr ("," expr)* )? ")")?
+//				| "(" expr ")"
+//				| stmtExpr
+
+func (t *tokenized) decl() (ty ty, id string, rhs node) {
+	ty = t.baseType()
+	if t.consume(";") {
+		return
+	}
+	id, ty = t.tyDecl(ty)
+	ty = t.tySuffix(ty)
+	if t.consume(";") {
+		return
+	}
+	t.expect("=")
+	rhs = t.expr()
+	t.expect(";")
+	return
+}
+
+func (t *tokenized) baseType() ty {
 	cur := t.toks[0]
 	switch tok := cur.(type) {
 	case *idTok:
@@ -104,91 +183,35 @@ func (t *tokenized) expectType() ty {
 	return nil
 }
 
-func (t *tokenized) isFunction() bool {
-	orig := t.toks
-	defer func() { t.toks = orig }()
-	ty := t.expectType()
+func (t *tokenized) tyDecl(baseTy ty) (id string, newTy ty) {
 	for t.consume("*") {
-		ty = newTyPtr(ty)
+		baseTy = newTyPtr(baseTy)
 	}
-	_, isID := t.consumeID()
-	return isID && t.consume("(")
-}
-
-func (t *tokenized) isType() bool {
-	cur := t.toks[0]
-	switch tok := cur.(type) {
-	case *idTok:
-		id := idRegexp.FindString(tok.id)
-		_, ok := t.searchVar(id).(*typeDef)
-		return ok
-	case *reservedTok:
-		return typeRegexp.MatchString(tok.str)
+	if t.consume("(") {
+		id, newTy = t.tyDecl(nil)
+		t.expect(")")
+		baseTy = t.tySuffix(baseTy)
+		switch typ := newTy.(type) {
+		case *tyArr:
+			typ.of = baseTy
+		case *tyPtr:
+			typ.to = baseTy
+		default:
+			newTy = baseTy
+		}
+		return
 	}
-	return false
+	return t.expectID(), t.tySuffix(baseTy)
 }
 
-func (t *tokenized) popToks() {
-	t.toks = t.toks[1:]
-}
-
-var gVarLabelCount int
-
-func newGVarLabel() string {
-	defer func() { gVarLabelCount++ }()
-	return fmt.Sprintf(".L.data.%d", gVarLabelCount)
-}
-
-// program    = (function | globalVar)*
-// function   = ty ident ("(" (ident ("," ident)* )? ")") "{" stmt* "}"
-// globalVar  = decl
-// stmt       = expr ";"
-//				| "{" stmt* "}"
-//			    | "return" expr ";"
-//				| "if" "(" expr ")" stmt ("else" stmt) ?
-//				| "while" "(" expr ")" stmt
-//				| "for" "(" expr? ";" expr? ";" expr? ")" stmt
-//				| "typedef" ty ident ("[" num "]")* ";"
-//				| decl
-// decl       = ty ident ("[" expr "]")* "=" expr ;" | ty ";"
-// expr       = assign
-// stmtExpr   = "(" "{" stmt+ "}" ")"
-// assign     = equality ("=" assign) ?
-// equality   = relational ("==" relational | "!=" relational)*
-// relational = add ("<" add | "<=" add | ">" add | ">=" add)*
-// add        = mul ("+" mul | "-" mul)*
-// mul        = unary ("*" unary | "/" unary)*
-// unary      = "sizeof" unary | ("+" | "-" | "*" | "&")? unary | postfix
-// postfix    = primary (("[" expr "]") | ("." | id))*
-// primary    = num | str | ident ("(" (expr ("," expr)* )? ")")? | "(" expr ")" | stmtExpr
-
-func (t *tokenized) readVarSuffix(ty ty) ty {
+func (t *tokenized) tySuffix(baseTy ty) ty {
 	if t.consume("[") {
 		l := t.expectNum()
 		t.expect("]")
-		ty = t.readVarSuffix(ty)
-		return newTyArr(ty, l)
+		baseTy = t.tySuffix(baseTy)
+		return newTyArr(baseTy, l)
 	}
-	return ty
-}
-
-func (t *tokenized) decl() (ty ty, id string, rhs node) {
-	ty = t.expectType()
-	for t.consume("*") {
-		ty = newTyPtr(ty)
-	}
-	if t.consume(";") {
-		return
-	}
-	id = t.expectID()
-	ty = t.readVarSuffix(ty)
-	if t.consume(";") {
-		return
-	}
-	t.expect("=")
-	rhs = t.expr()
-	t.expect(";")
-	return
+	return baseTy
 }
 
 func (t *tokenized) parse() {
@@ -209,11 +232,8 @@ func (t *tokenized) parse() {
 }
 
 func (t *tokenized) function() *fnNode {
-	ty := t.expectType()
-	for t.consume("*") {
-		ty = newTyPtr(ty)
-	}
-	fnName := t.expectID()
+	ty := t.baseType()
+	fnName, ty := t.tyDecl(ty)
 	t.curFnName = fnName
 	t.curScope.addGVar(fnName, newTyFn(ty), nil)
 	fn := newFnNode(fnName, ty)
@@ -239,11 +259,9 @@ func (t *tokenized) readFnParams(fn *fnNode) {
 		}
 		isFirstArg = false
 
-		ty := t.expectType()
-		for t.consume("*") {
-			ty = newTyPtr(ty)
-		}
-		lv := t.curScope.addLVar(t.expectID(), ty)
+		ty := t.baseType()
+		id, ty := t.tyDecl(ty)
+		lv := t.curScope.addLVar(id, ty)
 		fn.params = append(fn.params, lv)
 	}
 }
@@ -360,8 +378,8 @@ func (t *tokenized) stmt() node {
 
 	// handle typedef
 	if t.consume("typedef") {
-		ty := t.expectType()
-		id := t.expectID()
+		ty := t.baseType()
+		id, ty := t.tyDecl(ty)
 		t.expect(";")
 		t.curScope.addTypeDef(id, ty)
 		return newNullNode()
@@ -456,9 +474,6 @@ func (t *tokenized) mulDiv() node {
 }
 
 func (t *tokenized) unary() node {
-	if t.consume("sizeof") {
-		return newNumNode(t.unary().loadType().size())
-	}
 	if t.consume("+") {
 		return t.unary()
 	}
@@ -534,13 +549,16 @@ func (t *tokenized) primary() node {
 		return node
 	}
 
+	if t.consume("sizeof") {
+		return newNumNode(t.unary().loadType().size())
+	}
+
 	if id, isID := t.consumeID(); isID {
 		if t.consume("(") {
 			var ty ty
 			if fn, ok := t.searchVar(id).(*gVar); ok {
 				ty = fn.ty.(*tyFn).retTy
 			} else {
-				log.Printf("implicit declaration of function %s", id)
 				ty = newTyInt()
 			}
 			var params []node
