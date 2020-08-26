@@ -178,6 +178,10 @@ func (t *tokenized) baseType() ty {
 		if strings.HasPrefix(tok.str, "struct") {
 			return t.structDecl()
 		}
+		if strings.HasPrefix(tok.str, "void") {
+			t.popToks()
+			return newTyVoid()
+		}
 	}
 	log.Fatalf("type expected but got %T", cur)
 	return nil

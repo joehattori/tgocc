@@ -288,7 +288,7 @@ func (d *derefNode) loadType() ty {
 	case *tyArr:
 		d.ty = v.of
 	default:
-		log.Fatalf("unhandled type %T", d.ptr.loadType())
+		log.Fatalf("cannot dereference type %T", d.ptr.loadType())
 	}
 	return d.ty
 }

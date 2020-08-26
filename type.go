@@ -30,6 +30,7 @@ type tyStruct struct {
 	members []*member
 	sz      int
 }
+type tyVoid struct{}
 
 func newTyArr(of ty, len int) *tyArr { return &tyArr{of, len} }
 func newTyChar() *tyChar             { return &tyChar{} }
@@ -42,6 +43,7 @@ func newTyShort() *tyShort           { return &tyShort{} }
 func newTyStruct(align int, m []*member, size int) *tyStruct {
 	return &tyStruct{align, m, size}
 }
+func newTyVoid() *tyVoid { return &tyVoid{} }
 
 func alignTo(n int, align int) int {
 	return (n + align - 1) / align * align
@@ -56,6 +58,7 @@ func (l *tyLong) alignment() int   { return 8 }
 func (p *tyPtr) alignment() int    { return 8 }
 func (s *tyShort) alignment() int  { return 2 }
 func (s *tyStruct) alignment() int { return s.align }
+func (v *tyVoid) alignment() int   { return 1 }
 
 func (a *tyArr) size() int    { return a.len * a.of.size() }
 func (c *tyChar) size() int   { return 1 }
@@ -66,6 +69,7 @@ func (l *tyLong) size() int   { return 8 }
 func (p *tyPtr) size() int    { return 8 }
 func (s *tyShort) size() int  { return 2 }
 func (s *tyStruct) size() int { return s.sz }
+func (v *tyVoid) size() int   { return 1 }
 
 func (a *tyArr) base() ty { return a.of }
 func (p *tyPtr) base() ty { return p.to }

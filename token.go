@@ -10,7 +10,7 @@ import (
 )
 
 var idRegexp = regexp.MustCompile(`^[a-zA-Z_]+\w*`)
-var typeRegexp = regexp.MustCompile(`^(int|char|long|short|struct)\W`)
+var typeRegexp = regexp.MustCompile(`^(int|char|long|short|struct|void)\W`)
 
 type token interface {
 	getStr() string
