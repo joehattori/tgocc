@@ -7,85 +7,85 @@ import (
 	"unicode/utf8"
 )
 
-func (t *tokenized) beginsWith(s string) bool {
-	return strings.HasPrefix(t.toks[0].getStr(), s)
+func (p *parser) beginsWith(s string) bool {
+	return strings.HasPrefix(p.toks[0].getStr(), s)
 }
 
-func (t *tokenized) consume(str string) bool {
-	if r, ok := t.toks[0].(*reservedTok); ok &&
+func (p *parser) consume(str string) bool {
+	if r, ok := p.toks[0].(*reservedTok); ok &&
 		r.len == len(str) &&
 		strings.HasPrefix(r.str, str) {
-		t.popToks()
+		p.popToks()
 		return true
 	}
 	return false
 }
 
-func (t *tokenized) consumeID() (string, bool) {
-	cur := t.toks[0]
+func (p *parser) consumeID() (string, bool) {
+	cur := p.toks[0]
 	id := idRegexp.FindString(cur.getStr())
 	if _, ok := cur.(*idTok); ok && id != "" {
-		t.popToks()
+		p.popToks()
 		return id, true
 	}
 	return "", false
 }
 
-func (t *tokenized) consumeStr() (string, bool) {
-	if s, ok := t.toks[0].(*strTok); ok {
-		t.popToks()
+func (p *parser) consumeStr() (string, bool) {
+	if s, ok := p.toks[0].(*strTok); ok {
+		p.popToks()
 		return s.content, true
 	}
 	return "", false
 }
 
-func (t *tokenized) expect(str string) {
-	cur := t.toks[0]
+func (p *parser) expect(str string) {
+	cur := p.toks[0]
 	if r, ok := cur.(*reservedTok); ok &&
 		r.len == len(str) && strings.HasPrefix(cur.getStr(), str) {
-		t.popToks()
+		p.popToks()
 		return
 	}
 	log.Fatalf("%s was expected but got %s", str, cur.getStr())
 }
 
-func (t *tokenized) expectID() string {
-	cur := t.toks[0]
+func (p *parser) expectID() string {
+	cur := p.toks[0]
 	id := idRegexp.FindString(cur.getStr())
 	if _, ok := cur.(*idTok); ok && id != "" {
-		t.popToks()
+		p.popToks()
 		return id
 	}
 	log.Fatalf("ID was expected but got %s", cur.getStr())
 	return ""
 }
 
-func (t *tokenized) expectNum() int {
-	cur := t.toks[0]
+func (p *parser) expectNum() int {
+	cur := p.toks[0]
 	if n, ok := cur.(*numTok); ok {
-		t.popToks()
+		p.popToks()
 		return n.val
 	}
 	log.Fatalf("Number was expected but got %s", cur.getStr())
 	return -1
 }
 
-func (t *tokenized) isFunction() bool {
-	orig := t.toks
-	defer func() { t.toks = orig }()
-	_ = t.baseType()
-	for t.consume("*") {
+func (p *parser) isFunction() bool {
+	orig := p.toks
+	defer func() { p.toks = orig }()
+	_ = p.baseType()
+	for p.consume("*") {
 	}
-	_, isID := t.consumeID()
-	return isID && t.consume("(")
+	_, isID := p.consumeID()
+	return isID && p.consume("(")
 }
 
-func (t *tokenized) isType() bool {
-	cur := t.toks[0]
+func (p *parser) isType() bool {
+	cur := p.toks[0]
 	switch tok := cur.(type) {
 	case *idTok:
 		id := idRegexp.FindString(tok.id)
-		_, ok := t.searchVar(id).(*typeDef)
+		_, ok := p.searchVar(id).(*typeDef)
 		return ok
 	case *reservedTok:
 		return typeRegexp.MatchString(tok.str)
@@ -93,8 +93,8 @@ func (t *tokenized) isType() bool {
 	return false
 }
 
-func (t *tokenized) popToks() {
-	t.toks = t.toks[1:]
+func (p *parser) popToks() {
+	p.toks = p.toks[1:]
 }
 
 var gVarLabelCount int
@@ -133,53 +133,53 @@ func newGVarLabel() string {
 //				| "(" expr ")"
 //				| stmtExpr
 
-func (t *tokenized) decl() (ty ty, id string, rhs node) {
-	ty = t.baseType()
-	if t.consume(";") {
+func (p *parser) decl() (ty ty, id string, rhs node) {
+	ty = p.baseType()
+	if p.consume(";") {
 		return
 	}
-	id, ty = t.tyDecl(ty)
-	ty = t.tySuffix(ty)
-	if t.consume(";") {
+	id, ty = p.tyDecl(ty)
+	ty = p.tySuffix(ty)
+	if p.consume(";") {
 		return
 	}
-	t.expect("=")
-	rhs = t.expr()
-	t.expect(";")
+	p.expect("=")
+	rhs = p.expr()
+	p.expect(";")
 	return
 }
 
-func (t *tokenized) baseType() ty {
-	cur := t.toks[0]
+func (p *parser) baseType() ty {
+	cur := p.toks[0]
 	switch tok := cur.(type) {
 	case *idTok:
 		id := idRegexp.FindString(tok.id)
-		if tyDef, ok := t.searchVar(id).(*typeDef); ok {
-			t.popToks()
+		if tyDef, ok := p.searchVar(id).(*typeDef); ok {
+			p.popToks()
 			return tyDef.ty
 		}
 	case *reservedTok:
 		if strings.HasPrefix(tok.str, "int") {
-			t.popToks()
+			p.popToks()
 			return newTyInt()
 		}
 		if strings.HasPrefix(tok.str, "char") {
-			t.popToks()
+			p.popToks()
 			return newTyChar()
 		}
 		if strings.HasPrefix(tok.str, "short") {
-			t.popToks()
+			p.popToks()
 			return newTyShort()
 		}
 		if strings.HasPrefix(tok.str, "long") {
-			t.popToks()
+			p.popToks()
 			return newTyLong()
 		}
 		if strings.HasPrefix(tok.str, "struct") {
-			return t.structDecl()
+			return p.structDecl()
 		}
 		if strings.HasPrefix(tok.str, "void") {
-			t.popToks()
+			p.popToks()
 			return newTyVoid()
 		}
 	}
@@ -187,99 +187,99 @@ func (t *tokenized) baseType() ty {
 	return nil
 }
 
-func (t *tokenized) tyDecl(baseTy ty) (id string, newTy ty) {
-	for t.consume("*") {
+func (p *parser) tyDecl(baseTy ty) (id string, newTy ty) {
+	for p.consume("*") {
 		baseTy = newTyPtr(baseTy)
 	}
-	if t.consume("(") {
-		id, newTy = t.tyDecl(nil)
-		t.expect(")")
-		baseTy = t.tySuffix(baseTy)
-		switch typ := newTy.(type) {
+	if p.consume("(") {
+		id, newTy = p.tyDecl(nil)
+		p.expect(")")
+		baseTy = p.tySuffix(baseTy)
+		switch t := newTy.(type) {
 		case *tyArr:
-			typ.of = baseTy
+			t.of = baseTy
 		case *tyPtr:
-			typ.to = baseTy
+			t.to = baseTy
 		default:
 			newTy = baseTy
 		}
 		return
 	}
-	return t.expectID(), t.tySuffix(baseTy)
+	return p.expectID(), p.tySuffix(baseTy)
 }
 
-func (t *tokenized) tySuffix(baseTy ty) ty {
-	if t.consume("[") {
-		l := t.expectNum()
-		t.expect("]")
-		baseTy = t.tySuffix(baseTy)
+func (p *parser) tySuffix(baseTy ty) ty {
+	if p.consume("[") {
+		l := p.expectNum()
+		p.expect("]")
+		baseTy = p.tySuffix(baseTy)
 		return newTyArr(baseTy, l)
 	}
 	return baseTy
 }
 
-func (t *tokenized) parse() {
-	ast := t.res
+func (p *parser) parse() {
+	ast := p.res
 	for {
-		if _, ok := t.toks[0].(*eofTok); ok {
+		if _, ok := p.toks[0].(*eofTok); ok {
 			break
 		}
-		if t.isFunction() {
-			fn := t.function()
+		if p.isFunction() {
+			fn := p.function()
 			if fn != nil {
 				ast.fns = append(ast.fns, fn)
 			}
 		} else {
 			// TODO: gvar init
-			ty, id, _ := t.decl()
-			t.curScope.addGVar(id, ty, nil)
+			ty, id, _ := p.decl()
+			p.curScope.addGVar(id, ty, nil)
 			ast.gVars = append(ast.gVars, newGVar(id, ty, nil))
 		}
 	}
 }
 
-func (t *tokenized) function() *fnNode {
-	ty := t.baseType()
-	fnName, ty := t.tyDecl(ty)
-	t.curFnName = fnName
-	t.curScope.addGVar(fnName, newTyFn(ty), nil)
+func (p *parser) function() *fnNode {
+	ty := p.baseType()
+	fnName, ty := p.tyDecl(ty)
+	p.curFnName = fnName
+	p.curScope.addGVar(fnName, newTyFn(ty), nil)
 	fn := newFnNode(fnName, ty)
-	t.spawnScope()
-	t.readFnParams(fn)
-	if t.consume(";") {
-		t.rewindScope()
+	p.spawnScope()
+	p.readFnParams(fn)
+	if p.consume(";") {
+		p.rewindScope()
 		return nil
 	}
-	t.expect("{")
-	for !t.consume("}") {
-		fn.body = append(fn.body, t.stmt())
+	p.expect("{")
+	for !p.consume("}") {
+		fn.body = append(fn.body, p.stmt())
 	}
-	t.setFnLVars(fn)
-	t.rewindScope()
+	p.setFnLVars(fn)
+	p.rewindScope()
 	// TODO: align
-	fn.stackSize = t.curScope.curOffset
+	fn.stackSize = p.curScope.curOffset
 	return fn
 }
 
-func (t *tokenized) readFnParams(fn *fnNode) {
-	t.expect("(")
+func (p *parser) readFnParams(fn *fnNode) {
+	p.expect("(")
 	isFirstArg := true
-	for !t.consume(")") {
+	for !p.consume(")") {
 		if !isFirstArg {
-			t.expect(",")
+			p.expect(",")
 		}
 		isFirstArg = false
 
-		ty := t.baseType()
-		id, ty := t.tyDecl(ty)
-		lv := t.curScope.addLVar(id, ty)
+		ty := p.baseType()
+		id, ty := p.tyDecl(ty)
+		lv := p.curScope.addLVar(id, ty)
 		fn.params = append(fn.params, lv)
 	}
 }
 
-func (t *tokenized) setFnLVars(fn *fnNode) {
+func (p *parser) setFnLVars(fn *fnNode) {
 	offset := 0
-	for _, sv := range t.curScope.vars {
+	for _, sv := range p.curScope.vars {
 		switch v := sv.(type) {
 		case *lVar:
 			offset = alignTo(offset, v.getType().alignment())
@@ -290,21 +290,21 @@ func (t *tokenized) setFnLVars(fn *fnNode) {
 	}
 }
 
-func (t *tokenized) structDecl() ty {
-	t.expect("struct")
-	tagStr, tagExists := t.consumeID()
-	if tagExists && !t.beginsWith("{") {
-		if tag := t.searchStructTag(tagStr); tag != nil {
+func (p *parser) structDecl() ty {
+	p.expect("struct")
+	tagStr, tagExists := p.consumeID()
+	if tagExists && !p.beginsWith("{") {
+		if tag := p.searchStructTag(tagStr); tag != nil {
 			return tag.ty
 		}
 		log.Fatalf("no such struct tag %s", tagStr)
 	}
-	t.expect("{")
+	p.expect("{")
 	var members []*member
 	offset, align := 0, 0
-	for !t.consume("}") {
+	for !p.consume("}") {
 		// TODO: handle when rhs is not null
-		ty, tag, _ := t.decl()
+		ty, tag, _ := p.decl()
 		offset = alignTo(offset, ty.alignment())
 		members = append(members, newMember(tag, offset, ty))
 		offset += ty.size()
@@ -314,215 +314,215 @@ func (t *tokenized) structDecl() ty {
 	}
 	tyStruct := newTyStruct(align, members, alignTo(offset, align))
 	if tagExists {
-		t.curScope.addStructTag(newStructTag(tagStr, tyStruct))
+		p.curScope.addStructTag(newStructTag(tagStr, tyStruct))
 	}
 	return tyStruct
 }
 
-func (t *tokenized) stmt() node {
+func (p *parser) stmt() node {
 	// handle block
-	if t.consume("{") {
+	if p.consume("{") {
 		var blkStmts []node
-		t.spawnScope()
-		for !t.consume("}") {
-			blkStmts = append(blkStmts, t.stmt())
+		p.spawnScope()
+		for !p.consume("}") {
+			blkStmts = append(blkStmts, p.stmt())
 		}
-		t.rewindScope()
+		p.rewindScope()
 		return newBlkNode(blkStmts)
 	}
 
 	// handle return
-	if t.consume("return") {
-		node := newRetNode(t.expr(), t.curFnName)
-		t.expect(";")
+	if p.consume("return") {
+		node := newRetNode(p.expr(), p.curFnName)
+		p.expect(";")
 		return node
 	}
 
 	// handle if statement
-	if t.consume("if") {
-		t.expect("(")
-		cond := t.expr()
-		t.expect(")")
-		then := t.stmt()
+	if p.consume("if") {
+		p.expect("(")
+		cond := p.expr()
+		p.expect(")")
+		then := p.stmt()
 
 		var els node
-		if t.consume("else") {
-			els = t.stmt()
+		if p.consume("else") {
+			els = p.stmt()
 		}
 
 		return newIfNode(cond, then, els)
 	}
 
 	// handle while statement
-	if t.consume("while") {
-		t.expect("(")
-		condNode := t.expr()
-		t.expect(")")
-		thenNode := t.stmt()
+	if p.consume("while") {
+		p.expect("(")
+		condNode := p.expr()
+		p.expect(")")
+		thenNode := p.stmt()
 		return newWhileNode(condNode, thenNode)
 	}
 
 	// handle for statement
-	if t.consume("for") {
-		t.expect("(")
+	if p.consume("for") {
+		p.expect("(")
 
 		var init, cond, inc, then node
 
-		if !t.consume(";") {
-			init = newExprNode(t.expr())
-			t.expect(";")
+		if !p.consume(";") {
+			init = newExprNode(p.expr())
+			p.expect(";")
 		}
 
-		if !t.consume(";") {
-			cond = t.expr()
-			t.expect(";")
+		if !p.consume(";") {
+			cond = p.expr()
+			p.expect(";")
 		}
 
-		if !t.consume(")") {
-			inc = newExprNode(t.expr())
-			t.expect(")")
+		if !p.consume(")") {
+			inc = newExprNode(p.expr())
+			p.expect(")")
 		}
 
-		then = t.stmt()
+		then = p.stmt()
 		return newForNode(init, cond, inc, then)
 	}
 
 	// handle typedef
-	if t.consume("typedef") {
-		ty := t.baseType()
-		id, ty := t.tyDecl(ty)
-		t.expect(";")
-		t.curScope.addTypeDef(id, ty)
+	if p.consume("typedef") {
+		ty := p.baseType()
+		id, ty := p.tyDecl(ty)
+		p.expect(";")
+		p.curScope.addTypeDef(id, ty)
 		return newNullNode()
 	}
 
 	// handle variable definition
-	if t.isType() {
-		ty, id, rhs := t.decl()
+	if p.isType() {
+		ty, id, rhs := p.decl()
 		if id == "" {
 			return newNullNode()
 		}
-		t.curScope.addLVar(id, ty)
+		p.curScope.addLVar(id, ty)
 		if rhs == nil {
 			return newNullNode()
 		}
-		node := newAssignNode(newVarNode(t.findVar(id)), rhs)
+		node := newAssignNode(newVarNode(p.findVar(id)), rhs)
 		return newExprNode(node)
 	}
 
-	node := t.expr()
-	t.expect(";")
+	node := p.expr()
+	p.expect(";")
 	return newExprNode(node)
 }
 
-func (t *tokenized) expr() node {
-	return t.assign()
+func (p *parser) expr() node {
+	return p.assign()
 }
 
-func (t *tokenized) assign() node {
-	node := t.equality()
-	if t.consume("=") {
-		assignNode := t.assign()
+func (p *parser) assign() node {
+	node := p.equality()
+	if p.consume("=") {
+		assignNode := p.assign()
 		node = newAssignNode(node.(addressableNode), assignNode)
 	}
 	return node
 }
 
-func (t *tokenized) equality() node {
-	node := t.relational()
+func (p *parser) equality() node {
+	node := p.relational()
 	for {
-		if t.consume("==") {
-			node = newArithNode(ndEq, node, t.relational())
-		} else if t.consume("!=") {
-			node = newArithNode(ndNeq, node, t.relational())
+		if p.consume("==") {
+			node = newArithNode(ndEq, node, p.relational())
+		} else if p.consume("!=") {
+			node = newArithNode(ndNeq, node, p.relational())
 		} else {
 			return node
 		}
 	}
 }
 
-func (t *tokenized) relational() node {
-	node := t.addSub()
+func (p *parser) relational() node {
+	node := p.addSub()
 	for {
-		if t.consume("<=") {
-			node = newArithNode(ndLeq, node, t.addSub())
-		} else if t.consume(">=") {
-			node = newArithNode(ndGeq, node, t.addSub())
-		} else if t.consume("<") {
-			node = newArithNode(ndLt, node, t.addSub())
-		} else if t.consume(">") {
-			node = newArithNode(ndGt, node, t.addSub())
+		if p.consume("<=") {
+			node = newArithNode(ndLeq, node, p.addSub())
+		} else if p.consume(">=") {
+			node = newArithNode(ndGeq, node, p.addSub())
+		} else if p.consume("<") {
+			node = newArithNode(ndLt, node, p.addSub())
+		} else if p.consume(">") {
+			node = newArithNode(ndGt, node, p.addSub())
 		} else {
 			return node
 		}
 	}
 }
 
-func (t *tokenized) addSub() node {
-	node := t.mulDiv()
+func (p *parser) addSub() node {
+	node := p.mulDiv()
 	for {
-		if t.consume("+") {
-			node = newAddNode(node, t.mulDiv())
-		} else if t.consume("-") {
-			node = newSubNode(node, t.mulDiv())
+		if p.consume("+") {
+			node = newAddNode(node, p.mulDiv())
+		} else if p.consume("-") {
+			node = newSubNode(node, p.mulDiv())
 		} else {
 			return node
 		}
 	}
 }
 
-func (t *tokenized) mulDiv() node {
-	node := t.unary()
+func (p *parser) mulDiv() node {
+	node := p.unary()
 	for {
-		if t.consume("*") {
-			node = newArithNode(ndMul, node, t.unary())
-		} else if t.consume("/") {
-			node = newArithNode(ndDiv, node, t.unary())
+		if p.consume("*") {
+			node = newArithNode(ndMul, node, p.unary())
+		} else if p.consume("/") {
+			node = newArithNode(ndDiv, node, p.unary())
 		} else {
 			return node
 		}
 	}
 }
 
-func (t *tokenized) unary() node {
-	if t.consume("+") {
-		return t.unary()
+func (p *parser) unary() node {
+	if p.consume("+") {
+		return p.unary()
 	}
-	if t.consume("-") {
-		node := t.unary()
+	if p.consume("-") {
+		node := p.unary()
 		return newSubNode(newNumNode(0), node)
 	}
-	if t.consume("*") {
-		node := t.unary()
+	if p.consume("*") {
+		node := p.unary()
 		return newDerefNode(node)
 	}
-	if t.consume("&") {
-		node := t.unary()
+	if p.consume("&") {
+		node := p.unary()
 		return newAddrNode(node.(addressableNode))
 	}
-	return t.postfix()
+	return p.postfix()
 }
 
-func (t *tokenized) postfix() node {
-	node := t.primary()
+func (p *parser) postfix() node {
+	node := p.primary()
 	for {
-		if t.consume("[") {
-			add := newAddNode(node, t.expr())
+		if p.consume("[") {
+			add := newAddNode(node, p.expr())
 			node = newDerefNode(add)
-			t.expect("]")
+			p.expect("]")
 			continue
 		}
-		if t.consume(".") {
+		if p.consume(".") {
 			if s, ok := node.loadType().(*tyStruct); ok {
-				mem := s.findMember(t.expectID())
+				mem := s.findMember(p.expectID())
 				node = newMemberNode(node.(addressableNode), mem)
 				continue
 			}
 			log.Fatalf("expected struct but got %T", node.loadType())
 		}
-		if t.consume("->") {
-			if p, ok := node.loadType().(*tyPtr); ok {
-				mem := p.to.(*tyStruct).findMember(t.expectID())
+		if p.consume("->") {
+			if t, ok := node.loadType().(*tyPtr); ok {
+				mem := t.to.(*tyStruct).findMember(p.expectID())
 				node = newMemberNode(newDerefNode(node.(addressableNode)), mem)
 				continue
 			}
@@ -532,65 +532,65 @@ func (t *tokenized) postfix() node {
 	}
 }
 
-func (t *tokenized) stmtExpr() node {
+func (p *parser) stmtExpr() node {
 	// "(" and "{" is already read.
-	t.spawnScope()
+	p.spawnScope()
 	body := make([]node, 0)
-	body = append(body, t.stmt())
-	for !t.consume("}") {
-		body = append(body, t.stmt())
+	body = append(body, p.stmt())
+	for !p.consume("}") {
+		body = append(body, p.stmt())
 	}
-	t.expect(")")
+	p.expect(")")
 	if ex, ok := body[len(body)-1].(*exprNode); !ok {
 		log.Fatal("statement expression returning void is not supported")
 	} else {
 		body[len(body)-1] = ex.body
 	}
-	t.rewindScope()
+	p.rewindScope()
 	return newStmtExprNode(body)
 }
 
-func (t *tokenized) primary() node {
-	if t.consume("(") {
-		if t.consume("{") {
-			return t.stmtExpr()
+func (p *parser) primary() node {
+	if p.consume("(") {
+		if p.consume("{") {
+			return p.stmtExpr()
 		}
-		node := t.expr()
-		t.expect(")")
+		node := p.expr()
+		p.expect(")")
 		return node
 	}
 
-	if t.consume("sizeof") {
-		return newNumNode(t.unary().loadType().size())
+	if p.consume("sizeof") {
+		return newNumNode(p.unary().loadType().size())
 	}
 
-	if id, isID := t.consumeID(); isID {
-		if t.consume("(") {
+	if id, isID := p.consumeID(); isID {
+		if p.consume("(") {
 			var ty ty
-			if fn, ok := t.searchVar(id).(*gVar); ok {
+			if fn, ok := p.searchVar(id).(*gVar); ok {
 				ty = fn.ty.(*tyFn).retTy
 			} else {
 				ty = newTyInt()
 			}
 			var params []node
-			if t.consume(")") {
+			if p.consume(")") {
 				return newFnCallNode(id, params, ty)
 			}
-			params = append(params, t.expr())
-			for t.consume(",") {
-				params = append(params, t.expr())
+			params = append(params, p.expr())
+			for p.consume(",") {
+				params = append(params, p.expr())
 			}
-			t.expect(")")
+			p.expect(")")
 			return newFnCallNode(id, params, ty)
 		}
-		return newVarNode(t.findVar(id))
+		return newVarNode(p.findVar(id))
 	}
 
-	if str, isStr := t.consumeStr(); isStr {
+	if str, isStr := p.consumeStr(); isStr {
 		s := newGVar(newGVarLabel(), newTyArr(newTyChar(), utf8.RuneCountInString(str)), str)
-		t.res.gVars = append(t.res.gVars, s)
+		p.res.gVars = append(p.res.gVars, s)
 		return newVarNode(s)
 	}
 
-	return newNumNode(t.expectNum())
+	return newNumNode(p.expectNum())
 }

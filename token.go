@@ -50,47 +50,47 @@ func newNumTok(val int, l int) *numTok              { return &numTok{val, l} }
 func newReservedTok(str string, l int) *reservedTok { return &reservedTok{str, l} }
 func newStrTok(content string, l int) *strTok       { return &strTok{content, l} }
 
-type tokenized struct {
+type parser struct {
 	curFnName string
 	curScope  *scope
 	res       *ast
 	toks      []token
 }
 
-func newTokenized(toks []token) *tokenized {
-	return &tokenized{curScope: &scope{}, res: &ast{}, toks: toks}
+func newTokenized(toks []token) *parser {
+	return &parser{"", &scope{}, &ast{}, toks}
 }
 
-func (t *tokenized) spawnScope() {
-	t.curScope = newScope(t.curScope)
+func (p *parser) spawnScope() {
+	p.curScope = newScope(p.curScope)
 }
 
-func (t *tokenized) rewindScope() {
-	offset := t.curScope.curOffset
-	base := t.curScope.baseOffset
-	for _, v := range t.curScope.vars {
+func (p *parser) rewindScope() {
+	offset := p.curScope.curOffset
+	base := p.curScope.baseOffset
+	for _, v := range p.curScope.vars {
 		offset = alignTo(offset, v.getType().size())
 		offset += v.getType().size()
 		if lv, ok := v.(*lVar); ok {
 			lv.offset = offset + base
 		}
 	}
-	t.curScope.curOffset += offset
-	t.curScope = t.curScope.super
+	p.curScope.curOffset += offset
+	p.curScope = p.curScope.super
 	// maybe this is not necessary if we zero out the memory for child scope?
-	t.curScope.curOffset += offset
+	p.curScope.curOffset += offset
 }
 
-func (t *tokenized) findVar(s string) variable {
-	v := t.searchVar(s)
+func (p *parser) findVar(s string) variable {
+	v := p.searchVar(s)
 	if v == nil {
 		log.Fatalf("undefined variable %s", s)
 	}
 	return v
 }
 
-func (t *tokenized) searchStructTag(tag string) *structTag {
-	scope := t.curScope
+func (p *parser) searchStructTag(tag string) *structTag {
+	scope := p.curScope
 	for scope != nil {
 		if tag := scope.searchStructTag(tag); tag != nil {
 			return tag
@@ -100,8 +100,8 @@ func (t *tokenized) searchStructTag(tag string) *structTag {
 	return nil
 }
 
-func (t *tokenized) searchVar(varName string) variable {
-	scope := t.curScope
+func (p *parser) searchVar(varName string) variable {
+	scope := p.curScope
 	for scope != nil {
 		if v := scope.searchVar(varName); v != nil {
 			return v
@@ -119,7 +119,7 @@ type ast struct {
 type tokenizer struct {
 	input string
 	pos   int
-	res   tokenized
+	res   parser
 }
 
 func newTokenizer() *tokenizer {
@@ -256,7 +256,7 @@ func (t *tokenizer) trimSpace() {
 	}
 }
 
-func (t *tokenizer) tokenize(input string) *tokenized {
+func (t *tokenizer) tokenize(input string) *parser {
 	t.input = input
 	var toks []token
 	for {
