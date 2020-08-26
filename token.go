@@ -50,67 +50,6 @@ func newNumTok(val int, l int) *numTok              { return &numTok{val, l} }
 func newReservedTok(str string, l int) *reservedTok { return &reservedTok{str, l} }
 func newStrTok(content string, l int) *strTok       { return &strTok{content, l} }
 
-type parser struct {
-	curFnName string
-	curScope  *scope
-	res       *ast
-	toks      []token
-}
-
-func newTokenized(toks []token) *parser {
-	return &parser{"", &scope{}, &ast{}, toks}
-}
-
-func (p *parser) spawnScope() {
-	p.curScope = newScope(p.curScope)
-}
-
-func (p *parser) rewindScope() {
-	offset := p.curScope.curOffset
-	base := p.curScope.baseOffset
-	for _, v := range p.curScope.vars {
-		offset = alignTo(offset, v.getType().size())
-		offset += v.getType().size()
-		if lv, ok := v.(*lVar); ok {
-			lv.offset = offset + base
-		}
-	}
-	p.curScope.curOffset += offset
-	p.curScope = p.curScope.super
-	// maybe this is not necessary if we zero out the memory for child scope?
-	p.curScope.curOffset += offset
-}
-
-func (p *parser) findVar(s string) variable {
-	v := p.searchVar(s)
-	if v == nil {
-		log.Fatalf("undefined variable %s", s)
-	}
-	return v
-}
-
-func (p *parser) searchStructTag(tag string) *structTag {
-	scope := p.curScope
-	for scope != nil {
-		if tag := scope.searchStructTag(tag); tag != nil {
-			return tag
-		}
-		scope = scope.super
-	}
-	return nil
-}
-
-func (p *parser) searchVar(varName string) variable {
-	scope := p.curScope
-	for scope != nil {
-		if v := scope.searchVar(varName); v != nil {
-			return v
-		}
-		scope = scope.super
-	}
-	return nil
-}
-
 type ast struct {
 	fns   []*fnNode
 	gVars []*gVar
@@ -307,5 +246,5 @@ func (t *tokenizer) tokenize(input string) *parser {
 		log.Fatalf("unexpected input %s\n", s)
 	}
 	toks = append(toks, newEOFTok())
-	return newTokenized(toks)
+	return newParser(toks)
 }

@@ -7,6 +7,71 @@ import (
 	"unicode/utf8"
 )
 
+type parser struct {
+	curFnName string
+	curScope  *scope
+	res       *ast
+	toks      []token
+}
+
+func newParser(toks []token) *parser {
+	return &parser{"", &scope{}, &ast{}, toks}
+}
+
+func (p *parser) spawnScope() {
+	p.curScope = newScope(p.curScope)
+}
+
+func (p *parser) rewindScope() {
+	offset := p.curScope.curOffset
+	base := p.curScope.baseOffset
+	for _, v := range p.curScope.vars {
+		offset = alignTo(offset, v.getType().size())
+		offset += v.getType().size()
+		if lv, ok := v.(*lVar); ok {
+			lv.offset = offset + base
+		}
+	}
+	p.curScope.curOffset += offset
+	p.curScope = p.curScope.super
+	// maybe this is not necessary if we zero out the memory for child scope?
+	p.curScope.curOffset += offset
+}
+
+func (p *parser) findVar(s string) variable {
+	v := p.searchVar(s)
+	if v == nil {
+		log.Fatalf("undefined variable %s", s)
+	}
+	return v
+}
+
+func (p *parser) searchStructTag(tag string) *structTag {
+	scope := p.curScope
+	for scope != nil {
+		if tag := scope.searchStructTag(tag); tag != nil {
+			return tag
+		}
+		scope = scope.super
+	}
+	return nil
+}
+
+func (p *parser) searchVar(varName string) variable {
+	scope := p.curScope
+	for scope != nil {
+		if v := scope.searchVar(varName); v != nil {
+			return v
+		}
+		scope = scope.super
+	}
+	return nil
+}
+
+/*
+   Prerequisite functions for parsing.
+*/
+
 func (p *parser) beginsWith(s string) bool {
 	return strings.HasPrefix(p.toks[0].getStr(), s)
 }
@@ -104,34 +169,38 @@ func newGVarLabel() string {
 	return fmt.Sprintf(".L.data.%d", gVarLabelCount)
 }
 
-// program    = (function | globalVar)*
-// function   = baseType tyDecl "(" (ident ("," ident)* )? ")" ("{" stmt* "}" | ";")
-// globalVar  = decl
-// stmt       = expr ";"
-//				| "{" stmt* "}"
-//			    | "return" expr ";"
-//				| "if" "(" expr ")" stmt ("else" stmt) ?
-//				| "while" "(" expr ")" stmt
-//				| "for" "(" expr? ";" expr? ";" expr? ")" stmt
-//				| "typedef" ty ident ("[" num "]")* ";"
-//				| decl
-// decl       = baseType tyDecl ("[" expr "]")* "=" expr ;" | baseTy ";"
-// tyDecl     = "*"* (ident | "(" declarator ")")
-// expr       = assign
-// stmtExpr   = "(" "{" stmt+ "}" ")"
-// assign     = equality ("=" assign) ?
-// equality   = relational ("==" relational | "!=" relational)*
-// relational = add ("<" add | "<=" add | ">" add | ">=" add)*
-// add        = mul ("+" mul | "-" mul)*
-// mul        = unary ("*" unary | "/" unary)*
-// unary      = ("+" | "-" | "*" | "&")? unary | postfix
-// postfix    = primary (("[" expr "]") | ("." | id))*
-// primary    =  num
-//				| "sizeof" unary
-//				| str
-//				| ident ("(" (expr ("," expr)* )? ")")?
-//				| "(" expr ")"
-//				| stmtExpr
+/*
+   Actual parsing process from here.
+
+   program    = (function | globalVar)*
+   function   = baseType tyDecl "(" (ident ("," ident)* )? ")" ("{" stmt* "}" | ";")
+   globalVar  = decl
+   stmt       = expr ";"
+  				| "{" stmt* "}"
+  			    | "return" expr ";"
+  				| "if" "(" expr ")" stmt ("else" stmt) ?
+  				| "while" "(" expr ")" stmt
+  				| "for" "(" expr? ";" expr? ";" expr? ")" stmt
+  				| "typedef" ty ident ("[" num "]")* ";"
+  				| decl
+   decl       = baseType tyDecl ("[" expr "]")* "=" expr ;" | baseTy ";"
+   tyDecl     = "*"* (ident | "(" declarator ")")
+   expr       = assign
+   stmtExpr   = "(" "{" stmt+ "}" ")"
+   assign     = equality ("=" assign) ?
+   equality   = relational ("==" relational | "!=" relational)*
+   relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+   add        = mul ("+" mul | "-" mul)*
+   mul        = unary ("*" unary | "/" unary)*
+   unary      = ("+" | "-" | "*" | "&")? unary | postfix
+   postfix    = primary (("[" expr "]") | ("." | id))*
+   primary    =  num
+  				| "sizeof" unary
+  				| str
+  				| ident ("(" (expr ("," expr)* )? ")")?
+  				| "(" expr ")"
+  				| stmtExpr
+*/
 
 func (p *parser) decl() (t ty, id string, rhs node) {
 	t = p.baseType()
