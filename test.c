@@ -2,6 +2,9 @@
 /* Compile this code,
  * and see if it passes! */
 
+int printf();
+int exit();
+
 int test(int expected, int actual, char *input) {
     if (actual == expected) {
         printf("%s => %d\n", input, actual);

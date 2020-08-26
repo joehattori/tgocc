@@ -105,7 +105,7 @@ func newGVarLabel() string {
 }
 
 // program    = (function | globalVar)*
-// function   = baseType tyDecl "(" (ident ("," ident)* )? ")" "{" stmt* "}"
+// function   = baseType tyDecl "(" (ident ("," ident)* )? ")" ("{" stmt* "}" | ";")
 // globalVar  = decl
 // stmt       = expr ";"
 //				| "{" stmt* "}"
@@ -221,7 +221,10 @@ func (t *tokenized) parse() {
 			break
 		}
 		if t.isFunction() {
-			ast.fns = append(ast.fns, t.function())
+			fn := t.function()
+			if fn != nil {
+				ast.fns = append(ast.fns, fn)
+			}
 		} else {
 			// TODO: gvar init
 			ty, id, _ := t.decl()
@@ -239,6 +242,10 @@ func (t *tokenized) function() *fnNode {
 	fn := newFnNode(fnName, ty)
 	t.spawnScope()
 	t.readFnParams(fn)
+	if t.consume(";") {
+		t.rewindScope()
+		return nil
+	}
 	t.expect("{")
 	for !t.consume("}") {
 		fn.body = append(fn.body, t.stmt())
