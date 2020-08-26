@@ -133,13 +133,13 @@ func newGVarLabel() string {
 //				| "(" expr ")"
 //				| stmtExpr
 
-func (p *parser) decl() (ty ty, id string, rhs node) {
-	ty = p.baseType()
+func (p *parser) decl() (t ty, id string, rhs node) {
+	t = p.baseType()
 	if p.consume(";") {
 		return
 	}
-	id, ty = p.tyDecl(ty)
-	ty = p.tySuffix(ty)
+	id, t = p.tyDecl(t)
+	t = p.tySuffix(t)
 	if p.consume(";") {
 		return
 	}
@@ -566,22 +566,22 @@ func (p *parser) primary() node {
 
 	if id, isID := p.consumeID(); isID {
 		if p.consume("(") {
-			var ty ty
+			var t ty
 			if fn, ok := p.searchVar(id).(*gVar); ok {
-				ty = fn.ty.(*tyFn).retTy
+				t = fn.ty.(*tyFn).retTy
 			} else {
-				ty = newTyInt()
+				t = newTyInt()
 			}
 			var params []node
 			if p.consume(")") {
-				return newFnCallNode(id, params, ty)
+				return newFnCallNode(id, params, t)
 			}
 			params = append(params, p.expr())
 			for p.consume(",") {
 				params = append(params, p.expr())
 			}
 			p.expect(")")
-			return newFnCallNode(id, params, ty)
+			return newFnCallNode(id, params, t)
 		}
 		return newVarNode(p.findVar(id))
 	}
