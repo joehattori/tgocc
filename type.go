@@ -1,37 +1,46 @@
 package main
 
-type ty interface {
-	alignment() int
-	size() int
-}
+type (
+	ty interface {
+		alignment() int
+		size() int
+	}
 
-type ptr interface {
-	ty
-	base() ty
-}
+	ptr interface {
+		ty
+		base() ty
+	}
 
-type tyArr struct {
-	of  ty
-	len int
-}
-type tyBool struct{}
-type tyChar struct{}
-type tyEmpty struct{}
-type tyFn struct {
-	retTy ty
-}
-type tyInt struct{}
-type tyLong struct{}
-type tyPtr struct {
-	to ty
-}
-type tyShort struct{}
-type tyStruct struct {
-	align   int
-	members []*member
-	sz      int
-}
-type tyVoid struct{}
+	tyArr struct {
+		of  ty
+		len int
+	}
+
+	tyBool  struct{}
+	tyChar  struct{}
+	tyEmpty struct{}
+
+	tyFn struct {
+		retTy ty
+	}
+
+	tyInt  struct{}
+	tyLong struct{}
+
+	tyPtr struct {
+		to ty
+	}
+
+	tyShort struct{}
+
+	tyStruct struct {
+		align   int
+		members []*member
+		sz      int
+	}
+
+	tyVoid struct{}
+)
 
 func newTyArr(of ty, len int) *tyArr { return &tyArr{of, len} }
 func newTyBool() *tyBool             { return &tyBool{} }

@@ -9,8 +9,10 @@ import (
 	"unicode/utf8"
 )
 
-var idRegexp = regexp.MustCompile(`^[a-zA-Z_]+\w*`)
-var typeRegexp = regexp.MustCompile(`^(int|char|long|short|struct|void|_Bool|typedef)\W`)
+var (
+	idRegexp   = regexp.MustCompile(`^[a-zA-Z_]+\w*`)
+	typeRegexp = regexp.MustCompile(`^(int|char|long|short|struct|void|_Bool|typedef)\W`)
+)
 
 type token interface {
 	getStr() string

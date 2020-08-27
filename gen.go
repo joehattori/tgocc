@@ -5,12 +5,14 @@ import (
 	"log"
 )
 
-var paramRegs1 = [...]string{"dil", "sil", "dl", "cl", "r8b", "r9b"}
-var paramRegs2 = [...]string{"di", "si", "dx", "cx", "r8w", "r9w"}
-var paramRegs4 = [...]string{"edi", "esi", "edx", "ecx", "r8d", "r9d"}
-var paramRegs8 = [...]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
+var (
+	labelCount int
 
-var labelCount int
+	paramRegs1 = [...]string{"dil", "sil", "dl", "cl", "r8b", "r9b"}
+	paramRegs2 = [...]string{"di", "si", "dx", "cx", "r8w", "r9w"}
+	paramRegs4 = [...]string{"edi", "esi", "edx", "ecx", "r8d", "r9d"}
+	paramRegs8 = [...]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
+)
 
 func (a *ast) gen() {
 	fmt.Println(".intel_syntax noprefix")
