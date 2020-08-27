@@ -87,8 +87,7 @@ type (
 	nullNode struct{}
 
 	numNode struct {
-		val int
-		ty  ty
+		val int64
 	}
 
 	retNode struct {
@@ -205,8 +204,8 @@ func newNullNode() *nullNode {
 	return &nullNode{}
 }
 
-func newNumNode(val int) *numNode {
-	return &numNode{val: val}
+func newNumNode(val int64) *numNode {
+	return &numNode{val}
 }
 
 func newSubNode(lhs node, rhs node) *arithNode {
@@ -337,19 +336,16 @@ func (i *ifNode) loadType() ty {
 	return newTyEmpty()
 }
 
-func (*nullNode) loadType() ty {
-	return newTyEmpty()
-}
-
 func (m *memberNode) loadType() ty {
 	return m.mem.ty
 }
 
+func (*nullNode) loadType() ty {
+	return newTyEmpty()
+}
+
 func (n *numNode) loadType() ty {
-	if n.ty == nil {
-		n.ty = newTyLong()
-	}
-	return n.ty
+	return newTyLong()
 }
 
 func (r *retNode) loadType() ty {

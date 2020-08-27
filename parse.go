@@ -639,11 +639,11 @@ func (p *parser) primary() node {
 			if p.isType() {
 				n := p.baseType().size()
 				p.expect(")")
-				return newNumNode(n)
+				return newNumNode(int64(n))
 			}
 			p.toks = orig
 		}
-		return newNumNode(p.unary().loadType().size())
+		return newNumNode(int64(p.unary().loadType().size()))
 	}
 
 	if id, isID := p.consumeID(); isID {
@@ -674,5 +674,5 @@ func (p *parser) primary() node {
 		return newVarNode(s)
 	}
 
-	return newNumNode(p.expectNum())
+	return newNumNode(int64(p.expectNum()))
 }

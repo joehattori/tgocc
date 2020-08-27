@@ -5,11 +5,11 @@
 int printf();
 int exit();
 
-int test(int expected, int actual, char *input) {
+int test(long expected, long actual, char *input) {
     if (actual == expected) {
-        printf("%s => %d\n", input, actual);
+        printf("%s => %ld\n", input, actual);
     } else {
-        printf("%s => %d expected, but got %d\n", input, expected, actual);
+        printf("%s => %ld expected, but got %ld\n", input, expected, actual);
         exit(1);
     }
     return 0;

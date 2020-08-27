@@ -244,7 +244,12 @@ func (m *memberNode) gen() {
 func (*nullNode) gen() {}
 
 func (n *numNode) gen() {
-	fmt.Printf("	push %d\n", n.val)
+	if n.val >= int64(int(n.val)) {
+		fmt.Printf("	movabs rax, %d\n", n.val)
+		fmt.Println("	push rax")
+	} else {
+		fmt.Printf("	push %d\n", n.val)
+	}
 }
 
 func (r *retNode) gen() {
