@@ -301,9 +301,9 @@ func (v *varNode) genAddr() {
 	}
 }
 
-func load(ty ty) {
+func load(t ty) {
 	fmt.Println("	pop rax")
-	switch ty.size() {
+	switch t.size() {
 	case 1:
 		fmt.Println("	movsx rax, byte ptr [rax]")
 	case 2:
@@ -313,21 +313,21 @@ func load(ty ty) {
 	case 8:
 		fmt.Println("	mov rax, [rax]")
 	default:
-		log.Fatalf("unhandled type size: %d", ty.size())
+		log.Fatalf("unhandled type size: %d", t.size())
 	}
 	fmt.Println("	push rax")
 }
 
-func store(ty ty) {
+func store(t ty) {
 	fmt.Println("	pop rdi")
 	fmt.Println("	pop rax")
-	if _, ok := ty.(*tyBool); ok {
+	if _, ok := t.(*tyBool); ok {
 		fmt.Println("	cmp rdi, 0")
 		fmt.Println("	setne dil")
 		fmt.Println("	movzb rdi, dil")
 	}
 	var r string
-	switch ty.size() {
+	switch t.size() {
 	case 1:
 		r = "dil"
 	case 2:
@@ -337,7 +337,7 @@ func store(ty ty) {
 	case 8:
 		r = "rdi"
 	default:
-		log.Fatalf("unhandled type size: %d", ty.size())
+		log.Fatalf("unhandled type size: %d", t.size())
 	}
 	fmt.Printf("	mov [rax], %s\n", r)
 	fmt.Println("	push rdi")

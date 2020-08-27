@@ -112,8 +112,8 @@ type (
 	}
 )
 
-func newMember(name string, offset int, ty ty) *member {
-	return &member{name, offset, ty}
+func newMember(name string, offset int, t ty) *member {
+	return &member{name, offset, t}
 }
 
 type nodeKind int
@@ -189,8 +189,8 @@ func newFnCallNode(name string, params []node, retTy ty) *fnCallNode {
 	return &fnCallNode{name, params, retTy}
 }
 
-func newFnNode(name string, ty ty) *fnNode {
-	return &fnNode{name: name, retTy: ty}
+func newFnNode(name string, t ty) *fnNode {
+	return &fnNode{name: name, retTy: t}
 }
 
 func newIfNode(cond node, then node, els node) *ifNode {

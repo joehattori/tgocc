@@ -31,14 +31,14 @@ func (v *gVar) getType() ty    { return v.ty }
 func (v *lVar) getType() ty    { return v.ty }
 func (t *typeDef) getType() ty { return t.ty }
 
-func newGVar(name string, ty ty, content interface{}) *gVar {
-	return &gVar{content, name, ty}
+func newGVar(name string, t ty, content interface{}) *gVar {
+	return &gVar{content, name, t}
 }
 
-func newLVar(name string, ty ty) *lVar {
-	return &lVar{name: name, ty: ty}
+func newLVar(name string, t ty) *lVar {
+	return &lVar{name: name, ty: t}
 }
 
-func newTypeDef(name string, ty ty) *typeDef {
-	return &typeDef{name, ty}
+func newTypeDef(name string, t ty) *typeDef {
+	return &typeDef{name, t}
 }

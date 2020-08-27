@@ -19,33 +19,33 @@ func newScope(super *scope) *scope {
 	return &scope{super.curOffset, 0, super, nil, nil}
 }
 
-func newStructTag(name string, ty ty) *structTag {
-	return &structTag{name, ty}
+func newStructTag(name string, t ty) *structTag {
+	return &structTag{name, t}
 }
 
-func (s *scope) addGVar(id string, ty ty, content interface{}) *gVar {
+func (s *scope) addGVar(id string, t ty, content interface{}) *gVar {
 	if _, exists := s.searchVar(id).(*gVar); exists {
 		log.Fatalf("variable %s is already defined", id)
 	}
-	v := newGVar(id, ty, content)
+	v := newGVar(id, t, content)
 	s.vars = append(s.vars, v)
 	return v
 }
 
-func (s *scope) addLVar(id string, ty ty) *lVar {
+func (s *scope) addLVar(id string, t ty) *lVar {
 	if _, exists := s.searchVar(id).(*lVar); exists {
 		log.Fatalf("variable %s is already defined", id)
 	}
-	v := newLVar(id, ty)
+	v := newLVar(id, t)
 	s.vars = append(s.vars, v)
 	return v
 }
 
-func (s *scope) addTypeDef(id string, ty ty) *typeDef {
+func (s *scope) addTypeDef(id string, t ty) *typeDef {
 	if _, exists := s.searchVar(id).(*typeDef); exists {
 		log.Fatalf("typedef %s is already defined", id)
 	}
-	v := newTypeDef(id, ty)
+	v := newTypeDef(id, t)
 	s.vars = append(s.vars, v)
 	return v
 }

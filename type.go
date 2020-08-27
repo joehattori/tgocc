@@ -37,7 +37,7 @@ func newTyArr(of ty, len int) *tyArr { return &tyArr{of, len} }
 func newTyBool() *tyBool             { return &tyBool{} }
 func newTyChar() *tyChar             { return &tyChar{} }
 func newTyEmpty() *tyEmpty           { return &tyEmpty{} }
-func newTyFn(ty ty) *tyFn            { return &tyFn{ty} }
+func newTyFn(t ty) *tyFn             { return &tyFn{t} }
 func newTyInt() *tyInt               { return &tyInt{} }
 func newTyLong() *tyLong             { return &tyLong{} }
 func newTyPtr(to ty) *tyPtr          { return &tyPtr{to} }
