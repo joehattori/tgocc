@@ -321,6 +321,11 @@ func load(ty ty) {
 func store(ty ty) {
 	fmt.Println("	pop rdi")
 	fmt.Println("	pop rax")
+	if _, ok := ty.(*tyBool); ok {
+		fmt.Println("	cmp rdi, 0")
+		fmt.Println("	setne dil")
+		fmt.Println("	movzb rdi, dil")
+	}
 	var r string
 	switch ty.size() {
 	case 1:

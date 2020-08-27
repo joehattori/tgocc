@@ -139,16 +139,16 @@ func newAddNode(lhs node, rhs node) *arithNode {
 	l := lhs.loadType()
 	r := rhs.loadType()
 	switch l.(type) {
-	case *tyChar, *tyInt, *tyShort, *tyLong:
+	case *tyChar, *tyInt, *tyShort, *tyLong, *tyBool:
 		switch r.(type) {
-		case *tyChar, *tyInt, *tyShort, *tyLong:
+		case *tyChar, *tyInt, *tyShort, *tyLong, *tyBool:
 			return &arithNode{op: ndAdd, lhs: lhs, rhs: rhs}
 		case *tyPtr, *tyArr:
 			return &arithNode{op: ndPtrAdd, lhs: rhs, rhs: lhs}
 		}
 	case *tyPtr, *tyArr:
 		switch r.(type) {
-		case *tyChar, *tyInt, *tyShort, *tyLong:
+		case *tyChar, *tyInt, *tyShort, *tyLong, *tyBool:
 			return &arithNode{op: ndPtrAdd, lhs: lhs, rhs: rhs}
 		}
 	}
@@ -213,14 +213,14 @@ func newSubNode(lhs node, rhs node) *arithNode {
 	l := lhs.loadType()
 	r := rhs.loadType()
 	switch l.(type) {
-	case *tyChar, *tyInt, *tyLong, *tyShort:
+	case *tyChar, *tyInt, *tyLong, *tyShort, *tyBool:
 		switch r.(type) {
-		case *tyChar, *tyInt, *tyLong, *tyShort:
+		case *tyChar, *tyInt, *tyLong, *tyShort, *tyBool:
 			return &arithNode{op: ndSub, lhs: lhs, rhs: rhs}
 		}
 	case *tyPtr, *tyArr:
 		switch r.(type) {
-		case *tyChar, *tyInt, *tyLong, *tyShort:
+		case *tyChar, *tyInt, *tyLong, *tyShort, *tyBool:
 			return &arithNode{op: ndPtrSub, lhs: lhs, rhs: rhs}
 		case *tyPtr, *tyArr:
 			return &arithNode{op: ndPtrDiff, lhs: lhs, rhs: rhs}

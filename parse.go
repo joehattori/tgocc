@@ -251,6 +251,10 @@ func (p *parser) baseType() ty {
 			p.popToks()
 			return newTyVoid()
 		}
+		if strings.HasPrefix(tok.str, "_Bool") {
+			p.popToks()
+			return newTyBool()
+		}
 	}
 	log.Fatalf("type expected but got %T", cur)
 	return nil

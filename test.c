@@ -223,6 +223,11 @@ int main() {
 
     { void *x; }
 
+    test(0, ({ _Bool x=0; x; }), "_Bool x=0; x;");
+    test(1, ({ _Bool x=1; x; }), "_Bool x=1; x;");
+    test(1, ({ _Bool x=2; x; }), "_Bool x=2; x;");
+
+
     printf("OK\n");
     return 0;
 }

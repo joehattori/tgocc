@@ -14,6 +14,7 @@ type tyArr struct {
 	of  ty
 	len int
 }
+type tyBool struct{}
 type tyChar struct{}
 type tyEmpty struct{}
 type tyFn struct {
@@ -33,6 +34,7 @@ type tyStruct struct {
 type tyVoid struct{}
 
 func newTyArr(of ty, len int) *tyArr { return &tyArr{of, len} }
+func newTyBool() *tyBool             { return &tyBool{} }
 func newTyChar() *tyChar             { return &tyChar{} }
 func newTyEmpty() *tyEmpty           { return &tyEmpty{} }
 func newTyFn(ty ty) *tyFn            { return &tyFn{ty} }
@@ -50,6 +52,7 @@ func alignTo(n int, align int) int {
 }
 
 func (a *tyArr) alignment() int    { return a.of.alignment() }
+func (b *tyBool) alignment() int   { return 1 }
 func (c *tyChar) alignment() int   { return 1 }
 func (e *tyEmpty) alignment() int  { return 0 }
 func (f *tyFn) alignment() int     { return 1 }
@@ -61,6 +64,7 @@ func (s *tyStruct) alignment() int { return s.align }
 func (v *tyVoid) alignment() int   { return 1 }
 
 func (a *tyArr) size() int    { return a.len * a.of.size() }
+func (b *tyBool) size() int   { return 1 }
 func (c *tyChar) size() int   { return 1 }
 func (e *tyEmpty) size() int  { return 0 }
 func (f *tyFn) size() int     { return 1 }
