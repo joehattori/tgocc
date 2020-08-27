@@ -246,6 +246,8 @@ int main() {
     test(0, (long)&*(int *)0, "(long)&*(int *)0");
     test(5, ({ int x=5; long y=(long)&x; *(int*)y; }), "int x=5; long y=(long)&x; *(int*)y");
 
+    test(97, 'a', "'a'");
+    test(122, 'z', "'z'");
 
     printf("OK\n");
     return 0;
