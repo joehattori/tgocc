@@ -236,6 +236,17 @@ int main() {
     test(1, ({ _Bool x=1; x; }), "_Bool x=1; x;");
     test(1, ({ _Bool x=2; x; }), "_Bool x=2; x;");
 
+    test(131585, (int)8590066177, "(int)8590066177");
+    test(513, (short)8590066177, "(short)8590066177");
+    test(1, (char)8590066177, "(char)8590066177");
+    test(1, (_Bool)1, "(_Bool)1");
+    test(1, (_Bool)2, "(_Bool)2");
+    test(0, (_Bool)(char)256, "(_Bool)(char)256");
+    test(1, (long)1, "(long)1");
+    test(0, (long)&*(int *)0, "(long)&*(int *)0");
+    test(5, ({ int x=5; long y=(long)&x; *(int*)y; }), "int x=5; long y=(long)&x; *(int*)y");
+
+
     printf("OK\n");
     return 0;
 }

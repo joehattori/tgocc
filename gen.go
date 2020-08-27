@@ -120,6 +120,29 @@ func (b *blkNode) gen() {
 	}
 }
 
+func (c *castNode) gen() {
+	c.base.gen()
+	fmt.Println("	pop rax")
+	t := c.toTy
+	if _, ok := t.(*tyBool); ok {
+		fmt.Println("	cmp rax, 0")
+		fmt.Println("	setne al")
+	}
+	switch t.size() {
+	case 1:
+		fmt.Println("	movsx rax, al")
+	case 2:
+		fmt.Println("	movsx rax, ax")
+	case 4:
+		fmt.Println("	movsxd rax, eax")
+	case 8:
+		// rax is 8 bits register
+	default:
+		log.Fatalf("unhandled type size: %d", t)
+	}
+	fmt.Println("	push rax")
+}
+
 func (d *derefNode) gen() {
 	d.ptr.gen()
 	ty := d.loadType()

@@ -36,6 +36,11 @@ type (
 		body []node
 	}
 
+	castNode struct {
+		base node
+		toTy ty
+	}
+
 	derefNode struct {
 		ptr node
 		ty  ty
@@ -73,15 +78,15 @@ type (
 		els  node
 	}
 
-	memberNode struct {
-		lhs addressableNode
-		mem *member
-	}
-
 	member struct {
 		name   string
 		offset int
 		ty     ty
+	}
+
+	memberNode struct {
+		lhs addressableNode
+		mem *member
 	}
 
 	nullNode struct{}
@@ -169,6 +174,10 @@ func newAssignNode(lhs addressableNode, rhs node) *assignNode {
 
 func newBlkNode(body []node) *blkNode {
 	return &blkNode{body}
+}
+
+func newCastNode(base node, t ty) *castNode {
+	return &castNode{base, t}
 }
 
 func newDerefNode(ptr node) *derefNode {
@@ -276,6 +285,10 @@ func (b *blkNode) loadType() ty {
 		st.loadType()
 	}
 	return newTyEmpty()
+}
+
+func (c *castNode) loadType() ty {
+	return c.toTy
 }
 
 func (d *derefNode) loadType() ty {

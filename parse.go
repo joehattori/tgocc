@@ -184,15 +184,16 @@ func newGVarLabel() string {
   				| "typedef" ty ident ("[" num "]")* ";"
   				| decl
    decl       = baseType tyDecl ("[" expr "]")* "=" expr ;" | baseTy ";"
-   tyDecl     = "*"* (ident | "(" declarator ")")
+   tyDecl     = "*"* (ident | "(" tyDecl ")")
    expr       = assign
    stmtExpr   = "(" "{" stmt+ "}" ")"
    assign     = equality ("=" assign) ?
    equality   = relational ("==" relational | "!=" relational)*
    relational = add ("<" add | "<=" add | ">" add | ">=" add)*
    add        = mul ("+" mul | "-" mul)*
-   mul        = unary ("*" unary | "/" unary)*
-   unary      = ("+" | "-" | "*" | "&")? unary | postfix
+   mul        = cat ("*" cast | "/" cast)*
+   cast       = "(" baseType "*"*  ")" cast | unary
+   unary      = ("+" | "-" | "*" | "&")? cast | postfix
    postfix    = primary (("[" expr "]") | ("." | id))*
    primary    =  num
   				| "sizeof" unary
@@ -547,32 +548,48 @@ func (p *parser) addSub() node {
 }
 
 func (p *parser) mulDiv() node {
-	node := p.unary()
+	node := p.cast()
 	for {
 		if p.consume("*") {
-			node = newArithNode(ndMul, node, p.unary())
+			node = newArithNode(ndMul, node, p.cast())
 		} else if p.consume("/") {
-			node = newArithNode(ndDiv, node, p.unary())
+			node = newArithNode(ndDiv, node, p.cast())
 		} else {
 			return node
 		}
 	}
 }
 
+func (p *parser) cast() node {
+	orig := p.toks
+	if p.consume("(") {
+		if p.isType() {
+			t, _ := p.baseType()
+			for p.consume("*") {
+				t = newTyPtr(t)
+			}
+			p.expect(")")
+			return newCastNode(p.cast(), t)
+		}
+		p.toks = orig
+	}
+	return p.unary()
+}
+
 func (p *parser) unary() node {
 	if p.consume("+") {
-		return p.unary()
+		return p.cast()
 	}
 	if p.consume("-") {
-		node := p.unary()
+		node := p.cast()
 		return newSubNode(newNumNode(0), node)
 	}
 	if p.consume("*") {
-		node := p.unary()
+		node := p.cast()
 		return newDerefNode(node)
 	}
 	if p.consume("&") {
-		node := p.unary()
+		node := p.cast()
 		return newAddrNode(node.(addressableNode))
 	}
 	return p.postfix()
