@@ -7,7 +7,12 @@ type scope struct {
 	curOffset  int
 	super      *scope
 	structTags []*structTag
+	enumTags   []*enumTag
 	vars       []variable
+}
+
+func newScope(super *scope) *scope {
+	return &scope{baseOffset: super.curOffset, super: super}
 }
 
 type structTag struct {
@@ -15,12 +20,17 @@ type structTag struct {
 	ty   ty
 }
 
-func newScope(super *scope) *scope {
-	return &scope{super.curOffset, 0, super, nil, nil}
-}
-
 func newStructTag(name string, t ty) *structTag {
 	return &structTag{name, t}
+}
+
+type enumTag struct {
+	name string
+	ty   ty // TODO: is it really necessary?
+}
+
+func newEnumTag(name string, t ty) *enumTag {
+	return &enumTag{name, t}
 }
 
 func (s *scope) addGVar(id string, t ty, content interface{}) *gVar {
@@ -50,11 +60,27 @@ func (s *scope) addTypeDef(id string, t ty) *typeDef {
 	return v
 }
 
+func (s *scope) addEnum(id string, t ty, val int) *enum {
+	if _, exists := s.searchVar(id).(*enum); exists {
+		log.Fatalf("enum %s is already defined", id)
+	}
+	v := newEnum(id, t, val)
+	s.vars = append(s.vars, v)
+	return v
+}
+
 func (s *scope) addStructTag(tag *structTag) {
 	if s.searchStructTag(tag.name) != nil {
 		log.Fatalf("struct tag %s already exists", tag.name)
 	}
 	s.structTags = append(s.structTags, tag)
+}
+
+func (s *scope) addEnumTag(tag *enumTag) {
+	if s.searchEnumTag(tag.name) != nil {
+		log.Fatalf("enum tag %s already exists", tag.name)
+	}
+	s.enumTags = append(s.enumTags, tag)
 }
 
 func (s *scope) searchVar(varName string) variable {
@@ -68,6 +94,15 @@ func (s *scope) searchVar(varName string) variable {
 
 func (s *scope) searchStructTag(tagStr string) *structTag {
 	for _, tag := range s.structTags {
+		if tag.name == tagStr {
+			return tag
+		}
+	}
+	return nil
+}
+
+func (s *scope) searchEnumTag(tagStr string) *enumTag {
+	for _, tag := range s.enumTags {
 		if tag.name == tagStr {
 			return tag
 		}

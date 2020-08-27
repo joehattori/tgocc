@@ -249,6 +249,18 @@ int main() {
     test(97, 'a', "'a'");
     test(122, 'z', "'z'");
 
+    test(0, ({ enum { zero, one, two }; zero; }), "enum { zero, one, two }; zero;");
+    test(1, ({ enum { zero, one, two, }; one; }), "enum { zero, one, two }; one;");
+    test(2, ({ enum { zero, one, two }; two; }), "enum { zero, one, two }; two;");
+    test(5, ({ enum { five=5, six, seven }; five; }), "enum { five=5, six, seven }; five;");
+    test(6, ({ enum { five=5, six, seven, }; six; }), "enum { five=5, six, seven }; six;");
+    test(0, ({ enum { zero, five=5, three=3, four, }; zero; }), "enum { zero, five=5, three=3, four }; zero;");
+    test(5, ({ enum { zero, five=5, three=3, four, }; five; }), "enum { zero, five=5, three=3, four }; five;");
+    test(3, ({ enum { zero, five=5, three=3, four }; three; }), "enum { zero, five=5, three=3, four }; three;");
+    test(4, ({ enum { zero, five=5, three=3, four }; four; }), "enum { zero, five=5, three=3, four }; four;");
+    test(4, ({ enum { zero, one, two } x; sizeof(x); }), "enum { zero, one, two } x; sizeof(x);");
+    test(4, ({ enum t { zero, one, two, }; enum t y; sizeof(y); }), "enum t { zero, one, two }; enum t y; sizeof(y);");
+
     printf("OK\n");
     return 0;
 }

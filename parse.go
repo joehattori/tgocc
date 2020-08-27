@@ -57,6 +57,17 @@ func (p *parser) searchStructTag(tag string) *structTag {
 	return nil
 }
 
+func (p *parser) searchEnumTag(tag string) *enumTag {
+	scope := p.curScope
+	for scope != nil {
+		if tag := scope.searchEnumTag(tag); tag != nil {
+			return tag
+		}
+		scope = scope.super
+	}
+	return nil
+}
+
 func (p *parser) searchVar(varName string) variable {
 	scope := p.curScope
 	for scope != nil {
@@ -177,7 +188,7 @@ func newGVarLabel() string {
    globalVar  = decl
    stmt       = expr ";"
   				| "{" stmt* "}"
-  			    | "return" expr ";"
+  				| "return" expr ";"
   				| "if" "(" expr ")" stmt ("else" stmt) ?
   				| "while" "(" expr ")" stmt
   				| "for" "(" expr? ";" expr? ";" expr? ")" stmt
@@ -202,6 +213,51 @@ func newGVarLabel() string {
   				| "(" expr ")"
   				| stmtExpr
 */
+
+func (p *parser) parse() {
+	ast := p.res
+	for {
+		if _, ok := p.toks[0].(*eofTok); ok {
+			break
+		}
+		if p.isFunction() {
+			fn := p.function()
+			if fn != nil {
+				ast.fns = append(ast.fns, fn)
+			}
+		} else {
+			// TODO: gvar init
+			ty, id, _ := p.decl()
+			if ty != nil {
+				p.curScope.addGVar(id, ty, nil)
+				ast.gVars = append(ast.gVars, newGVar(id, ty, nil))
+			}
+		}
+	}
+}
+
+func (p *parser) function() *fnNode {
+	ty, _ := p.baseType()
+	fnName, ty := p.tyDecl(ty)
+	p.curFnName = fnName
+	p.curScope.addGVar(fnName, newTyFn(ty), nil)
+	fn := newFnNode(fnName, ty)
+	p.spawnScope()
+	p.readFnParams(fn)
+	if p.consume(";") {
+		p.rewindScope()
+		return nil
+	}
+	p.expect("{")
+	for !p.consume("}") {
+		fn.body = append(fn.body, p.stmt())
+	}
+	p.setFnLVars(fn)
+	p.rewindScope()
+	// TODO: align
+	fn.stackSize = p.curScope.curOffset
+	return fn
+}
 
 func (p *parser) decl() (t ty, id string, rhs node) {
 	t, isTypeDef := p.baseType()
@@ -240,6 +296,9 @@ func (p *parser) baseType() (t ty, isTypeDef bool) {
 	case *reservedTok:
 		if p.beginsWith("struct") {
 			return p.structDecl(), isTypeDef
+		}
+		if p.beginsWith("enum") {
+			return p.enumDecl(), isTypeDef
 		}
 		if p.consume("int") {
 			return newTyInt(), isTypeDef
@@ -298,51 +357,6 @@ func (p *parser) tySuffix(baseTy ty) ty {
 	return baseTy
 }
 
-func (p *parser) parse() {
-	ast := p.res
-	for {
-		if _, ok := p.toks[0].(*eofTok); ok {
-			break
-		}
-		if p.isFunction() {
-			fn := p.function()
-			if fn != nil {
-				ast.fns = append(ast.fns, fn)
-			}
-		} else {
-			// TODO: gvar init
-			ty, id, _ := p.decl()
-			if ty != nil {
-				p.curScope.addGVar(id, ty, nil)
-				ast.gVars = append(ast.gVars, newGVar(id, ty, nil))
-			}
-		}
-	}
-}
-
-func (p *parser) function() *fnNode {
-	ty, _ := p.baseType()
-	fnName, ty := p.tyDecl(ty)
-	p.curFnName = fnName
-	p.curScope.addGVar(fnName, newTyFn(ty), nil)
-	fn := newFnNode(fnName, ty)
-	p.spawnScope()
-	p.readFnParams(fn)
-	if p.consume(";") {
-		p.rewindScope()
-		return nil
-	}
-	p.expect("{")
-	for !p.consume("}") {
-		fn.body = append(fn.body, p.stmt())
-	}
-	p.setFnLVars(fn)
-	p.rewindScope()
-	// TODO: align
-	fn.stackSize = p.curScope.curOffset
-	return fn
-}
-
 func (p *parser) readFnParams(fn *fnNode) {
 	p.expect("(")
 	isFirstArg := true
@@ -352,11 +366,8 @@ func (p *parser) readFnParams(fn *fnNode) {
 		}
 		isFirstArg = false
 
-		ty, isTypeDef := p.baseType()
+		ty, _ := p.baseType()
 		id, ty := p.tyDecl(ty)
-		if isTypeDef {
-			p.curScope.addTypeDef(id, ty)
-		}
 		lv := p.curScope.addLVar(id, ty)
 		fn.params = append(fn.params, lv)
 	}
@@ -402,6 +413,39 @@ func (p *parser) structDecl() ty {
 		p.curScope.addStructTag(newStructTag(tagStr, tyStruct))
 	}
 	return tyStruct
+}
+
+func (p *parser) enumDecl() ty {
+	p.expect("enum")
+	tagStr, tagExists := p.consumeID()
+	if tagExists && !p.beginsWith("{") {
+		if tag := p.searchEnumTag(tagStr); tag != nil {
+			return tag.ty
+		}
+		log.Fatalf("no such enum tag %s", tagStr)
+	}
+	t := newTyEnum()
+
+	p.expect("{")
+	c := 0
+	for {
+		id := p.expectID()
+		if p.consume("=") {
+			c = p.expectNum()
+		}
+		p.curScope.addEnum(id, t, c)
+		c++
+		orig := p.toks
+		if p.consume("}") || p.consume(",") && p.consume("}") {
+			break
+		}
+		p.toks = orig
+		p.expect(",")
+	}
+	if tagExists {
+		p.curScope.addEnumTag(newEnumTag(tagStr, t))
+	}
+	return t
 }
 
 func (p *parser) stmt() node {
@@ -685,7 +729,15 @@ func (p *parser) primary() node {
 			p.expect(")")
 			return newFnCallNode(id, params, t)
 		}
-		return newVarNode(p.findVar(id))
+
+		switch v := p.findVar(id).(type) {
+		case *enum:
+			return newNumNode(int64(v.val))
+		case *lVar, *gVar:
+			return newVarNode(v)
+		default:
+			log.Fatalf("unhandled case of variable in primary: %T", p.findVar(id))
+		}
 	}
 
 	if str, isStr := p.consumeStr(); isStr {

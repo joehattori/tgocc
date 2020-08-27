@@ -19,8 +19,8 @@ type (
 	tyBool  struct{}
 	tyChar  struct{}
 	tyEmpty struct{}
-
-	tyFn struct {
+	tyEnum  struct{}
+	tyFn    struct {
 		retTy ty
 	}
 
@@ -46,6 +46,7 @@ func newTyArr(of ty, len int) *tyArr { return &tyArr{of, len} }
 func newTyBool() *tyBool             { return &tyBool{} }
 func newTyChar() *tyChar             { return &tyChar{} }
 func newTyEmpty() *tyEmpty           { return &tyEmpty{} }
+func newTyEnum() *tyEnum             { return &tyEnum{} }
 func newTyFn(t ty) *tyFn             { return &tyFn{t} }
 func newTyInt() *tyInt               { return &tyInt{} }
 func newTyLong() *tyLong             { return &tyLong{} }
@@ -64,6 +65,7 @@ func (a *tyArr) alignment() int    { return a.of.alignment() }
 func (b *tyBool) alignment() int   { return 1 }
 func (c *tyChar) alignment() int   { return 1 }
 func (e *tyEmpty) alignment() int  { return 0 }
+func (e *tyEnum) alignment() int   { return 4 }
 func (f *tyFn) alignment() int     { return 1 }
 func (i *tyInt) alignment() int    { return 4 }
 func (l *tyLong) alignment() int   { return 8 }
@@ -76,6 +78,7 @@ func (a *tyArr) size() int    { return a.len * a.of.size() }
 func (b *tyBool) size() int   { return 1 }
 func (c *tyChar) size() int   { return 1 }
 func (e *tyEmpty) size() int  { return 0 }
+func (e *tyEnum) size() int   { return 4 }
 func (f *tyFn) size() int     { return 1 }
 func (i *tyInt) size() int    { return 4 }
 func (l *tyLong) size() int   { return 8 }
