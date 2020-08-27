@@ -228,31 +228,25 @@ func (p *parser) baseType() ty {
 			return tyDef.ty
 		}
 	case *reservedTok:
-		if strings.HasPrefix(tok.str, "int") {
-			p.popToks()
-			return newTyInt()
-		}
-		if strings.HasPrefix(tok.str, "char") {
-			p.popToks()
-			return newTyChar()
-		}
-		if strings.HasPrefix(tok.str, "short") {
-			p.popToks()
-			return newTyShort()
-		}
-		if strings.HasPrefix(tok.str, "long") {
-			p.popToks()
-			return newTyLong()
-		}
-		if strings.HasPrefix(tok.str, "struct") {
+		if p.beginsWith("struct") {
 			return p.structDecl()
 		}
-		if strings.HasPrefix(tok.str, "void") {
-			p.popToks()
+		if p.consume("int") {
+			return newTyInt()
+		}
+		if p.consume("char") {
+			return newTyChar()
+		}
+		if p.consume("short") {
+			return newTyShort()
+		}
+		if p.consume("long") {
+			return newTyLong()
+		}
+		if p.consume("void") {
 			return newTyVoid()
 		}
-		if strings.HasPrefix(tok.str, "_Bool") {
-			p.popToks()
+		if p.consume("_Bool") {
 			return newTyBool()
 		}
 	}
