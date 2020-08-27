@@ -138,7 +138,7 @@ func (p *parser) expectNum() int {
 func (p *parser) isFunction() bool {
 	orig := p.toks
 	defer func() { p.toks = orig }()
-	_ = p.baseType()
+	p.baseType()
 	for p.consume("*") {
 	}
 	_, isID := p.consumeID()
@@ -203,11 +203,17 @@ func newGVarLabel() string {
 */
 
 func (p *parser) decl() (t ty, id string, rhs node) {
-	t = p.baseType()
+	t, isTypeDef := p.baseType()
 	if p.consume(";") {
 		return
 	}
 	id, t = p.tyDecl(t)
+	if isTypeDef {
+		p.expect(";")
+		p.curScope.addTypeDef(id, t)
+		// returned t is nil when it is typedef (no need to add to scope.vars)
+		return nil, "", nil
+	}
 	t = p.tySuffix(t)
 	if p.consume(";") {
 		return
@@ -218,40 +224,46 @@ func (p *parser) decl() (t ty, id string, rhs node) {
 	return
 }
 
-func (p *parser) baseType() ty {
+func (p *parser) baseType() (t ty, isTypeDef bool) {
+	if p.consume("typedef") {
+		isTypeDef = true
+	}
 	cur := p.toks[0]
 	switch tok := cur.(type) {
 	case *idTok:
 		id := idRegexp.FindString(tok.id)
 		if tyDef, ok := p.searchVar(id).(*typeDef); ok {
 			p.popToks()
-			return tyDef.ty
+			return tyDef.ty, isTypeDef
 		}
 	case *reservedTok:
 		if p.beginsWith("struct") {
-			return p.structDecl()
+			return p.structDecl(), isTypeDef
 		}
 		if p.consume("int") {
-			return newTyInt()
+			return newTyInt(), isTypeDef
 		}
 		if p.consume("char") {
-			return newTyChar()
+			return newTyChar(), isTypeDef
 		}
 		if p.consume("short") {
-			return newTyShort()
+			p.consume("int")
+			return newTyShort(), isTypeDef
 		}
 		if p.consume("long") {
-			return newTyLong()
+			p.consume("long")
+			p.consume("int")
+			return newTyLong(), isTypeDef
 		}
 		if p.consume("void") {
-			return newTyVoid()
+			return newTyVoid(), isTypeDef
 		}
 		if p.consume("_Bool") {
-			return newTyBool()
+			return newTyBool(), isTypeDef
 		}
 	}
-	log.Fatalf("type expected but got %T", cur)
-	return nil
+	log.Fatalf("type expected but got %T: %s", cur, cur.getStr())
+	return
 }
 
 func (p *parser) tyDecl(baseTy ty) (id string, newTy ty) {
@@ -299,14 +311,16 @@ func (p *parser) parse() {
 		} else {
 			// TODO: gvar init
 			ty, id, _ := p.decl()
-			p.curScope.addGVar(id, ty, nil)
-			ast.gVars = append(ast.gVars, newGVar(id, ty, nil))
+			if ty != nil {
+				p.curScope.addGVar(id, ty, nil)
+				ast.gVars = append(ast.gVars, newGVar(id, ty, nil))
+			}
 		}
 	}
 }
 
 func (p *parser) function() *fnNode {
-	ty := p.baseType()
+	ty, _ := p.baseType()
 	fnName, ty := p.tyDecl(ty)
 	p.curFnName = fnName
 	p.curScope.addGVar(fnName, newTyFn(ty), nil)
@@ -337,8 +351,11 @@ func (p *parser) readFnParams(fn *fnNode) {
 		}
 		isFirstArg = false
 
-		ty := p.baseType()
+		ty, isTypeDef := p.baseType()
 		id, ty := p.tyDecl(ty)
+		if isTypeDef {
+			p.curScope.addTypeDef(id, ty)
+		}
 		lv := p.curScope.addLVar(id, ty)
 		fn.params = append(fn.params, lv)
 	}
@@ -452,15 +469,6 @@ func (p *parser) stmt() node {
 
 		then = p.stmt()
 		return newForNode(init, cond, inc, then)
-	}
-
-	// handle typedef
-	if p.consume("typedef") {
-		ty := p.baseType()
-		id, ty := p.tyDecl(ty)
-		p.expect(";")
-		p.curScope.addTypeDef(id, ty)
-		return newNullNode()
 	}
 
 	// handle variable definition
@@ -631,7 +639,8 @@ func (p *parser) primary() node {
 		orig := p.toks
 		if p.consume("(") {
 			if p.isType() {
-				n := p.baseType().size()
+				base, _ := p.baseType()
+				n := base.size()
 				p.expect(")")
 				return newNumNode(int64(n))
 			}

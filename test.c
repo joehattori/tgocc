@@ -40,6 +40,8 @@ char *ret_string() {
     return "test";
 }
 
+typedef long long ll;
+
 int main() {
     test(0, 0, "0");
     test(42, 42, "42");
@@ -216,17 +218,23 @@ int main() {
     test(4, ({ int x[3]; int (*y)[3]=x; y[0][0]=4; y[0][0]; }), "int x[3]; int (*y)[3]=x; y[0][0]=4; y[0][0];");
 
     test(1, sizeof(void), "sizeof(void)");
-    test(1, sizeof(char), "sizeof(void)");
-    test(2, sizeof(short), "sizeof(void)");
-    test(4, sizeof(int), "sizeof(void)");
-    test(8, sizeof(long), "sizeof(void)");
+    test(1, sizeof(char), "sizeof(char)");
+    test(2, sizeof(short), "sizeof(short)");
+    test(2, sizeof(short int), "sizeof(short int)");
+    test(4, sizeof(int), "sizeof(int)");
+    test(8, sizeof(long), "sizeof(long)");
+    test(8, sizeof(long int), "sizeof(long int)");
+    test(8, sizeof(long long), "sizeof(long long)");
+    test(8, sizeof(long long int), "sizeof(long long int)");
+
+    test(8, sizeof(ll), "sizeof(ll)");
+    test(3, ({ ll x=3; *&x; }), "ll x=3; *&x;");
 
     { void *x; }
 
     test(0, ({ _Bool x=0; x; }), "_Bool x=0; x;");
     test(1, ({ _Bool x=1; x; }), "_Bool x=1; x;");
     test(1, ({ _Bool x=2; x; }), "_Bool x=2; x;");
-
 
     printf("OK\n");
     return 0;
