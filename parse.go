@@ -237,11 +237,11 @@ func (p *parser) parse() {
 }
 
 func (p *parser) function() *fnNode {
-	ty, _ := p.baseType()
+	ty, _, sc := p.baseType()
 	fnName, ty := p.tyDecl(ty)
 	p.curFnName = fnName
 	p.curScope.addGVar(fnName, newTyFn(ty), nil)
-	fn := newFnNode(fnName, ty)
+	fn := newFnNode((sc & static)!= 0, fnName, ty)
 	p.spawnScope()
 	p.readFnParams(fn)
 	if p.consume(";") {
@@ -260,7 +260,7 @@ func (p *parser) function() *fnNode {
 }
 
 func (p *parser) decl() (t ty, id string, rhs node) {
-	t, isTypeDef := p.baseType()
+	t, isTypeDef, _ := p.baseType()
 	if p.consume(";") {
 		return
 	}
@@ -281,9 +281,19 @@ func (p *parser) decl() (t ty, id string, rhs node) {
 	return
 }
 
-func (p *parser) baseType() (t ty, isTypeDef bool) {
+type storageClass int
+
+const (
+	static = 0b01
+	extern = 0b10 // TODO
+)
+
+func (p *parser) baseType() (t ty, isTypeDef bool, sc storageClass) {
 	if p.consume("typedef") {
 		isTypeDef = true
+	}
+	if p.consume("static")  {
+		sc |= static
 	}
 	cur := p.toks[0]
 	switch tok := cur.(type) {
@@ -291,35 +301,35 @@ func (p *parser) baseType() (t ty, isTypeDef bool) {
 		id := idRegexp.FindString(tok.id)
 		if tyDef, ok := p.searchVar(id).(*typeDef); ok {
 			p.popToks()
-			return tyDef.ty, isTypeDef
+			return tyDef.ty, isTypeDef, sc
 		}
 	case *reservedTok:
 		if p.beginsWith("struct") {
-			return p.structDecl(), isTypeDef
+			return p.structDecl(), isTypeDef, sc
 		}
 		if p.beginsWith("enum") {
-			return p.enumDecl(), isTypeDef
+			return p.enumDecl(), isTypeDef, sc
 		}
 		if p.consume("int") {
-			return newTyInt(), isTypeDef
+			return newTyInt(), isTypeDef,sc
 		}
 		if p.consume("char") {
-			return newTyChar(), isTypeDef
+			return newTyChar(), isTypeDef,sc
 		}
 		if p.consume("short") {
 			p.consume("int")
-			return newTyShort(), isTypeDef
+			return newTyShort(), isTypeDef,sc
 		}
 		if p.consume("long") {
 			p.consume("long")
 			p.consume("int")
-			return newTyLong(), isTypeDef
+			return newTyLong(), isTypeDef,sc
 		}
 		if p.consume("void") {
-			return newTyVoid(), isTypeDef
+			return newTyVoid(), isTypeDef,sc
 		}
 		if p.consume("_Bool") {
-			return newTyBool(), isTypeDef
+			return newTyBool(), isTypeDef,sc
 		}
 	}
 	log.Fatalf("type expected but got %T: %s", cur, cur.getStr())
@@ -366,7 +376,7 @@ func (p *parser) readFnParams(fn *fnNode) {
 		}
 		isFirstArg = false
 
-		ty, _ := p.baseType()
+		ty, _, _ := p.baseType()
 		id, ty := p.tyDecl(ty)
 		lv := p.curScope.addLVar(id, ty)
 		fn.params = append(fn.params, lv)
@@ -608,7 +618,7 @@ func (p *parser) cast() node {
 	orig := p.toks
 	if p.consume("(") {
 		if p.isType() {
-			t, _ := p.baseType()
+			t, _,_ := p.baseType()
 			for p.consume("*") {
 				t = newTyPtr(t)
 			}
@@ -700,7 +710,7 @@ func (p *parser) primary() node {
 		orig := p.toks
 		if p.consume("(") {
 			if p.isType() {
-				base, _ := p.baseType()
+				base, _,_ := p.baseType()
 				n := base.size()
 				p.expect(")")
 				return newNumNode(int64(n))

@@ -205,7 +205,9 @@ func (f *fnCallNode) gen() {
 
 func (f *fnNode) gen() {
 	name := f.name
-	fmt.Printf(".globl %s\n", name)
+	if !f.isStatic {
+		fmt.Printf(".globl %s\n", name)
+	}
 	fmt.Printf("%s:\n", name)
 	fmt.Println("	push rbp")
 	fmt.Println("	mov rbp, rsp")

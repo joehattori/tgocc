@@ -42,6 +42,8 @@ char *ret_string() {
 
 typedef long long ll;
 
+static int static_fn() { return 3; }
+
 int main() {
     test(0, 0, "0");
     test(42, 42, "42");
@@ -260,6 +262,8 @@ int main() {
     test(4, ({ enum { zero, five=5, three=3, four }; four; }), "enum { zero, five=5, three=3, four }; four;");
     test(4, ({ enum { zero, one, two } x; sizeof(x); }), "enum { zero, one, two } x; sizeof(x);");
     test(4, ({ enum t { zero, one, two, }; enum t y; sizeof(y); }), "enum t { zero, one, two }; enum t y; sizeof(y);");
+
+    test(3, static_fn(), "static_fn()");
 
     printf("OK\n");
     return 0;

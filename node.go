@@ -64,6 +64,7 @@ type (
 	}
 
 	fnNode struct {
+		isStatic  bool
 		params    []*lVar
 		body      []node
 		lVars     []*lVar
@@ -197,8 +198,8 @@ func newFnCallNode(name string, params []node, retTy ty) *fnCallNode {
 	return &fnCallNode{name, params, retTy}
 }
 
-func newFnNode(name string, t ty) *fnNode {
-	return &fnNode{name: name, retTy: t}
+func newFnNode(isStatic bool, name string, t ty) *fnNode {
+	return &fnNode{isStatic: isStatic, name: name, retTy: t}
 }
 
 func newIfNode(cond node, then node, els node) *ifNode {

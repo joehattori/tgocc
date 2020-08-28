@@ -11,7 +11,7 @@ import (
 
 var (
 	idRegexp   = regexp.MustCompile(`^[a-zA-Z_]+\w*`)
-	typeRegexp = regexp.MustCompile(`^(int|char|long|short|struct|void|_Bool|typedef|enum)\W`)
+	typeRegexp = regexp.MustCompile(`^(int|char|long|short|struct|void|_Bool|typedef|enum|static)\W`)
 )
 
 type token interface {
