@@ -191,7 +191,7 @@ func newGVarLabel() string {
   				| "return" expr ";"
   				| "if" "(" expr ")" stmt ("else" stmt) ?
   				| "while" "(" expr ")" stmt
-  				| "for" "(" expr? ";" expr? ";" expr? ")" stmt
+  				| "for" "(" (expr? ";" | decl) expr? ";" expr? ")" stmt
   				| "typedef" ty ident ("[" num "]")* ";"
   				| decl
    decl       = baseType tyDecl ("[" expr "]")* "=" expr ;" | baseTy ";"
@@ -507,9 +507,21 @@ func (p *parser) stmt() node {
 
 		var init, cond, inc, then node
 
+		p.spawnScope()
 		if !p.consume(";") {
-			init = newExprNode(p.expr())
-			p.expect(";")
+			if p.isType() {
+				t, id, rhs := p.decl()
+				p.curScope.addLVar(id, t)
+				if rhs == nil {
+					init = newNullNode()
+				} else {
+					a := newAssignNode(newVarNode(p.findVar(id)), rhs)
+					init = newExprNode(a)
+				}
+			} else {
+				init = newExprNode(p.expr())
+				p.expect(";")
+			}
 		}
 
 		if !p.consume(";") {
@@ -523,6 +535,7 @@ func (p *parser) stmt() node {
 		}
 
 		then = p.stmt()
+		p.rewindScope()
 		return newForNode(init, cond, inc, then)
 	}
 
