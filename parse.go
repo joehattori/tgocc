@@ -204,8 +204,8 @@ func newGVarLabel() string {
    add        = mul ("+" mul | "-" mul)*
    mul        = cat ("*" cast | "/" cast)*
    cast       = "(" baseType "*"*  ")" cast | unary
-   unary      = ("+" | "-" | "*" | "&")? cast | postfix
-   postfix    = primary (("[" expr "]") | ("." | id))*
+   unary      = ("+" | "-" | "*" | "&")? cast | ("++" | "--") unary | postfix
+   postfix    = primary (("[" expr "]") | ("." ident) | ("->" ident) | "++" | "--")*
    primary    =  num
   				| "sizeof" unary
   				| str
@@ -648,16 +648,19 @@ func (p *parser) unary() node {
 		return p.cast()
 	}
 	if p.consume("-") {
-		node := p.cast()
-		return newSubNode(newNumNode(0), node)
+		return newSubNode(newNumNode(0), p.cast())
 	}
 	if p.consume("*") {
-		node := p.cast()
-		return newDerefNode(node)
+		return newDerefNode(p.cast())
 	}
 	if p.consume("&") {
-		node := p.cast()
-		return newAddrNode(node.(addressableNode))
+		return newAddrNode(p.cast().(addressableNode))
+	}
+	if p.consume("++") {
+		return newIncNode(p.unary().(addressableNode), true)
+	}
+	if p.consume("--") {
+		return newDecNode(p.unary().(addressableNode), true)
 	}
 	return p.postfix()
 }
@@ -685,7 +688,15 @@ func (p *parser) postfix() node {
 				node = newMemberNode(newDerefNode(node.(addressableNode)), mem)
 				continue
 			}
-			log.Fatalf("expected struct but got %T", node.loadType())
+			log.Fatalf("expected pointer but got %T", node.loadType())
+		}
+		if p.consume("++") {
+			node = newIncNode(node.(addressableNode), false)
+			continue
+		}
+		if p.consume("--") {
+			node = newDecNode(node.(addressableNode), false)
+			continue
 		}
 		return node
 	}

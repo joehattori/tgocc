@@ -143,6 +143,31 @@ func (c *castNode) gen() {
 	fmt.Println("	push rax")
 }
 
+func (d *decNode) gen() {
+	body := d.body
+	t := body.loadType()
+	var diff int
+	if p, ok := body.loadType().(ptr); ok {
+		diff = p.base().size()
+	} else {
+		diff = 1
+	}
+
+	body.genAddr()
+	fmt.Println("	push rax")
+	load(t)
+	fmt.Println("	pop rax")
+	fmt.Printf("	sub rax, %d\n", diff)
+	fmt.Println("	push rax")
+	store(t)
+
+	if !d.isPre {
+		fmt.Println("	pop rax")
+		fmt.Printf("	add rax, %d\n", diff)
+		fmt.Println("	push rax")
+	}
+}
+
 func (d *derefNode) gen() {
 	d.ptr.gen()
 	ty := d.loadType()
@@ -260,6 +285,31 @@ func (i *ifNode) gen() {
 	}
 }
 
+func (i *incNode) gen() {
+	body := i.body
+	t := body.loadType()
+	var diff int
+	if p, ok := body.loadType().(ptr); ok {
+		diff = p.base().size()
+	} else {
+		diff = 1
+	}
+
+	body.genAddr()
+	fmt.Println("	push rax")
+	load(t)
+	fmt.Println("	pop rax")
+	fmt.Printf("	add rax, %d\n", diff)
+	fmt.Println("	push rax")
+	store(t)
+
+	if !i.isPre {
+		fmt.Println("	pop rax")
+		fmt.Printf("	sub rax, %d\n", diff)
+		fmt.Println("	push rax")
+	}
+}
+
 func (m *memberNode) gen() {
 	m.genAddr()
 	ty := m.loadType()
@@ -330,6 +380,8 @@ func (v *varNode) genAddr() {
 	case *lVar:
 		fmt.Printf("	lea rax, [rbp-%d]\n", vr.offset)
 		fmt.Println("	push rax")
+	default:
+		log.Fatalf("unhandled case in genAddr()")
 	}
 }
 

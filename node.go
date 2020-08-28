@@ -41,6 +41,11 @@ type (
 		toTy ty
 	}
 
+	decNode struct {
+		body  addressableNode
+		isPre bool
+	}
+
 	derefNode struct {
 		ptr node
 		ty  ty
@@ -77,6 +82,11 @@ type (
 		cond node
 		then node
 		els  node
+	}
+
+	incNode struct {
+		body  addressableNode
+		isPre bool
 	}
 
 	member struct {
@@ -181,6 +191,10 @@ func newCastNode(base node, t ty) *castNode {
 	return &castNode{base, t}
 }
 
+func newDecNode(body addressableNode, isPre bool) *decNode {
+	return &decNode{body, isPre}
+}
+
 func newDerefNode(ptr node) *derefNode {
 	return &derefNode{ptr: ptr}
 }
@@ -204,6 +218,10 @@ func newFnNode(isStatic bool, name string, t ty) *fnNode {
 
 func newIfNode(cond node, then node, els node) *ifNode {
 	return &ifNode{cond, then, els}
+}
+
+func newIncNode(body addressableNode, isPre bool) *incNode {
+	return &incNode{body, isPre}
 }
 
 func newMemberNode(lhs addressableNode, m *member) *memberNode {
@@ -292,6 +310,10 @@ func (c *castNode) loadType() ty {
 	return c.toTy
 }
 
+func (d *decNode) loadType() ty {
+	return d.body.loadType()
+}
+
 func (d *derefNode) loadType() ty {
 	switch v := d.ptr.loadType().(type) {
 	case *tyChar, *tyInt, *tyShort, *tyLong:
@@ -348,6 +370,10 @@ func (i *ifNode) loadType() ty {
 		i.els.loadType()
 	}
 	return newTyEmpty()
+}
+
+func (i *incNode) loadType() ty {
+	return i.body.loadType()
 }
 
 func (m *memberNode) loadType() ty {
