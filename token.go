@@ -235,7 +235,7 @@ func (t *tokenizer) tokenize(input string) *parser {
 			continue
 		}
 
-		if tok := t.readRuneFrom("+-*/(){}[]<>;=,&."); tok != nil {
+		if tok := t.readRuneFrom("+-*/(){}[]<>;=,&.!"); tok != nil {
 			toks = append(toks, tok)
 			continue
 		}

@@ -302,6 +302,10 @@ int main() {
     test(1, ({ int a[3]; a[0]=0; a[1]=1; a[2]=2; int *b=a+2; b-=1; *b; }),
         "int a[3]; a[0]=0; a[1]=1; a[2]=2; int *b=a+2; b-=1; *b;");
 
+    test(0, !1, "!1");
+    test(0, !2, "!2");
+    test(1, !0, "!0");
+
     test(3, ({ int i=0; for(;i<10;i++) { if (i==3) break; } i; }), "int i=0; for(;i<10;i++) { if (i==3) break; } i;");
     test(4, ({ int i=0; while (1) { if (i++ ==3) break; } i; }), "int i=0; while { if (i++ ==3) break; } i;");
     test(3, ({ int i=0; for(;i<10;i++) { for (;;) break; if (i==3) break; } i; }),
@@ -312,14 +316,14 @@ int main() {
         "int i=0; int j=0; for (;i<10;i++) { if (i>5) continue; j++; } i;");
     test(6, ({ int i=0; int j=0; for (;i<10;i++) { if (i>5) continue; j++; } j; }),
         "int i=0; int j=0; for (;i<10;i++) { if (i>5) continue; j++; } j;");
-    /*test(10, ({ int i=0; int j=0; for(;!i;) { for (;j!=10;j++) continue; break; } j; }),*/
-        /*"int i=0; int j=0; for(;!i;) { for (;j!=10;j++) continue; break; } j;");*/
+    test(10, ({ int i=0; int j=0; for(;!i;) { for (;j!=10;j++) continue; break; } j; }),
+        "int i=0; int j=0; for(;!i;) { for (;j!=10;j++) continue; break; } j;");
     test(11, ({ int i=0; int j=0; while (i++<10) { if (i>5) continue; j++; } i; }),
         "int i=0; int j=0; while (i++<10) { if (i>5) continue; j++; } i;");
     test(5, ({ int i=0; int j=0; while (i++<10) { if (i>5) continue; j++; } j; }),
         "int i=0; int j=0; while (i++<10) { if (i>5) continue; j++; } j;");
-    /*test(11, ({ int i=0; int j=0; while(!i) { while (j++!=10) continue; break; } j; }),*/
-        /*"int i=0; int j=0; while(!i) { while (j++!=10) continue; break; } j;");*/
+    test(11, ({ int i=0; int j=0; while(!i) { while (j++!=10) continue; break; } j; }),
+        "int i=0; int j=0; while(!i) { while (j++!=10) continue; break; } j;");
 
     printf("OK\n");
     return 0;

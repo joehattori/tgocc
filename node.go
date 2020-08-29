@@ -104,6 +104,10 @@ type (
 		mem *member
 	}
 
+	notNode struct {
+		body node
+	}
+
 	nullNode struct{}
 
 	numNode struct {
@@ -244,6 +248,10 @@ func newIncNode(body addressableNode, isPre bool) *incNode {
 
 func newMemberNode(lhs addressableNode, m *member) *memberNode {
 	return &memberNode{lhs, m}
+}
+
+func newNotNode(body node) *notNode {
+	return &notNode{body}
 }
 
 func newNullNode() *nullNode {
@@ -404,6 +412,10 @@ func (i *incNode) loadType() ty {
 
 func (m *memberNode) loadType() ty {
 	return m.mem.ty
+}
+
+func (n *notNode) loadType() ty {
+	return newTyBool()
 }
 
 func (*nullNode) loadType() ty {

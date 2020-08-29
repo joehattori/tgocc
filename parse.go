@@ -204,7 +204,7 @@ func newGVarLabel() string {
    add        = mul ("+" mul | "-" mul)*
    mul        = cat ("*" cast | "/" cast)*
    cast       = "(" baseType "*"*  ")" cast | unary
-   unary      = ("+" | "-" | "*" | "&")? cast | ("++" | "--") unary | postfix
+   unary      = ("+" | "-" | "*" | "&" | "!")? cast | ("++" | "--") unary | postfix
    postfix    = primary (("[" expr "]") | ("." ident) | ("->" ident) | "++" | "--")*
    primary    =  num
   				| "sizeof" unary
@@ -682,6 +682,9 @@ func (p *parser) unary() node {
 	}
 	if p.consume("&") {
 		return newAddrNode(p.cast().(addressableNode))
+	}
+	if p.consume("!") {
+		return newNotNode(p.cast())
 	}
 	if p.consume("++") {
 		return newIncNode(p.unary().(addressableNode), true)

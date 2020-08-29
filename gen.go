@@ -344,6 +344,14 @@ func (m *memberNode) gen() {
 	}
 }
 
+func (n *notNode) gen() {
+	n.body.gen()
+	fmt.Println("	pop rax")
+	fmt.Println("	cmp rax, 0")
+	fmt.Println("	sete al")
+	fmt.Println("	push rax")
+}
+
 func (*nullNode) gen() {}
 
 func (n *numNode) gen() {
