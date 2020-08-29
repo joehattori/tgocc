@@ -198,7 +198,9 @@ func newGVarLabel() string {
    tyDecl     = "*"* (ident | "(" tyDecl ")")
    expr       = assign
    stmtExpr   = "(" "{" stmt+ "}" ")"
-   assign     = bitOr (("=" | "+=" | "-=" | "*=" | "/=") assign) ?
+   assign     = logOr (("=" | "+=" | "-=" | "*=" | "/=") assign) ?
+   logOr      = logAnd ("||" logAnd)*
+   logAnd     = bitOr ("&&" bitOr)*
    bitOr      = bitXor ("|" bitXor)*
    bitXor     = bitAnd ("^" bitAnd)*
    bitAnd     = equality ("&" equality)*
@@ -578,7 +580,7 @@ func (p *parser) expr() node {
 }
 
 func (p *parser) assign() node {
-	node := p.bitOr()
+	node := p.logOr()
 	if p.consume("=") {
 		node = newAssignNode(node.(addressableNode), p.assign())
 	} else if p.consume("+=") {
@@ -597,6 +599,22 @@ func (p *parser) assign() node {
 		node = newArithNode(ndMulEq, node.(addressableNode), p.assign())
 	} else if p.consume("/=") {
 		node = newArithNode(ndDivEq, node.(addressableNode), p.assign())
+	}
+	return node
+}
+
+func (p *parser) logOr() node {
+	node := p.logAnd()
+	for p.consume("||") {
+		node = newArithNode(ndLogOr, node, p.logAnd())
+	}
+	return node
+}
+
+func (p *parser) logAnd() node {
+	node := p.bitOr()
+	for p.consume("&&") {
+		node = newArithNode(ndLogAnd, node, p.bitOr())
 	}
 	return node
 }

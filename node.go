@@ -165,6 +165,8 @@ const (
 	ndBitOr
 	ndBitXor
 	ndBitAnd
+	ndLogOr
+	ndLogAnd
 )
 
 func newAddNode(lhs node, rhs node) *arithNode {

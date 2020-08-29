@@ -115,6 +115,30 @@ func (a *arithNode) gen() {
 		fmt.Println("	xor rax, rdi")
 	case ndBitAnd:
 		fmt.Println("	and rax, rdi")
+	case ndLogOr:
+		c := labelCount
+		labelCount++
+		fmt.Println("	cmp rax, 0")
+		fmt.Printf("	jne .L.true.%d\n", c)
+		fmt.Println("	cmp rdi, 0")
+		fmt.Printf("	jne .L.true.%d\n", c)
+		fmt.Println("	setne al")
+		fmt.Printf("	jmp .L.end.%d\n", c)
+		fmt.Printf(".L.true.%d:\n", c)
+		fmt.Println("	setne al")
+		fmt.Printf(".L.end.%d:\n", c)
+	case ndLogAnd:
+		c := labelCount
+		labelCount++
+		fmt.Println("	cmp rax, 0")
+		fmt.Printf("	je .L.false.%d\n", c)
+		fmt.Println("	cmp rdi, 0")
+		fmt.Printf("	je .L.false.%d\n", c)
+		fmt.Println("	setne al")
+		fmt.Printf("	jmp .L.end.%d\n", c)
+		fmt.Printf(".L.false.%d:\n", c)
+		fmt.Println("	setne al")
+		fmt.Printf(".L.end.%d:\n", c)
 	default:
 		log.Fatal("unhandled node kind")
 	}
