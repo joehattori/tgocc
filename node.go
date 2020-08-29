@@ -148,6 +148,12 @@ const (
 	ndPtrAdd
 	ndPtrSub
 	ndPtrDiff
+	ndAddEq
+	ndSubEq
+	ndMulEq
+	ndDivEq
+	ndPtrAddEq
+	ndPtrSubEq
 )
 
 func newAddNode(lhs node, rhs node) *arithNode {

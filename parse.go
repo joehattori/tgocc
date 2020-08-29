@@ -198,7 +198,7 @@ func newGVarLabel() string {
    tyDecl     = "*"* (ident | "(" tyDecl ")")
    expr       = assign
    stmtExpr   = "(" "{" stmt+ "}" ")"
-   assign     = equality ("=" assign) ?
+   assign     = equality (("=" | "+=" | "-=" | "*=" | "/=") assign) ?
    equality   = relational ("==" relational | "!=" relational)*
    relational = add ("<" add | "<=" add | ">" add | ">=" add)*
    add        = mul ("+" mul | "-" mul)*
@@ -565,8 +565,23 @@ func (p *parser) expr() node {
 func (p *parser) assign() node {
 	node := p.equality()
 	if p.consume("=") {
-		assignNode := p.assign()
-		node = newAssignNode(node.(addressableNode), assignNode)
+		node = newAssignNode(node.(addressableNode), p.assign())
+	} else if p.consume("+=") {
+		if _, ok := node.loadType().(ptr); ok {
+			node = newArithNode(ndPtrAddEq, node.(addressableNode), p.assign())
+		} else {
+			node = newArithNode(ndAddEq, node.(addressableNode), p.assign())
+		}
+	} else if p.consume("-=") {
+		if _, ok := node.loadType().(ptr); ok {
+			node = newArithNode(ndPtrSubEq, node.(addressableNode), p.assign())
+		} else {
+			node = newArithNode(ndSubEq, node.(addressableNode), p.assign())
+		}
+	} else if p.consume("*=") {
+		node = newArithNode(ndMulEq, node.(addressableNode), p.assign())
+	} else if p.consume("/=") {
+		node = newArithNode(ndDivEq, node.(addressableNode), p.assign())
 	}
 	return node
 }

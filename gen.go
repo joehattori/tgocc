@@ -51,6 +51,12 @@ func (a *addrNode) gen() {
 }
 
 func (a *arithNode) gen() {
+	switch a.op {
+	case ndAddEq, ndSubEq, ndMulEq, ndDivEq, ndPtrAddEq, ndPtrSubEq:
+		a.lhs.(addressableNode).genAddr()
+		defer store(a.lhs.loadType())
+	}
+
 	a.lhs.gen()
 	a.rhs.gen()
 
@@ -58,13 +64,13 @@ func (a *arithNode) gen() {
 	fmt.Println("	pop rax")
 
 	switch a.op {
-	case ndAdd:
+	case ndAdd, ndAddEq:
 		fmt.Println("	add rax, rdi")
-	case ndSub:
+	case ndSub, ndSubEq:
 		fmt.Println("	sub rax, rdi")
-	case ndMul:
+	case ndMul, ndMulEq:
 		fmt.Println("	imul rax, rdi")
-	case ndDiv:
+	case ndDiv, ndDivEq:
 		fmt.Println("	cqo")
 		fmt.Println("	idiv rdi")
 	case ndEq:
@@ -91,10 +97,10 @@ func (a *arithNode) gen() {
 		fmt.Println("	cmp rdi, rax")
 		fmt.Println("	setle al")
 		fmt.Println("	movzb rax, al")
-	case ndPtrAdd:
+	case ndPtrAdd, ndPtrAddEq:
 		fmt.Printf("	imul rdi, %d\n", a.loadType().(ptr).base().size())
 		fmt.Printf("	add rax, rdi\n")
-	case ndPtrSub:
+	case ndPtrSub, ndPtrSubEq:
 		fmt.Printf("	imul rdi, %d\n", a.loadType().(ptr).base().size())
 		fmt.Printf("	sub rax, rdi\n")
 	case ndPtrDiff:
@@ -103,8 +109,9 @@ func (a *arithNode) gen() {
 		fmt.Printf("	mov rdi, %d\n", a.lhs.loadType().(ptr).base().size())
 		fmt.Println("	idiv rdi")
 	default:
-		log.Fatal("Unhandled node kind")
+		log.Fatal("unhandled node kind")
 	}
+
 	fmt.Println("	push rax")
 }
 
