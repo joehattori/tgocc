@@ -198,7 +198,10 @@ func newGVarLabel() string {
    tyDecl     = "*"* (ident | "(" tyDecl ")")
    expr       = assign
    stmtExpr   = "(" "{" stmt+ "}" ")"
-   assign     = equality (("=" | "+=" | "-=" | "*=" | "/=") assign) ?
+   assign     = bitOr (("=" | "+=" | "-=" | "*=" | "/=") assign) ?
+   bitOr      = bitXor ("|" bitXor)*
+   bitXor     = bitAnd ("^" bitAnd)*
+   bitAnd     = equality ("&" equality)*
    equality   = relational ("==" relational | "!=" relational)*
    relational = add ("<" add | "<=" add | ">" add | ">=" add)*
    add        = mul ("+" mul | "-" mul)*
@@ -575,7 +578,7 @@ func (p *parser) expr() node {
 }
 
 func (p *parser) assign() node {
-	node := p.equality()
+	node := p.bitOr()
 	if p.consume("=") {
 		node = newAssignNode(node.(addressableNode), p.assign())
 	} else if p.consume("+=") {
@@ -594,6 +597,30 @@ func (p *parser) assign() node {
 		node = newArithNode(ndMulEq, node.(addressableNode), p.assign())
 	} else if p.consume("/=") {
 		node = newArithNode(ndDivEq, node.(addressableNode), p.assign())
+	}
+	return node
+}
+
+func (p *parser) bitOr() node {
+	node := p.bitXor()
+	for p.consume("|") {
+		node = newArithNode(ndBitOr, node, p.bitXor())
+	}
+	return node
+}
+
+func (p *parser) bitXor() node {
+	node := p.bitAnd()
+	for p.consume("^") {
+		node = newArithNode(ndBitXor, node, p.bitXor())
+	}
+	return node
+}
+
+func (p *parser) bitAnd() node {
+	node := p.equality()
+	for p.consume("&") {
+		node = newArithNode(ndBitAnd,node, p.equality())
 	}
 	return node
 }

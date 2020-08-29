@@ -162,6 +162,9 @@ const (
 	ndDivEq
 	ndPtrAddEq
 	ndPtrSubEq
+	ndBitOr
+	ndBitXor
+	ndBitAnd
 )
 
 func newAddNode(lhs node, rhs node) *arithNode {

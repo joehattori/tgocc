@@ -105,10 +105,16 @@ func (a *arithNode) gen() {
 		fmt.Printf("	imul rdi, %d\n", a.loadType().(ptr).base().size())
 		fmt.Printf("	sub rax, rdi\n")
 	case ndPtrDiff:
-		fmt.Printf("	sub rax, rdi\n")
-		fmt.Printf("	cqo\n")
+		fmt.Println("	sub rax, rdi")
+		fmt.Println("	cqo")
 		fmt.Printf("	mov rdi, %d\n", a.lhs.loadType().(ptr).base().size())
 		fmt.Println("	idiv rdi")
+	case ndBitOr:
+		fmt.Println("	or rax, rdi")
+	case ndBitXor:
+		fmt.Println("	xor rax, rdi")
+	case ndBitAnd:
+		fmt.Println("	and rax, rdi")
 	default:
 		log.Fatal("unhandled node kind")
 	}

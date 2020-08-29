@@ -325,6 +325,18 @@ int main() {
     test(11, ({ int i=0; int j=0; while(!i) { while (j++!=10) continue; break; } j; }),
         "int i=0; int j=0; while(!i) { while (j++!=10) continue; break; } j;");
 
+    test(0, 0&1, "0&1");
+    test(1, 3&1, "3&1");
+    test(3, 7&3, "7&3");
+    test(10, -1&10, " -1&10");
+
+    test(1, 0|1, "0|1");
+    /*test(0b10011, 0b10000|0b00011, "01000|0b0011");*/
+
+    test(0, 0^0, "0^0");
+    /*test(0, 0b1111^0b1111, "0b1111^0b1111");*/
+    /*test(0b110100, 0b111000^0b001100, "0b111000^0b001100");*/
+
     printf("OK\n");
     return 0;
 }
