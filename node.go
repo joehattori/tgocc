@@ -43,6 +43,8 @@ type (
 		toTy ty
 	}
 
+	continueNode struct{}
+
 	decNode struct {
 		body  addressableNode
 		isPre bool
@@ -203,6 +205,10 @@ func newCastNode(base node, t ty) *castNode {
 	return &castNode{base, t}
 }
 
+func newContinueNode() *continueNode {
+	return &continueNode{}
+}
+
 func newDecNode(body addressableNode, isPre bool) *decNode {
 	return &decNode{body, isPre}
 }
@@ -324,6 +330,10 @@ func (b *breakNode) loadType() ty {
 
 func (c *castNode) loadType() ty {
 	return c.toTy
+}
+
+func (c *continueNode) loadType() ty {
+	return newTyEmpty()
 }
 
 func (d *decNode) loadType() ty {

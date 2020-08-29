@@ -6,8 +6,8 @@ import (
 )
 
 var (
-	labelCount int
-	breakCount int
+	labelCount   int
+	loopLabelNum int
 
 	paramRegs1 = [...]string{"dil", "sil", "dl", "cl", "r8b", "r9b"}
 	paramRegs2 = [...]string{"di", "si", "dx", "cx", "r8w", "r9w"}
@@ -129,7 +129,10 @@ func (b *blkNode) gen() {
 }
 
 func (b *breakNode) gen() {
-	fmt.Printf("	jmp .L.break.%d\n", breakCount)
+	if loopLabelNum == 0 {
+		log.Fatal("invalid break statement.")
+	}
+	fmt.Printf("	jmp .L.break.%d\n", loopLabelNum)
 }
 
 func (c *castNode) gen() {
@@ -153,6 +156,13 @@ func (c *castNode) gen() {
 		log.Fatalf("unhandled type size: %d", t)
 	}
 	fmt.Println("	push rax")
+}
+
+func (c *continueNode) gen() {
+	if loopLabelNum == 0 {
+		log.Fatal("invalid continue statement.")
+	}
+	fmt.Printf("jmp .L.continue.%d\n", loopLabelNum)
 }
 
 func (d *decNode) gen() {
@@ -196,8 +206,8 @@ func (e *exprNode) gen() {
 func (f *forNode) gen() {
 	c := labelCount
 	labelCount++
-	prevBreakCount := breakCount
-	breakCount = c
+	prevLoopLabelNum := loopLabelNum
+	loopLabelNum = c
 	if f.init != nil {
 		f.init.gen()
 	}
@@ -206,17 +216,18 @@ func (f *forNode) gen() {
 		f.cond.gen()
 		fmt.Println("	pop rax")
 		fmt.Println("	cmp rax, 0")
-		fmt.Printf("	je .L.break.%d\n", breakCount)
+		fmt.Printf("	je .L.break.%d\n", loopLabelNum)
 	}
 	if f.body != nil {
 		f.body.gen()
 	}
+	fmt.Printf(".L.continue.%d:\n", c)
 	if f.inc != nil {
 		f.inc.gen()
 	}
 	fmt.Printf("	jmp .L.begin.%d\n", c)
-	fmt.Printf(".L.break.%d:\n", breakCount)
-	breakCount = prevBreakCount
+	fmt.Printf(".L.break.%d:\n", c)
+	loopLabelNum = prevLoopLabelNum
 }
 
 func (f *fnCallNode) gen() {
@@ -367,17 +378,17 @@ func (v *varNode) gen() {
 func (w *whileNode) gen() {
 	c := labelCount
 	labelCount++
-	prevBreakCount := breakCount
-	breakCount = c
-	fmt.Printf(".L.begin.%d:\n", c)
+	prevLoopLabelNum := loopLabelNum
+	loopLabelNum = c
+	fmt.Printf(".L.continue.%d:\n", c)
 	w.cond.gen()
 	fmt.Println("	pop rax")
 	fmt.Println("	cmp rax, 0")
-	fmt.Printf("	je .L.break.%d\n", breakCount)
+	fmt.Printf("	je .L.break.%d\n", c)
 	w.then.gen()
-	fmt.Printf("	jmp .L.begin.%d\n", c)
-	fmt.Printf(".L.break.%d:\n", breakCount)
-	breakCount = prevBreakCount
+	fmt.Printf("	jmp .L.continue.%d\n", c)
+	fmt.Printf(".L.break.%d:\n", loopLabelNum)
+	loopLabelNum = prevLoopLabelNum
 }
 
 func (d *derefNode) genAddr() {

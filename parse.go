@@ -483,6 +483,12 @@ func (p *parser) stmt() node {
 		return newBreakNode()
 	}
 
+	// handle continue
+	if p.consume("continue") {
+		p.expect(";")
+		return newContinueNode()
+	}
+
 	// handle if statement
 	if p.consume("if") {
 		p.expect("(")
