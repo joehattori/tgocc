@@ -302,6 +302,12 @@ int main() {
     test(1, ({ int a[3]; a[0]=0; a[1]=1; a[2]=2; int *b=a+2; b-=1; *b; }),
         "int a[3]; a[0]=0; a[1]=1; a[2]=2; int *b=a+2; b-=1; *b;");
 
+    test(3, ({ int i=0; for(;i<10;i++) { if (i==3) break; } i; }), "int i=0; for(;i<10;i++) { if (i==3) break; } i;");
+    test(4, ({ int i=0; while (1) { if (i++ ==3) break; } i; }), "int i=0; while { if (i++ ==3) break; } i;");
+    test(3, ({ int i=0; for(;i<10;i++) { for (;;) break; if (i==3) break; } i; }),
+        "int i=0; for(;i<10;i++) { if (i==3) break; } i;");
+    test(4, ({ int i=0; while (1) { while(1) break; if (i++ ==3) break; } i; }), "int i=0; while { if (i++ ==3) break; } i;");
+
     printf("OK\n");
     return 0;
 }

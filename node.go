@@ -36,6 +36,8 @@ type (
 		body []node
 	}
 
+	breakNode struct{}
+
 	castNode struct {
 		base node
 		toTy ty
@@ -193,6 +195,10 @@ func newBlkNode(body []node) *blkNode {
 	return &blkNode{body}
 }
 
+func newBreakNode() *breakNode {
+	return &breakNode{}
+}
+
 func newCastNode(base node, t ty) *castNode {
 	return &castNode{base, t}
 }
@@ -309,6 +315,10 @@ func (b *blkNode) loadType() ty {
 	for _, st := range b.body {
 		st.loadType()
 	}
+	return newTyEmpty()
+}
+
+func (b *breakNode) loadType() ty {
 	return newTyEmpty()
 }
 

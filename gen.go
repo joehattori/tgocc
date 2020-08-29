@@ -7,6 +7,7 @@ import (
 
 var (
 	labelCount int
+	breakCount int
 
 	paramRegs1 = [...]string{"dil", "sil", "dl", "cl", "r8b", "r9b"}
 	paramRegs2 = [...]string{"di", "si", "dx", "cx", "r8w", "r9w"}
@@ -127,6 +128,10 @@ func (b *blkNode) gen() {
 	}
 }
 
+func (b *breakNode) gen() {
+	fmt.Printf("	jmp .L.break.%d\n", breakCount)
+}
+
 func (c *castNode) gen() {
 	c.base.gen()
 	fmt.Println("	pop rax")
@@ -191,6 +196,8 @@ func (e *exprNode) gen() {
 func (f *forNode) gen() {
 	c := labelCount
 	labelCount++
+	prevBreakCount := breakCount
+	breakCount = c
 	if f.init != nil {
 		f.init.gen()
 	}
@@ -199,7 +206,7 @@ func (f *forNode) gen() {
 		f.cond.gen()
 		fmt.Println("	pop rax")
 		fmt.Println("	cmp rax, 0")
-		fmt.Printf("	je .L.end.%d\n", c)
+		fmt.Printf("	je .L.break.%d\n", breakCount)
 	}
 	if f.body != nil {
 		f.body.gen()
@@ -208,7 +215,8 @@ func (f *forNode) gen() {
 		f.inc.gen()
 	}
 	fmt.Printf("	jmp .L.begin.%d\n", c)
-	fmt.Printf(".L.end.%d:\n", c)
+	fmt.Printf(".L.break.%d:\n", breakCount)
+	breakCount = prevBreakCount
 }
 
 func (f *fnCallNode) gen() {
@@ -359,14 +367,17 @@ func (v *varNode) gen() {
 func (w *whileNode) gen() {
 	c := labelCount
 	labelCount++
+	prevBreakCount := breakCount
+	breakCount = c
 	fmt.Printf(".L.begin.%d:\n", c)
 	w.cond.gen()
 	fmt.Println("	pop rax")
 	fmt.Println("	cmp rax, 0")
-	fmt.Printf("	je .L.end.%d\n", c)
+	fmt.Printf("	je .L.break.%d\n", breakCount)
 	w.then.gen()
 	fmt.Printf("	jmp .L.begin.%d\n", c)
-	fmt.Printf(".L.end.%d:\n", c)
+	fmt.Printf(".L.break.%d:\n", breakCount)
+	breakCount = prevBreakCount
 }
 
 func (d *derefNode) genAddr() {

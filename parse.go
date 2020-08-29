@@ -477,6 +477,12 @@ func (p *parser) stmt() node {
 		return node
 	}
 
+	// handle break
+	if p.consume("break") {
+		p.expect(";")
+		return newBreakNode()
+	}
+
 	// handle if statement
 	if p.consume("if") {
 		p.expect("(")
