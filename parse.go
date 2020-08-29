@@ -136,7 +136,7 @@ func (p *parser) expectID() string {
 	return ""
 }
 
-func (p *parser) expectNum() int {
+func (p *parser) expectNum() int64 {
 	cur := p.toks[0]
 	if n, ok := cur.(*numTok); ok {
 		p.popToks()
@@ -367,7 +367,7 @@ func (p *parser) tySuffix(baseTy ty) ty {
 		l := p.expectNum()
 		p.expect("]")
 		baseTy = p.tySuffix(baseTy)
-		return newTyArr(baseTy, l)
+		return newTyArr(baseTy,int(l))
 	}
 	return baseTy
 }
@@ -446,7 +446,7 @@ func (p *parser) enumDecl() ty {
 	for {
 		id := p.expectID()
 		if p.consume("=") {
-			c = p.expectNum()
+			c = int(p.expectNum())
 		}
 		p.curScope.addEnum(id, t, c)
 		c++
