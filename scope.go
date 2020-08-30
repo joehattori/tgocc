@@ -33,11 +33,11 @@ func newEnumTag(name string, t ty) *enumTag {
 	return &enumTag{name, t}
 }
 
-func (s *scope) addGVar(id string, t ty, content interface{}) *gVar {
+func (s *scope) addGVar(id string, t ty, init gVarInit) *gVar {
 	if _, exists := s.searchVar(id).(*gVar); exists {
 		log.Fatalf("variable %s is already defined", id)
 	}
-	v := newGVar(id, t, content)
+	v := newGVar(id, t, init)
 	s.vars = append(s.vars, v)
 	return v
 }

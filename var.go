@@ -8,9 +8,23 @@ type (
 	}
 
 	gVar struct {
-		content interface{}
-		name    string
-		ty      ty
+		init gVarInit
+		name string
+		ty   ty
+	}
+
+	gVarInit interface{} // TODO: brush up
+
+	gVarInitLabel struct { // reference to another global var
+		label string
+	}
+
+	gVarInitStr struct {
+		content string
+	}
+
+	gVarInitVal struct {
+		val int
 	}
 
 	lVar struct {
@@ -41,8 +55,20 @@ func (v *lVar) getType() ty    { return v.ty }
 func (t *typeDef) getType() ty { return t.ty }
 func (e *enum) getType() ty    { return e.ty }
 
-func newGVar(name string, t ty, content interface{}) *gVar {
-	return &gVar{content, name, t}
+func newGVar(name string, t ty, init gVarInit) *gVar {
+	return &gVar{init, name, t}
+}
+
+func newGVarInitLabel(label string) *gVarInitLabel {
+	return &gVarInitLabel{label}
+}
+
+func newGVarInitStr(s string) *gVarInitStr {
+	return &gVarInitStr{s}
+}
+
+func newGVarInitVal(i int) *gVarInitVal {
+	return &gVarInitVal{i}
 }
 
 func newLVar(name string, t ty) *lVar {

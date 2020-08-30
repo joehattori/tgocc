@@ -295,7 +295,8 @@ func (p *parser) initialize(t ty) node {
 	case *tyArr, *tyStruct:
 		var nodes []node
 		if str, ok := p.consumeStr(); ok {
-			s := newGVar(newGVarLabel(), newTyArr(newTyChar(), len(str)), str)
+			init := newGVarInitStr(str)
+			s := newGVar(newGVarLabel(), newTyArr(newTyChar(), len(str)), init)
 			p.res.gVars = append(p.res.gVars, s)
 			return newVarNode(s)
 		}
@@ -792,7 +793,7 @@ func isNodeStr(n node) (bool, string) {
 	} else if _, ok := t.of.(*tyChar); !ok {
 		return false, ""
 	} else {
-		return true, g.content.(string)
+		return true, g.init.(*gVarInitStr).content
 	}
 }
 
@@ -1123,7 +1124,8 @@ func (p *parser) primary() node {
 	}
 
 	if str, isStr := p.consumeStr(); isStr {
-		s := newGVar(newGVarLabel(), newTyArr(newTyChar(), utf8.RuneCountInString(str)), str)
+		init := newGVarInitStr(str)
+		s := newGVar(newGVarLabel(), newTyArr(newTyChar(), utf8.RuneCountInString(str)), init)
 		p.res.gVars = append(p.res.gVars, s)
 		return newVarNode(s)
 	}
