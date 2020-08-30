@@ -192,11 +192,11 @@ Actual parsing process from here.
   				| "if" "(" expr ")" stmt ("else" stmt) ?
   				| "while" "(" expr ")" stmt
   				| "for" "(" (expr? ";" | decl) expr? ";" expr? ")" stmt
-  				| "typedef" ty ident ("[" num "]")* ";"
+				| "typedef" ty ident ("[" constExpr "]")* ";"
 				| "switch" "(" expr ")" "{" switchCase* ("default" ":" stmt*)? }"
   				| decl
 	switchCase = "case" num ":" stmt*
-	decl       = baseType tyDecl ("[" expr "]")* "=" expr ;" | baseTy ";"
+	decl       = baseType tyDecl ("[" constExpr "]")* "=" expr ;" | baseTy ";"
 	tyDecl     = "*"* (ident | "(" tyDecl ")")
 	expr       = assign
 	assign     = ternary (("=" | "+=" | "-=" | "*=" | "/=") assign) ?
@@ -372,11 +372,87 @@ func (p *parser) tySuffix(t ty) ty {
 	}
 	var l int
 	if !p.consume("]") {
-		l = int(p.expectNum())
+		l = int(p.constExpr())
 		p.expect("]")
 	}
 	t = p.tySuffix(t)
 	return newTyArr(t, l)
+}
+
+func (p *parser) constExpr() int64 {
+	return eval(p.ternary())
+}
+
+func eval(nd node) int64 {
+	switch n := nd.(type){
+	// TODO: bitnot
+	case *arithNode:
+		switch n.op {
+			case ndAdd:
+			return eval(n.lhs) + eval(n.rhs)
+			case ndSub:
+			return eval(n.lhs) - eval(n.rhs)
+			case ndMul:
+			return eval(n.lhs) * eval(n.rhs)
+			case ndDiv:
+			return eval(n.lhs) / eval(n.rhs)
+			case ndBitOr:
+				return eval(n.lhs) | eval(n.rhs)
+			case ndBitXor:
+				return eval(n.lhs) ^ eval(n.rhs)
+			case ndBitAnd:
+				return eval(n.lhs) & eval(n.rhs)
+			case ndShl:
+				return eval(n.lhs) << eval(n.rhs)
+			case ndShr:
+				return eval(n.lhs) >> eval(n.rhs)
+			case ndEq:
+				if eval(n.lhs) == eval(n.rhs) {
+					return 1
+				}
+				return 0
+			case ndNeq:
+				if eval(n.lhs) != eval(n.rhs) {
+					return 1
+				}
+				return 0
+			case ndLt:
+				if eval(n.lhs) < eval(n.rhs) {
+					return 1
+				}
+				return 0
+			case ndLeq:
+				if eval(n.lhs) <= eval(n.rhs) {
+					return 1
+				}
+				return 0
+			case ndGt:
+				if eval(n.lhs) > eval(n.rhs) {
+					return 1
+				}
+				return 0
+			case ndGeq:
+				if eval(n.lhs) <= eval(n.rhs) {
+					return 1
+				}
+				return 0
+			case ndLogAnd:
+				return eval(n.lhs) & eval(n.rhs)
+			case ndLogOr:
+				return eval(n.lhs) | eval(n.rhs)
+		}
+	case *notNode:
+		return ^eval(n.body)
+	case *numNode:
+		return n.val
+	case *ternaryNode:
+		if eval(n.cond) == 0 {
+			return eval(n.rhs)
+		}
+		return eval(n.lhs)
+	}
+	log.Fatalf("not a constant expression.")
+	return 0
 }
 
 func (p *parser) readFnParams(fn *fnNode) {
@@ -456,7 +532,7 @@ func (p *parser) enumDecl() ty {
 	for {
 		id := p.expectID()
 		if p.consume("=") {
-			c = int(p.expectNum())
+			c = int(p.constExpr())
 		}
 		p.curScope.addEnum(id, t, c)
 		c++
@@ -620,7 +696,7 @@ func (p *parser) stmt() node {
 
 func (p *parser) switchCase(idx int) node {
 	if p.consume("case") {
-		n := p.expectNum()
+		n := p.constExpr()
 		p.expect(":")
 		var body []node
 		for !p.beginsWith("case") && !p.beginsWith("default") && !p.beginsWith("}") {

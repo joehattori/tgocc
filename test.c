@@ -409,6 +409,12 @@ int main() {
     test(2, 0?1:2, "0?1:2");
     test(1, 1?1:2, "0?1:2");
 
+    test(10, ({ enum { ten=1+2+3+4, }; ten; }), "enum { ten=1+2+3+4, }; ten;");
+    test(1, ({ int i=0; switch(3) { case 5-2+0*3: i++; } i; }), "int i=0; switch(3) { case 5-2+0*3: i++; ); i;");
+    test(8, ({ int x[1+1]; sizeof(x); }), "int x[1+1]; sizeof(x);");
+    test(2, ({ char x[1?2:3]; sizeof(x); }), "char x[0?2:3]; sizeof(x);");
+    test(3, ({ char x[0?2:3]; sizeof(x); }), "char x[1?2:3]; sizeof(x);");
+
     printf("OK\n");
     return 0;
 }
