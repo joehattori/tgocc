@@ -408,58 +408,58 @@ func eval(nd node) int64 {
 	switch n := nd.(type){
 	case *arithNode:
 		switch n.op {
-			case ndAdd:
+		case ndAdd:
 			return eval(n.lhs) + eval(n.rhs)
-			case ndSub:
+		case ndSub:
 			return eval(n.lhs) - eval(n.rhs)
-			case ndMul:
+		case ndMul:
 			return eval(n.lhs) * eval(n.rhs)
-			case ndDiv:
+		case ndDiv:
 			return eval(n.lhs) / eval(n.rhs)
-			case ndBitOr:
-				return eval(n.lhs) | eval(n.rhs)
-			case ndBitXor:
-				return eval(n.lhs) ^ eval(n.rhs)
-			case ndBitAnd:
-				return eval(n.lhs) & eval(n.rhs)
-			case ndShl:
-				return eval(n.lhs) << eval(n.rhs)
-			case ndShr:
-				return eval(n.lhs) >> eval(n.rhs)
-			case ndEq:
-				if eval(n.lhs) == eval(n.rhs) {
-					return 1
-				}
-				return 0
-			case ndNeq:
-				if eval(n.lhs) != eval(n.rhs) {
-					return 1
-				}
-				return 0
-			case ndLt:
-				if eval(n.lhs) < eval(n.rhs) {
-					return 1
-				}
-				return 0
-			case ndLeq:
-				if eval(n.lhs) <= eval(n.rhs) {
-					return 1
-				}
-				return 0
-			case ndGt:
-				if eval(n.lhs) > eval(n.rhs) {
-					return 1
-				}
-				return 0
-			case ndGeq:
-				if eval(n.lhs) <= eval(n.rhs) {
-					return 1
-				}
-				return 0
-			case ndLogAnd:
-				return eval(n.lhs) & eval(n.rhs)
-			case ndLogOr:
-				return eval(n.lhs) | eval(n.rhs)
+		case ndBitOr:
+			return eval(n.lhs) | eval(n.rhs)
+		case ndBitXor:
+			return eval(n.lhs) ^ eval(n.rhs)
+		case ndBitAnd:
+			return eval(n.lhs) & eval(n.rhs)
+		case ndShl:
+			return eval(n.lhs) << eval(n.rhs)
+		case ndShr:
+			return eval(n.lhs) >> eval(n.rhs)
+		case ndEq:
+			if eval(n.lhs) == eval(n.rhs) {
+				return 1
+			}
+			return 0
+		case ndNeq:
+			if eval(n.lhs) != eval(n.rhs) {
+				return 1
+			}
+			return 0
+		case ndLt:
+			if eval(n.lhs) < eval(n.rhs) {
+				return 1
+			}
+			return 0
+		case ndLeq:
+			if eval(n.lhs) <= eval(n.rhs) {
+				return 1
+			}
+			return 0
+		case ndGt:
+			if eval(n.lhs) > eval(n.rhs) {
+				return 1
+			}
+			return 0
+		case ndGeq:
+			if eval(n.lhs) <= eval(n.rhs) {
+				return 1
+			}
+			return 0
+		case ndLogAnd:
+			return eval(n.lhs) & eval(n.rhs)
+		case ndLogOr:
+			return eval(n.lhs) | eval(n.rhs)
 		}
 	case *bitNotNode:
 		return ^eval(n.body)
