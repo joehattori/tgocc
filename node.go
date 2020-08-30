@@ -32,6 +32,10 @@ type (
 		ty  ty
 	}
 
+	bitNotNode struct {
+		body node
+	}
+
 	blkNode struct {
 		body []node
 	}
@@ -229,6 +233,10 @@ func newAssignNode(lhs addressableNode, rhs node) *assignNode {
 	return &assignNode{lhs: lhs, rhs: rhs}
 }
 
+func newBitNotNode(body node) *bitNotNode {
+	return &bitNotNode{body}
+}
+
 func newBlkNode(body []node) *blkNode {
 	return &blkNode{body}
 }
@@ -371,6 +379,10 @@ func (a *assignNode) loadType() ty {
 	}
 	a.rhs.loadType()
 	return a.ty
+}
+
+func (b *bitNotNode) loadType() ty {
+	return b.body.loadType()
 }
 
 func (b *blkNode) loadType() ty {

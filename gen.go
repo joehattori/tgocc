@@ -158,6 +158,13 @@ func (a *assignNode) gen() {
 	store(a.loadType())
 }
 
+func (b *bitNotNode) gen() {
+	b.body.gen()
+	fmt.Println("	pop rax")
+	fmt.Println("	not rax")
+	fmt.Println("	push rax")
+}
+
 func (b *blkNode) gen() {
 	for _, st := range b.body {
 		st.gen()

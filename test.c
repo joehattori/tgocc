@@ -312,6 +312,9 @@ int main() {
     test(0, !2, "!2");
     test(1, !0, "!0");
 
+    test(-1, ~0, "~0");
+    test(0, ~-1, "~-1");
+
     test(3, ({ int i=0; for(;i<10;i++) { if (i==3) break; } i; }), "int i=0; for(;i<10;i++) { if (i==3) break; } i;");
     test(4, ({ int i=0; while (1) { if (i++ ==3) break; } i; }), "int i=0; while { if (i++ ==3) break; } i;");
     test(3, ({ int i=0; for(;i<10;i++) { for (;;) break; if (i==3) break; } i; }),

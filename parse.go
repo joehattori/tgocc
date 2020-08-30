@@ -212,7 +212,7 @@ Actual parsing process from here.
 	add        = mul ("+" mul | "-" mul)*
 	mul        = cat ("*" cast | "/" cast)*
 	cast       = "(" baseType "*"*  ")" cast | unary
-	unary      = ("+" | "-" | "*" | "&" | "!")? cast | ("++" | "--") unary | postfix
+	unary      = ("+" | "-" | "*" | "&" | "!" | "~")? cast | ("++" | "--") unary | postfix
 	postfix    = primary (("[" expr "]") | ("." ident) | ("->" ident) | "++" | "--")*
 	primary    =  num
 				| "sizeof" unary
@@ -385,7 +385,6 @@ func (p *parser) constExpr() int64 {
 
 func eval(nd node) int64 {
 	switch n := nd.(type){
-	// TODO: bitnot
 	case *arithNode:
 		switch n.op {
 			case ndAdd:
@@ -441,8 +440,13 @@ func eval(nd node) int64 {
 			case ndLogOr:
 				return eval(n.lhs) | eval(n.rhs)
 		}
-	case *notNode:
+	case *bitNotNode:
 		return ^eval(n.body)
+	case *notNode:
+		if eval(n.body) != 0 {
+			return 1
+		}
+		return 0
 	case *numNode:
 		return n.val
 	case *ternaryNode:
@@ -898,6 +902,9 @@ func (p *parser) unary() node {
 	}
 	if p.consume("!") {
 		return newNotNode(p.cast())
+	}
+	if p.consume("~") {
+		return newBitNotNode(p.cast())
 	}
 	if p.consume("++") {
 		return newIncNode(p.unary().(addressableNode), true)
