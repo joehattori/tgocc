@@ -469,6 +469,9 @@ func (n *numNode) loadType() ty {
 }
 
 func (r *retNode) loadType() ty {
+	if r.rhs == nil {
+		return newTyEmpty()
+	}
 	if r.ty == nil {
 		r.ty = r.rhs.loadType()
 	}

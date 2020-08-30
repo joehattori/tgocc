@@ -46,6 +46,10 @@ static int static_fn() { return 3; }
 
 int param_decay(int x[]) { return x[0]; }
 
+void store(int *x) {
+    *x = 3;
+}
+
 int main() {
     test(0, 0, "0");
     test(42, 42, "42");
@@ -386,6 +390,8 @@ int main() {
         "int i=5; switch(i) { case 1: i+=2; default: i+=3; } i;");
     test(11, ({ int i=5; switch(i) { case 5: i+=1; default: i+=3; case 1: i+=2; } i; }),
         "int i=5; switch(i) { case 5: i+=1; default: i+=3; case 1: i+=2; } i;");
+
+    test(3, ({ int x[2]; store(x); x[0]; }), "int x[2]; store(x); x[0];");
 
     printf("OK\n");
     return 0;

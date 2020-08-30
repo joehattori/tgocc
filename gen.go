@@ -406,8 +406,10 @@ func (n *numNode) gen() {
 }
 
 func (r *retNode) gen() {
-	r.rhs.gen()
-	fmt.Println("	pop rax")
+	if r.rhs != nil {
+		r.rhs.gen()
+		fmt.Println("	pop rax")
+	}
 	fmt.Printf("	jmp .L.return.%s\n", r.fnName)
 }
 

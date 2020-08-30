@@ -89,7 +89,7 @@ func (p *parser) beginsWith(s string) bool {
 
 func (p *parser) consume(str string) bool {
 	if r, ok := p.toks[0].(*reservedTok); ok &&
-		r.len == len(str) &&
+		r.len == utf8.RuneCountInString(str) &&
 		strings.HasPrefix(r.str, str) {
 		p.popToks()
 		return true
@@ -118,7 +118,7 @@ func (p *parser) consumeStr() (string, bool) {
 func (p *parser) expect(str string) {
 	cur := p.toks[0]
 	if r, ok := cur.(*reservedTok); ok &&
-		r.len == len(str) && strings.HasPrefix(cur.getStr(), str) {
+		r.len == utf8.RuneCountInString(str) && strings.HasPrefix(cur.getStr(), str) {
 		p.popToks()
 		return
 	}
@@ -199,7 +199,6 @@ Actual parsing process from here.
 	decl       = baseType tyDecl ("[" expr "]")* "=" expr ;" | baseTy ";"
 	tyDecl     = "*"* (ident | "(" tyDecl ")")
 	expr       = assign
-	stmtExpr   = "(" "{" stmt+ "}" ")"
 	assign     = logOr (("=" | "+=" | "-=" | "*=" | "/=") assign) ?
 	logOr      = logAnd ("||" logAnd)*
 	logAnd     = bitOr ("&&" bitOr)*
@@ -219,6 +218,7 @@ Actual parsing process from here.
 				| ident ("(" (expr ("," expr)* )? ")")?
 				| "(" expr ")"
 				| stmtExpr
+	stmtExpr   = "(" "{" stmt+ "}" ")"
 */
 
 func (p *parser) parse() {
@@ -485,6 +485,9 @@ func (p *parser) stmt() node {
 
 	// handle return
 	if p.consume("return") {
+		if p.consume(";") {
+			return newRetNode(nil, p.curFnName)
+		}
 		node := newRetNode(p.expr(), p.curFnName)
 		p.expect(";")
 		return node
