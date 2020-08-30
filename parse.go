@@ -196,7 +196,7 @@ Actual parsing process from here.
 				| "switch" "(" expr ")" "{" switchCase* ("default" ":" stmt*)? }"
   				| decl
 	switchCase = "case" num ":" stmt*
-	decl       = baseType tyDecl ("[" constExpr "]")* "=" expr ;" | baseTy ";"
+	decl       = baseType tyDecl ("[" constExpr "]")* "=" initialize ;" | baseTy ";"
 	tyDecl     = "*"* (ident | "(" tyDecl ")")
 	expr       = assign
 	assign     = ternary (("=" | "+=" | "-=" | "*=" | "/=") assign) ?
@@ -285,9 +285,25 @@ func (p *parser) decl() (t ty, id string, rhs node) {
 		return
 	}
 	p.expect("=")
-	rhs = p.expr()
+	rhs = p.initialize(t)
 	p.expect(";")
 	return
+}
+
+func (p *parser) initialize(t ty) node {
+	if arr, ok := t.(*tyArr); ok {
+		var nodes []node
+		p.expect("{")
+		for !p.consume("}") {
+			nodes = append(nodes, p.initialize(arr.of))
+			if !p.consume(",") {
+				p.expect("}")
+				break
+			}
+		}
+		return newBlkNode(nodes)
+	}
+	return p.assign()
 }
 
 type storageClass int
@@ -681,21 +697,38 @@ func (p *parser) stmt() node {
 
 	// handle variable definition
 	if p.isType() {
-		ty, id, rhs := p.decl()
+		t, id, rhs := p.decl()
 		if id == "" {
 			return newNullNode()
 		}
-		p.curScope.addLVar(id, ty)
+		p.curScope.addLVar(id, t)
 		if rhs == nil {
 			return newNullNode()
 		}
-		node := newAssignNode(newVarNode(p.findVar(id)), rhs)
-		return newExprNode(node)
+		return p.storeInit(t, newVarNode(p.findVar(id)), rhs)
 	}
 
 	node := p.expr()
 	p.expect(";")
 	return newExprNode(node)
+}
+
+func (p *parser) storeInit(t ty, dst node, rhs node) node {
+	if t, ok := t.(*tyArr); ok {
+		var body []node
+		if _, ok := t.of.(*tyArr); !ok {
+			for i := 0; i < t.len; i++ {
+				addr := newDerefNode(newAddNode(dst, newNumNode(int64(i))))
+				body = append(body, p.storeInit(t.of, addr, newNumNode(0)))
+			}
+		}
+		for i, mem := range rhs.(*blkNode).body {
+			addr := newDerefNode(newAddNode(dst, newNumNode(int64(i))))
+			body = append(body, p.storeInit(t.of, addr, mem))
+		}
+		return newBlkNode(body)
+	}
+	return newExprNode(newAssignNode(dst.(addressableNode), rhs))
 }
 
 func (p *parser) switchCase(idx int) node {
