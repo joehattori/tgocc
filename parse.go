@@ -199,7 +199,8 @@ Actual parsing process from here.
 	decl       = baseType tyDecl ("[" expr "]")* "=" expr ;" | baseTy ";"
 	tyDecl     = "*"* (ident | "(" tyDecl ")")
 	expr       = assign
-	assign     = logOr (("=" | "+=" | "-=" | "*=" | "/=") assign) ?
+	assign     = ternary (("=" | "+=" | "-=" | "*=" | "/=") assign) ?
+	ternary    = logOr ("?" expr ":" ternary)?
 	logOr      = logAnd ("||" logAnd)*
 	logAnd     = bitOr ("&&" bitOr)*
 	bitOr      = bitXor ("|" bitXor)*
@@ -643,7 +644,7 @@ func (p *parser) expr() node {
 }
 
 func (p *parser) assign() node {
-	node := p.logOr()
+	node := p.ternary()
 	if p.consume("=") {
 		node = newAssignNode(node.(addressableNode), p.assign())
 	} else if p.consume("+=") {
@@ -664,6 +665,17 @@ func (p *parser) assign() node {
 		node = newArithNode(ndDivEq, node.(addressableNode), p.assign())
 	}
 	return node
+}
+
+func (p *parser) ternary() node {
+	node := p.logOr()
+	if !p.consume("?") {
+		return node
+	}
+	l := p.expr()
+	p.expect(":")
+	r := p.ternary()
+	return newTernaryNode(node, l, r)
 }
 
 func (p *parser) logOr() node {

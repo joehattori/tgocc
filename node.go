@@ -142,6 +142,12 @@ type (
 		dflt   *defaultNode
 	}
 
+	ternaryNode struct {
+		cond node
+		lhs  node
+		rhs  node
+	}
+
 	varNode struct {
 		v variable
 	}
@@ -296,6 +302,14 @@ func newNumNode(val int64) *numNode {
 	return &numNode{val}
 }
 
+func newRetNode(rhs node, fnName string) *retNode {
+	return &retNode{rhs: rhs, fnName: fnName}
+}
+
+func newStmtExprNode(body []node) *stmtExprNode {
+	return &stmtExprNode{body: body}
+}
+
 func newSubNode(lhs node, rhs node) *arithNode {
 	l := lhs.loadType()
 	r := rhs.loadType()
@@ -321,12 +335,8 @@ func newSwitchNode(target node, cases []*caseNode, dflt *defaultNode) *switchNod
 	return &switchNode{target, cases, dflt}
 }
 
-func newRetNode(rhs node, fnName string) *retNode {
-	return &retNode{rhs: rhs, fnName: fnName}
-}
-
-func newStmtExprNode(body []node) *stmtExprNode {
-	return &stmtExprNode{body: body}
+func newTernaryNode(cond node, lhs node, rhs node) *ternaryNode {
+	return &ternaryNode{cond, lhs, rhs}
 }
 
 func newVarNode(v variable) *varNode {
@@ -491,6 +501,10 @@ func (s *stmtExprNode) loadType() ty {
 
 func (s *switchNode) loadType() ty {
 	return newTyEmpty()
+}
+
+func (t *ternaryNode) loadType() ty {
+	return t.lhs.loadType()
 }
 
 func (v *varNode) loadType() ty {

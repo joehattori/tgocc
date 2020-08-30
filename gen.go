@@ -451,6 +451,20 @@ func (s *switchNode) gen() {
 	jmpLabelNum = prev
 }
 
+func (t *ternaryNode) gen() {
+	c := labelCount
+	labelCount++
+	t.cond.gen()
+	fmt.Println("	pop rax")
+	fmt.Println("	cmp rax, 0")
+	fmt.Printf("	je .L.ternary.%d.rhs\n", c)
+	t.lhs.gen()
+	fmt.Printf("	jmp .L.ternary.%d.end\n", c)
+	fmt.Printf(".L.ternary.%d.rhs:\n", c)
+	t.rhs.gen()
+	fmt.Printf(".L.ternary.%d.end:\n", c)
+}
+
 func (v *varNode) gen() {
 	v.genAddr()
 	ty := v.loadType()

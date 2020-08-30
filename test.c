@@ -406,6 +406,9 @@ int main() {
     test(-1, ({ int i=-1; i; }), "int i=-1; i;");
     test(-1, ({ int i=-1; i>>=1; i; }), "int i=1; i>>1;");
 
+    test(2, 0?1:2, "0?1:2");
+    test(1, 1?1:2, "0?1:2");
+
     printf("OK\n");
     return 0;
 }
