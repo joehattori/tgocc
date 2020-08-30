@@ -291,7 +291,8 @@ func (p *parser) decl() (t ty, id string, rhs node) {
 }
 
 func (p *parser) initialize(t ty) node {
-	if arr, ok := t.(*tyArr); ok {
+	switch t := t.(type) {
+	case *tyArr, *tyStruct:
 		var nodes []node
 		if str, ok := p.consumeStr(); ok {
 			s := newGVar(newGVarLabel(), newTyArr(newTyChar(), len(str)), str)
@@ -300,7 +301,12 @@ func (p *parser) initialize(t ty) node {
 		}
 		p.expect("{")
 		for !p.consume("}") {
-			nodes = append(nodes, p.initialize(arr.of))
+			switch t := t.(type) {
+			case *tyArr:
+				nodes = append(nodes, p.initialize(t.of))
+			case *tyStruct:
+				nodes = append(nodes, p.assign())
+			}
 			if !p.consume(",") {
 				p.expect("}")
 				break
@@ -718,9 +724,9 @@ func (p *parser) stmt() node {
 	return newExprNode(node)
 }
 
-func (p *parser) storeInit(t ty, dst node, rhs node) node {
-	if t, ok := t.(*tyArr); ok {
-
+func (p *parser) storeInit(t ty, dst addressableNode, rhs node) node {
+	switch t := t.(type) {
+	case *tyArr:
 		var body []node
 		// zero out on initialization
 
@@ -757,8 +763,23 @@ func (p *parser) storeInit(t ty, dst node, rhs node) node {
 		}
 
 		return newBlkNode(body)
+	case *tyStruct:
+		var body []node
+		idx := 0
+		for i, e := range rhs.(*blkNode).body {
+			idx++
+			node := newMemberNode(dst, t.members[i])
+			body = append(body, newExprNode(newAssignNode(node, e)))
+		}
+		// zero out the rest
+		for i := idx; i < len(t.members); i++ {
+			node := newMemberNode(dst, t.members[i])
+			body = append(body, newExprNode(newAssignNode(node, newNumNode(0))))
+		}
+		return newBlkNode(body)
+	default:
+		return newExprNode(newAssignNode(dst, rhs))
 	}
-	return newExprNode(newAssignNode(dst.(addressableNode), rhs))
 }
 
 func isNodeStr(n node) (bool, string) {
@@ -1061,7 +1082,7 @@ func (p *parser) primary() node {
 		orig := p.toks
 		if p.consume("(") {
 			if p.isType() {
-				base, _,_ := p.baseType()
+				base, _, _ := p.baseType()
 				n := base.size()
 				p.expect(")")
 				return newNumNode(int64(n))
