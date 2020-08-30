@@ -38,6 +38,12 @@ type (
 
 	breakNode struct{}
 
+	caseNode struct {
+		cmp  int
+		body []node
+		idx  int
+	}
+
 	castNode struct {
 		base node
 		toTy ty
@@ -48,6 +54,11 @@ type (
 	decNode struct {
 		body  addressableNode
 		isPre bool
+	}
+
+	defaultNode struct {
+		body []node
+		idx  int
 	}
 
 	derefNode struct {
@@ -123,6 +134,12 @@ type (
 	stmtExprNode struct {
 		body []node
 		ty   ty
+	}
+
+	switchNode struct {
+		target node
+		cases  []*caseNode
+		dflt   *defaultNode
 	}
 
 	varNode struct {
@@ -210,6 +227,10 @@ func newBreakNode() *breakNode {
 	return &breakNode{}
 }
 
+func newCaseNode(cmp int, body []node, idx int) *caseNode {
+	return &caseNode{cmp, body, idx}
+}
+
 func newCastNode(base node, t ty) *castNode {
 	return &castNode{base, t}
 }
@@ -220,6 +241,10 @@ func newContinueNode() *continueNode {
 
 func newDecNode(body addressableNode, isPre bool) *decNode {
 	return &decNode{body, isPre}
+}
+
+func newDefaultNode(body []node, idx int) *defaultNode {
+	return &defaultNode{body, idx}
 }
 
 func newDerefNode(ptr node) *derefNode {
@@ -288,6 +313,10 @@ func newSubNode(lhs node, rhs node) *arithNode {
 	return nil
 }
 
+func newSwitchNode(target node, cases []*caseNode, dflt *defaultNode) *switchNode {
+	return &switchNode{target, cases, dflt}
+}
+
 func newRetNode(rhs node, fnName string) *retNode {
 	return &retNode{rhs: rhs, fnName: fnName}
 }
@@ -341,6 +370,10 @@ func (b *breakNode) loadType() ty {
 	return newTyEmpty()
 }
 
+func (c *caseNode) loadType() ty {
+	return newTyEmpty()
+}
+
 func (c *castNode) loadType() ty {
 	return c.toTy
 }
@@ -351,6 +384,10 @@ func (c *continueNode) loadType() ty {
 
 func (d *decNode) loadType() ty {
 	return d.body.loadType()
+}
+
+func (d *defaultNode) loadType() ty {
+	return newTyEmpty()
 }
 
 func (d *derefNode) loadType() ty {
@@ -443,6 +480,10 @@ func (s *stmtExprNode) loadType() ty {
 		s.ty = s.body[len(s.body)-1].loadType()
 	}
 	return s.ty
+}
+
+func (s *switchNode) loadType() ty {
+	return newTyEmpty()
 }
 
 func (v *varNode) loadType() ty {

@@ -11,7 +11,8 @@ import (
 
 var (
 	idRegexp   = regexp.MustCompile(`^[a-zA-Z_]+\w*`)
-	typeRegexp = regexp.MustCompile(`^(int|char|long|short|struct|void|_Bool|typedef|enum|static|continue)\W`)
+	typeRegexp = regexp.MustCompile(
+		`^(int|char|long|short|struct|void|_Bool|typedef|enum|static|continue|switch|case|default)\W`)
 )
 
 type token interface {
@@ -239,7 +240,7 @@ func (t *tokenizer) tokenize(input string) *parser {
 			continue
 		}
 
-		if tok := t.readRuneFrom("+-*/(){}[]<>;=,&.!|^"); tok != nil {
+		if tok := t.readRuneFrom("+-*/(){}[]<>;=,&.!|^:"); tok != nil {
 			toks = append(toks, tok)
 			continue
 		}

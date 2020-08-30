@@ -6,8 +6,8 @@ import (
 )
 
 var (
-	labelCount   int
-	loopLabelNum int
+	labelCount  int
+	jmpLabelNum int
 
 	paramRegs1 = [...]string{"dil", "sil", "dl", "cl", "r8b", "r9b"}
 	paramRegs2 = [...]string{"di", "si", "dx", "cx", "r8w", "r9w"}
@@ -159,10 +159,16 @@ func (b *blkNode) gen() {
 }
 
 func (b *breakNode) gen() {
-	if loopLabelNum == 0 {
+	if jmpLabelNum == 0 {
 		log.Fatal("invalid break statement.")
 	}
-	fmt.Printf("	jmp .L.break.%d\n", loopLabelNum)
+	fmt.Printf("	jmp .L.break.%d\n", jmpLabelNum)
+}
+
+func (c *caseNode) gen() {
+	for _, b := range c.body {
+		b.gen()
+	}
 }
 
 func (c *castNode) gen() {
@@ -189,10 +195,10 @@ func (c *castNode) gen() {
 }
 
 func (c *continueNode) gen() {
-	if loopLabelNum == 0 {
+	if jmpLabelNum == 0 {
 		log.Fatal("invalid continue statement.")
 	}
-	fmt.Printf("jmp .L.continue.%d\n", loopLabelNum)
+	fmt.Printf("jmp .L.continue.%d\n", jmpLabelNum)
 }
 
 func (d *decNode) gen() {
@@ -220,6 +226,12 @@ func (d *decNode) gen() {
 	}
 }
 
+func (d *defaultNode) gen() {
+	for _, b := range d.body {
+		b.gen()
+	}
+}
+
 func (d *derefNode) gen() {
 	d.ptr.gen()
 	ty := d.loadType()
@@ -236,8 +248,8 @@ func (e *exprNode) gen() {
 func (f *forNode) gen() {
 	c := labelCount
 	labelCount++
-	prevLoopLabelNum := loopLabelNum
-	loopLabelNum = c
+	prevLoopLabelNum := jmpLabelNum
+	jmpLabelNum = c
 	if f.init != nil {
 		f.init.gen()
 	}
@@ -246,7 +258,7 @@ func (f *forNode) gen() {
 		f.cond.gen()
 		fmt.Println("	pop rax")
 		fmt.Println("	cmp rax, 0")
-		fmt.Printf("	je .L.break.%d\n", loopLabelNum)
+		fmt.Printf("	je .L.break.%d\n", jmpLabelNum)
 	}
 	if f.body != nil {
 		f.body.gen()
@@ -257,7 +269,7 @@ func (f *forNode) gen() {
 	}
 	fmt.Printf("	jmp .L.begin.%d\n", c)
 	fmt.Printf(".L.break.%d:\n", c)
-	loopLabelNum = prevLoopLabelNum
+	jmpLabelNum = prevLoopLabelNum
 }
 
 func (f *fnCallNode) gen() {
@@ -405,6 +417,32 @@ func (s *stmtExprNode) gen() {
 	}
 }
 
+func (s *switchNode) gen() {
+	c := labelCount
+	labelCount++
+	prev := jmpLabelNum
+	jmpLabelNum = c
+	for _, cs := range s.cases {
+		s.target.gen()
+		fmt.Println("	pop rax")
+		i := cs.idx
+		fmt.Printf("	cmp rax, %d\n", cs.cmp)
+		fmt.Printf("	jne .L.nxt.%d.%d\n", c, i)
+		cs.gen()
+		fmt.Printf(".L.nxt.%d.%d:\n", c, i)
+	}
+	if d := s.dflt; d != nil {
+		d.gen()
+		for _, cs := range s.cases {
+			if cs.idx > d.idx {
+				cs.gen()
+			}
+		}
+	}
+	fmt.Printf(".L.break.%d:\n", jmpLabelNum)
+	jmpLabelNum = prev
+}
+
 func (v *varNode) gen() {
 	v.genAddr()
 	ty := v.loadType()
@@ -416,8 +454,8 @@ func (v *varNode) gen() {
 func (w *whileNode) gen() {
 	c := labelCount
 	labelCount++
-	prevLoopLabelNum := loopLabelNum
-	loopLabelNum = c
+	prevLoopLabelNum := jmpLabelNum
+	jmpLabelNum = c
 	fmt.Printf(".L.continue.%d:\n", c)
 	w.cond.gen()
 	fmt.Println("	pop rax")
@@ -425,8 +463,8 @@ func (w *whileNode) gen() {
 	fmt.Printf("	je .L.break.%d\n", c)
 	w.then.gen()
 	fmt.Printf("	jmp .L.continue.%d\n", c)
-	fmt.Printf(".L.break.%d:\n", loopLabelNum)
-	loopLabelNum = prevLoopLabelNum
+	fmt.Printf(".L.break.%d:\n", jmpLabelNum)
+	jmpLabelNum = prevLoopLabelNum
 }
 
 func (d *derefNode) genAddr() {

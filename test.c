@@ -362,6 +362,31 @@ int main() {
 
     test(3, ({ int x[2]; x[0]=3; param_decay(x); }), "int x[2]; x[0]=3; param_decay(x);");
 
+    test(5, ({ int i=0; switch(0) { case 0:i=5;break; case 1:i=6;break; case 2:i=7;break; } i; }),
+        "int i=0; switch(0) { case 0:i=5;break; case 1:i=6;break; case 2:i=7;break; } i;");
+    test(6, ({ int i=0; switch(1) { case 0:i=5;break; case 1:i=6;break; case 2:i=7;break; } i; }),
+        "int i=0; switch(1) { case 0:i=5;break; case 1:i=6;break; case 2:i=7;break; } i;");
+    test(7, ({ int i=0; switch(2) { case 0:i=5;break; case 1:i=6;break; case 2:i=7;break; } i; }),
+        "int i=0; switch(2) { case 0:i=5;break; case 1:i=6;break; case 2:i=7;break; } i;");
+    test(0, ({ int i=0; switch(3) { case 0:i=5;break; case 1:i=6;break; case 2:i=7;break; } i; }),
+        "int i=0; switch(3) { case 0:i=5;break; case 1:i=6;break; case 2:i=7;break; } i;");
+    test(5, ({ int i=0; switch(0) { case 0:i=5;break; default:i=7; } i; }),
+        "int i=0; switch(0) { case 0:i=5;break; default:i=7; } i;");
+    test(7, ({ int i=0; switch(1) { case 0:i=5;break; default:i=7; } i; }),
+        "int i=0; switch(1) { case 0:i=5;break; default:i=7; } i;");
+    test(1, ({ int i; switch(1) { case 0: 0; i=0; case 1: 0; i=1; case 2: 0; i=2; } i; }),
+        "int i; switch(1) { case 0: 0; i=0; case 1: 0; i=1; case 2: 0; i=2; } i;");
+    test(2, ({ int i=0; switch(2) { case 0: 0; case 1: 0; case 2: 0; i=2; } i; }),
+        "int i=0; switch(2) { case 0: 0; case 1: 0; case 2: 0; i=2; } i;");
+    test(0, ({ int i=0; switch(3) { case 0: 0; case 1: 0; case 2: 0; i=2; } i; }),
+        "int i=0; switch(3) { case 0: 0; case 1: 0; case 2: 0; i=2; } i;");
+    test(10, ({ int i=5; switch(i) { default: i+=3; case 1: i+=2; } i; }),
+        "int i=5; switch(i) { default: i+=3; case 1: i+=2; } i;");
+    test(8, ({ int i=5; switch(i) { case 1: i+=2; default: i+=3; } i; }),
+        "int i=5; switch(i) { case 1: i+=2; default: i+=3; } i;");
+    test(11, ({ int i=5; switch(i) { case 5: i+=1; default: i+=3; case 1: i+=2; } i; }),
+        "int i=5; switch(i) { case 5: i+=1; default: i+=3; case 1: i+=2; } i;");
+
     printf("OK\n");
     return 0;
 }

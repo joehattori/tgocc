@@ -181,42 +181,44 @@ func newGVarLabel() string {
 }
 
 /*
-   Actual parsing process from here.
+Actual parsing process from here.
 
-   program    = (function | globalVar)*
-   function   = baseType tyDecl "(" (ident ("," ident)* )? ")" ("{" stmt* "}" | ";")
-   globalVar  = decl
-   stmt       = expr ";"
+	program    = (function | globalVar)*
+	function   = baseType tyDecl "(" (ident ("," ident)* )? ")" ("{" stmt* "}" | ";")
+	globalVar  = decl
+	stmt       = expr ";"
   				| "{" stmt* "}"
   				| "return" expr ";"
   				| "if" "(" expr ")" stmt ("else" stmt) ?
   				| "while" "(" expr ")" stmt
   				| "for" "(" (expr? ";" | decl) expr? ";" expr? ")" stmt
   				| "typedef" ty ident ("[" num "]")* ";"
+				| "switch" "(" expr ")" "{" switchCase* ("default" ":" stmt*)? }"
   				| decl
-   decl       = baseType tyDecl ("[" expr "]")* "=" expr ;" | baseTy ";"
-   tyDecl     = "*"* (ident | "(" tyDecl ")")
-   expr       = assign
-   stmtExpr   = "(" "{" stmt+ "}" ")"
-   assign     = logOr (("=" | "+=" | "-=" | "*=" | "/=") assign) ?
-   logOr      = logAnd ("||" logAnd)*
-   logAnd     = bitOr ("&&" bitOr)*
-   bitOr      = bitXor ("|" bitXor)*
-   bitXor     = bitAnd ("^" bitAnd)*
-   bitAnd     = equality ("&" equality)*
-   equality   = relational ("==" relational | "!=" relational)*
-   relational = add ("<" add | "<=" add | ">" add | ">=" add)*
-   add        = mul ("+" mul | "-" mul)*
-   mul        = cat ("*" cast | "/" cast)*
-   cast       = "(" baseType "*"*  ")" cast | unary
-   unary      = ("+" | "-" | "*" | "&" | "!")? cast | ("++" | "--") unary | postfix
-   postfix    = primary (("[" expr "]") | ("." ident) | ("->" ident) | "++" | "--")*
-   primary    =  num
-  				| "sizeof" unary
-  				| str
-  				| ident ("(" (expr ("," expr)* )? ")")?
-  				| "(" expr ")"
-  				| stmtExpr
+	switchCase = "case" num ":" stmt*
+	decl       = baseType tyDecl ("[" expr "]")* "=" expr ;" | baseTy ";"
+	tyDecl     = "*"* (ident | "(" tyDecl ")")
+	expr       = assign
+	stmtExpr   = "(" "{" stmt+ "}" ")"
+	assign     = logOr (("=" | "+=" | "-=" | "*=" | "/=") assign) ?
+	logOr      = logAnd ("||" logAnd)*
+	logAnd     = bitOr ("&&" bitOr)*
+	bitOr      = bitXor ("|" bitXor)*
+	bitXor     = bitAnd ("^" bitAnd)*
+	bitAnd     = equality ("&" equality)*
+	equality   = relational ("==" relational | "!=" relational)*
+	relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+	add        = mul ("+" mul | "-" mul)*
+	mul        = cat ("*" cast | "/" cast)*
+	cast       = "(" baseType "*"*  ")" cast | unary
+	unary      = ("+" | "-" | "*" | "&" | "!")? cast | ("++" | "--") unary | postfix
+	postfix    = primary (("[" expr "]") | ("." ident) | ("->" ident) | "++" | "--")*
+	primary    =  num
+				| "sizeof" unary
+				| str
+				| ident ("(" (expr ("," expr)* )? ")")?
+				| "(" expr ")"
+				| stmtExpr
 */
 
 func (p *parser) parse() {
@@ -562,6 +564,36 @@ func (p *parser) stmt() node {
 		return newForNode(init, cond, inc, then)
 	}
 
+	// handle switch statement
+	if p.consume("switch") {
+		p.expect("(")
+		e := p.expr()
+		p.expect(")")
+		p.expect("{")
+
+		var cases []*caseNode
+		var dflt *defaultNode = nil
+		for idx := 0;; idx++ {
+			if c := p.switchCase(idx); c == nil {
+				break
+			} else {
+				switch n := c.(type) {
+				case *caseNode:
+					cases = append(cases, n)
+				case *defaultNode:
+					if dflt != nil {
+						log.Fatal("multiple definition of default clause.")
+					}
+					dflt = n
+				default:
+					log.Fatalf("unhandled case: %T", c)
+				}
+			}
+		}
+		p.expect("}")
+		return newSwitchNode(e, cases, dflt)
+	}
+
 	// handle variable definition
 	if p.isType() {
 		ty, id, rhs := p.decl()
@@ -579,6 +611,27 @@ func (p *parser) stmt() node {
 	node := p.expr()
 	p.expect(";")
 	return newExprNode(node)
+}
+
+func (p *parser) switchCase(idx int) node {
+	if p.consume("case") {
+		n := p.expectNum()
+		p.expect(":")
+		var body []node
+		for !p.beginsWith("case") && !p.beginsWith("default") && !p.beginsWith("}") {
+			body = append(body, p.stmt())
+		}
+		return newCaseNode(int(n), body, idx)
+	}
+	if p.consume("default") {
+		p.expect(":")
+		var body []node
+		for !p.beginsWith("case") && !p.beginsWith("default") && !p.beginsWith("}") {
+			body = append(body, p.stmt())
+		}
+		return newDefaultNode(body, idx)
+	}
+	return nil
 }
 
 func (p *parser) expr() node {
