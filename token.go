@@ -108,7 +108,7 @@ func (t *tokenizer) readCharLiteral() token {
 	c := int64(t.head())
 	t.pos++
 	if t.head() != '\'' {
-		log.Fatalf("Char literal is too long: %s", t.input[t.pos:])
+		log.Fatalf("char literal is too long: %s", t.input[t.pos:])
 	}
 	t.pos++
 	return newNumTok(c, 1)

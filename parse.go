@@ -293,6 +293,11 @@ func (p *parser) decl() (t ty, id string, rhs node) {
 func (p *parser) initialize(t ty) node {
 	if arr, ok := t.(*tyArr); ok {
 		var nodes []node
+		if str, ok := p.consumeStr(); ok {
+			s := newGVar(newGVarLabel(), newTyArr(newTyChar(), utf8.RuneCountInString(str)), str)
+			p.res.gVars = append(p.res.gVars, s)
+			return newVarNode(s)
+		}
 		p.expect("{")
 		for !p.consume("}") {
 			nodes = append(nodes, p.initialize(arr.of))
@@ -716,12 +721,26 @@ func (p *parser) stmt() node {
 func (p *parser) storeInit(t ty, dst node, rhs node) node {
 	if t, ok := t.(*tyArr); ok {
 		var body []node
+		// zero out on initialization
 		if _, ok := t.of.(*tyArr); !ok {
 			for i := 0; i < t.len; i++ {
 				addr := newDerefNode(newAddNode(dst, newNumNode(int64(i))))
 				body = append(body, p.storeInit(t.of, addr, newNumNode(0)))
 			}
 		}
+
+		// TODO: clean up
+		_, isChar := t.of.(*tyChar)
+		isString, str := isNodeStr(rhs)
+		// string literal
+		if isChar && isString {
+			for i, r := range str {
+				addr := newDerefNode(newAddNode(dst, newNumNode(int64(i))))
+				body = append(body, newExprNode(newAssignNode(addr, newNumNode(int64(r)))))
+			}
+			return newBlkNode(body)
+		}
+
 		for i, mem := range rhs.(*blkNode).body {
 			addr := newDerefNode(newAddNode(dst, newNumNode(int64(i))))
 			body = append(body, p.storeInit(t.of, addr, mem))
@@ -729,6 +748,20 @@ func (p *parser) storeInit(t ty, dst node, rhs node) node {
 		return newBlkNode(body)
 	}
 	return newExprNode(newAssignNode(dst.(addressableNode), rhs))
+}
+
+func isNodeStr(n node) (bool, string) {
+	if v, ok := n.(*varNode); !ok {
+		return false, ""
+	} else if g, ok := v.v.(*gVar); !ok {
+		return false, ""
+	} else if t, ok := g.ty.(*tyArr); !ok {
+		return false, ""
+	} else if _, ok := t.of.(*tyChar); !ok {
+		return false, ""
+	} else {
+		return true, g.content.(string)
+	}
 }
 
 func (p *parser) switchCase(idx int) node {
