@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"strings"
 )
 
 var (
@@ -28,9 +29,9 @@ func (a *ast) genData() {
 		if c := g.content; c == nil {
 			fmt.Printf("	.zero %d\n", g.ty.size())
 		} else {
-			switch c.(type) {
+			switch s := c.(type) {
 			case string:
-				fmt.Printf("	.string \"%s\"\n", c)
+				fmt.Printf("	.string \"%s\"\n", strings.TrimSuffix(s, string('\000')))
 			case int:
 				// TODO
 			default:

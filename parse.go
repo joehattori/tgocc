@@ -294,7 +294,7 @@ func (p *parser) initialize(t ty) node {
 	if arr, ok := t.(*tyArr); ok {
 		var nodes []node
 		if str, ok := p.consumeStr(); ok {
-			s := newGVar(newGVarLabel(), newTyArr(newTyChar(), utf8.RuneCountInString(str)), str)
+			s := newGVar(newGVarLabel(), newTyArr(newTyChar(), len(str)), str)
 			p.res.gVars = append(p.res.gVars, s)
 			return newVarNode(s)
 		}
@@ -391,7 +391,7 @@ func (p *parser) tySuffix(t ty) ty {
 	if !p.consume("[") {
 		return t
 	}
-	var l int
+	l := -1
 	if !p.consume("]") {
 		l = int(p.constExpr())
 		p.expect("]")
@@ -720,31 +720,42 @@ func (p *parser) stmt() node {
 
 func (p *parser) storeInit(t ty, dst node, rhs node) node {
 	if t, ok := t.(*tyArr); ok {
+
 		var body []node
 		// zero out on initialization
-		if _, ok := t.of.(*tyArr); !ok {
-			for i := 0; i < t.len; i++ {
-				addr := newDerefNode(newAddNode(dst, newNumNode(int64(i))))
-				body = append(body, p.storeInit(t.of, addr, newNumNode(0)))
-			}
-		}
 
 		// TODO: clean up
+		var ln, idx int
 		_, isChar := t.of.(*tyChar)
 		isString, str := isNodeStr(rhs)
 		// string literal
 		if isChar && isString {
 			for i, r := range str {
+				idx++
 				addr := newDerefNode(newAddNode(dst, newNumNode(int64(i))))
 				body = append(body, newExprNode(newAssignNode(addr, newNumNode(int64(r)))))
 			}
-			return newBlkNode(body)
+			ln = len(str)
+		} else {
+			for i, mem := range rhs.(*blkNode).body {
+				idx++
+				addr := newDerefNode(newAddNode(dst, newNumNode(int64(i))))
+				body = append(body, p.storeInit(t.of, addr, mem))
+			}
+			ln = len(rhs.(*blkNode).body)
 		}
 
-		for i, mem := range rhs.(*blkNode).body {
-			addr := newDerefNode(newAddNode(dst, newNumNode(int64(i))))
-			body = append(body, p.storeInit(t.of, addr, mem))
+		if t.len < 0 {
+			t.len = ln
 		}
+
+		if _, ok := t.of.(*tyArr); !ok {
+			for i := idx; i < ln; i++ {
+				addr := newDerefNode(newAddNode(dst, newNumNode(int64(i))))
+				body = append(body, p.storeInit(t.of, addr, newNumNode(0)))
+			}
+		}
+
 		return newBlkNode(body)
 	}
 	return newExprNode(newAssignNode(dst.(addressableNode), rhs))

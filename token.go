@@ -196,8 +196,9 @@ func (t *tokenizer) readStrLiteral() token {
 		s += string(t.head())
 		t.pos++
 	}
+	s += string('\000')
 	t.pos++
-	return newStrTok(s, utf8.RuneCountInString(s))
+	return newStrTok(s, len(s))
 }
 
 func (t *tokenizer) trimSpace() {

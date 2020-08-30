@@ -174,7 +174,7 @@ int main() {
     test(98, "abc"[1], "\"abc\"[1]");
     test(99, "abc"[2], "\"abc\"[2]");
     test(0, "abc"[3], "\"abc\"[3]");
-    test(3, sizeof("abc"), "sizeof(\"abc\")");
+    test(4, sizeof("abc"), "sizeof(\"abc\")");
 
     test(2, ({ int x=2; { int x=3; } x; }), "int x=2; { int x=3; } x;");
     test(2, ({ int x=2; { int x=3; } int y=4; x; }), "int x=2; { int x=3; } int y=4; x;");
@@ -443,6 +443,10 @@ int main() {
     test(0, ({ char x[2][4]={"abc","def"}; x[0][3]; }), "char x[2][4]=\"abc\",\"def\"}; x[0][3]; }");
     test('d', ({ char x[2][4]={"abc","def"}; x[1][0]; }), "char x[2][4]=\"abc\",\"def\"}; x[1][0]; }");
     test('f', ({ char x[2][4]={"abc","def"}; x[1][2]; }), "char x[2][4]=\"abc\",\"def\"}; x[1][2]; }");
+
+    test(4, ({ int x[]={1,2,3,4}; x[3]; }), "int x[]={1,2,3,4}; x[3];");
+    test(16, ({ int x[]={1,2,3,4}; sizeof(x); }), "int x[]={1,2,3,4}; sizeof(x);");
+    test(4, ({ char x[]="foo"; sizeof(x); }), "char x[]=\"foo\"; sizeof(x); }");
 
     printf("OK\n");
     return 0;
