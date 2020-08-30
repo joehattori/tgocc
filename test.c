@@ -393,6 +393,19 @@ int main() {
 
     test(3, ({ int x[2]; store(x); x[0]; }), "int x[2]; store(x); x[0];");
 
+    test(1, 1<<0, "1<<0");
+    test(8, 1<<3, "1<<3");
+    test(10, 5<<1, "5<<1");
+    test(2, 5>>1, "5>>1");
+    test(-1, -1>>1, "-1>>1");
+    test(1, ({ int i=1; i<<=0; i; }), "int i=1; i<<0;");
+    test(8, ({ int i=1; i<<=3; i; }), "int i=1; i<<3;");
+    test(10, ({ int i=5; i<<=1; i; }), "int i=5; i<<1;");
+    test(2, ({ int i=5; i>>=1; i; }), "int i=5; i>>1;");
+    test(-1, -1, "-1");
+    test(-1, ({ int i=-1; i; }), "int i=-1; i;");
+    test(-1, ({ int i=-1; i>>=1; i; }), "int i=1; i>>1;");
+
     printf("OK\n");
     return 0;
 }

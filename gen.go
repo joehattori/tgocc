@@ -53,7 +53,7 @@ func (a *addrNode) gen() {
 
 func (a *arithNode) gen() {
 	switch a.op {
-	case ndAddEq, ndSubEq, ndMulEq, ndDivEq, ndPtrAddEq, ndPtrSubEq:
+	case ndAddEq, ndSubEq, ndMulEq, ndDivEq, ndPtrAddEq, ndPtrSubEq, ndShlEq, ndShrEq:
 		a.lhs.(addressableNode).genAddr()
 		defer store(a.lhs.loadType())
 	}
@@ -139,6 +139,12 @@ func (a *arithNode) gen() {
 		fmt.Printf(".L.false.%d:\n", c)
 		fmt.Println("	setne al")
 		fmt.Printf(".L.end.%d:\n", c)
+	case ndShl, ndShlEq:
+		fmt.Println("	mov cl, dil")
+		fmt.Println("	sal rax, cl")
+	case ndShr, ndShrEq:
+		fmt.Println("	mov cl, dil")
+		fmt.Println("	sar rax, cl")
 	default:
 		log.Fatal("unhandled node kind")
 	}

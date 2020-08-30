@@ -206,7 +206,8 @@ Actual parsing process from here.
 	bitXor     = bitAnd ("^" bitAnd)*
 	bitAnd     = equality ("&" equality)*
 	equality   = relational ("==" relational | "!=" relational)*
-	relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+	relational = shift ("<" shift | "<=" shift | ">" shift | ">=" shift)*
+	shift      = add ("<<" add | ">>" add | "<<=" add | ">>=" add)
 	add        = mul ("+" mul | "-" mul)*
 	mul        = cat ("*" cast | "/" cast)*
 	cast       = "(" baseType "*"*  ")" cast | unary
@@ -719,16 +720,33 @@ func (p *parser) equality() node {
 }
 
 func (p *parser) relational() node {
-	node := p.addSub()
+	node := p.shift()
 	for {
 		if p.consume("<=") {
-			node = newArithNode(ndLeq, node, p.addSub())
+			node = newArithNode(ndLeq, node, p.shift())
 		} else if p.consume(">=") {
-			node = newArithNode(ndGeq, node, p.addSub())
+			node = newArithNode(ndGeq, node, p.shift())
 		} else if p.consume("<") {
-			node = newArithNode(ndLt, node, p.addSub())
+			node = newArithNode(ndLt, node, p.shift())
 		} else if p.consume(">") {
-			node = newArithNode(ndGt, node, p.addSub())
+			node = newArithNode(ndGt, node, p.shift())
+		} else {
+			return node
+		}
+	}
+}
+
+func (p *parser) shift() node {
+	node := p.addSub()
+	for {
+		if p.consume("<<") {
+			node = newArithNode(ndShl, node, p.shift())
+		} else if p.consume(">>") {
+			node = newArithNode(ndShr, node, p.shift())
+		} else if p.consume("<<=") {
+			node = newArithNode(ndShlEq, node, p.shift())
+		} else if p.consume(">>=") {
+			node = newArithNode(ndShrEq, node, p.shift())
 		} else {
 			return node
 		}
