@@ -362,14 +362,17 @@ func (p *parser) tyDecl(baseTy ty) (id string, newTy ty) {
 	return p.expectID(), p.tySuffix(baseTy)
 }
 
-func (p *parser) tySuffix(baseTy ty) ty {
-	if p.consume("[") {
-		l := p.expectNum()
-		p.expect("]")
-		baseTy = p.tySuffix(baseTy)
-		return newTyArr(baseTy,int(l))
+func (p *parser) tySuffix(t ty) ty {
+	if !p.consume("[") {
+		return t
 	}
-	return baseTy
+	var l int
+	if !p.consume("]") {
+		l = int(p.expectNum())
+		p.expect("]")
+	}
+	t = p.tySuffix(t)
+	return newTyArr(t, l)
 }
 
 func (p *parser) readFnParams(fn *fnNode) {
@@ -383,6 +386,9 @@ func (p *parser) readFnParams(fn *fnNode) {
 
 		ty, _, _ := p.baseType()
 		id, ty := p.tyDecl(ty)
+		if arr, ok := ty.(*tyArr); ok {
+			ty = newTyPtr(arr.of)
+		}
 		lv := p.curScope.addLVar(id, ty)
 		fn.params = append(fn.params, lv)
 	}
