@@ -23,8 +23,9 @@ type (
 		content string
 	}
 
-	gVarInitVal struct {
-		val int
+	gVarInitInt struct {
+		val int64
+		sz  int
 	}
 
 	lVar struct {
@@ -67,8 +68,8 @@ func newGVarInitStr(s string) *gVarInitStr {
 	return &gVarInitStr{s}
 }
 
-func newGVarInitVal(i int) *gVarInitVal {
-	return &gVarInitVal{i}
+func newGVarInitInt(i int64, sz int) *gVarInitInt {
+	return &gVarInitInt{i, sz}
 }
 
 func newLVar(name string, t ty) *lVar {

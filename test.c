@@ -4,6 +4,7 @@
 
 int printf();
 int exit();
+int strcmp(char *p, char *q);
 
 int test(long expected, long actual, char *input) {
     if (actual == expected) {
@@ -31,6 +32,12 @@ int sub_long(long a, long b, long c) { return a-b-c; }
 
 int g1;
 int g2[4];
+char g3 = 3;
+short g4 = 4;
+int g5 = 5;
+long g6 = 6;
+int *g7 = &g5;
+char *g8 = "abc";
 
 int *gref() {
     return &g1;
@@ -464,6 +471,13 @@ int main() {
 
     test(0, ({ struct {int a; int b;} x={}; x.a; }), "struct {int a; int b;} x={}; x.a;");
     test(0, ({ struct {int a; int b;} x={}; x.b; }), "struct {int a; int b;} x={}; x.b;");
+
+    test(3, g3, "g3");
+    test(4, g4, "g4");
+    test(5, g5, "g5");
+    test(6, g6, "g6");
+    test(5, *g7, "*g7");
+    test(0, strcmp(g8, "abc"), "strcmp(g8, \"abc\")");
 
     printf("OK\n");
     return 0;

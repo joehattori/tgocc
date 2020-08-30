@@ -235,11 +235,25 @@ func (p *parser) parse() {
 				ast.fns = append(ast.fns, fn)
 			}
 		} else {
-			// TODO: gvar init
-			ty, id, _ := p.decl()
+			ty, id, rhs := p.decl()
 			if ty != nil {
-				p.curScope.addGVar(id, ty, nil)
-				ast.gVars = append(ast.gVars, newGVar(id, ty, nil))
+				var init gVarInit
+				switch nd := rhs.(type) {
+				case *addrNode:
+					init = newGVarInitLabel(nd.v.(*varNode).v.getName())
+				case *varNode:
+					if _, ok := nd.v.getType().(*tyArr); ok {
+						init = newGVarInitLabel(nd.v.getName())
+					} else {
+						init = newGVarInitInt(eval(rhs), ty.size())
+					}
+				default:
+					if rhs != nil {
+						init = newGVarInitInt(eval(rhs), ty.size())
+					}
+				}
+				p.curScope.addGVar(id, ty, init)
+				ast.gVars = append(ast.gVars, newGVar(id, ty, init))
 			}
 		}
 	}
