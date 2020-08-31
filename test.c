@@ -16,7 +16,7 @@ int test(long expected, long actual, char *input) {
     return 0;
 }
 
-int ret2() {
+int ret2(void) {
     return 2;
     return 1;
 }
@@ -46,7 +46,7 @@ char g17[] = "foobar";
 char g18[10] = "foobar";
 char g19[3] = "foobar";
 
-int *gref() {
+int *gref(void) {
     return &g1;
 }
 
@@ -56,7 +56,7 @@ char *ret_string() {
 
 typedef long long ll;
 
-static int static_fn() { return 3; }
+static int static_fn(void) { return 3; }
 
 int param_decay(int x[]) { return x[0]; }
 

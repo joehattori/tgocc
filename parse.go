@@ -300,7 +300,9 @@ func buildGVarInit(ty ty, rhs node) gVarInit {
 				end = t.size()
 			}
 			start := mem.offset + mem.ty.size()
-			toAppend = append(toAppend, newGVarInitZero(end - start))
+			if end - start > 0 {
+				toAppend = append(toAppend, newGVarInitZero(end - start))
+			}
 			body = append(body, newGVarInitArr(toAppend))
 		}
 		// zero out the rest
@@ -568,6 +570,11 @@ func eval(nd node) int64 {
 func (p *parser) readFnParams(fn *fnNode) {
 	p.expect("(")
 	isFirstArg := true
+	orig := p.toks
+	if p.consume("void") && p.consume(")") {
+		return
+	}
+	p.toks = orig
 	for !p.consume(")") {
 		if !isFirstArg {
 			p.expect(",")
