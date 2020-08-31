@@ -293,14 +293,14 @@ func buildGVarInit(ty ty, rhs node) gVarInit {
 			toAppend = append(toAppend, buildGVarInit(mem.ty, e))
 			// padding for struct members
 			var end int
-			if i < len(t.members) - 1 {
+			if i < len(t.members)-1 {
 				end = t.members[i+1].offset
 			} else {
 				end = t.size()
 			}
 			start := mem.offset + mem.ty.size()
-			if end - start > 0 {
-				toAppend = append(toAppend, newGVarInitZero(end - start))
+			if end-start > 0 {
+				toAppend = append(toAppend, newGVarInitZero(end-start))
 			}
 			body = append(body, newGVarInitArr(toAppend))
 		}
@@ -326,8 +326,8 @@ func (p *parser) function() *fnNode {
 	ty, _, sc := p.baseType()
 	fnName, ty := p.tyDecl(ty)
 	p.curFnName = fnName
-	p.curScope.addGVar((sc & static) != 0, fnName, newTyFn(ty), nil)
-	fn := newFnNode((sc & static) != 0, fnName, ty)
+	p.curScope.addGVar((sc&static) != 0, fnName, newTyFn(ty), nil)
+	fn := newFnNode((sc&static) != 0, fnName, ty)
 	p.spawnScope()
 	p.readFnParams(fn)
 	if p.consume(";") {
@@ -385,7 +385,7 @@ func (p *parser) initializer(t ty, sc storageClass) node {
 		var nodes []node
 		if str, ok := p.consumeStr(); ok {
 			init := newGVarInitStr(str)
-			s := newGVar((sc & static) != 0, newGVarLabel(), newTyArr(newTyChar(), len(str)), init)
+			s := newGVar((sc&static) != 0, newGVarLabel(), newTyArr(newTyChar(), len(str)), init)
 			p.res.gVars = append(p.res.gVars, s)
 			return newVarNode(s)
 		}
@@ -413,7 +413,7 @@ func (p *parser) baseType() (t ty, isTypeDef bool, sc storageClass) {
 	if p.consume("typedef") {
 		isTypeDef = true
 	}
-	if p.consume("static")  {
+	if p.consume("static") {
 		sc |= static
 	}
 	if p.consume("extern") {
@@ -438,25 +438,25 @@ func (p *parser) baseType() (t ty, isTypeDef bool, sc storageClass) {
 			return p.enumDecl(), isTypeDef, sc
 		}
 		if p.consume("int") {
-			return newTyInt(), isTypeDef,sc
+			return newTyInt(), isTypeDef, sc
 		}
 		if p.consume("char") {
-			return newTyChar(), isTypeDef,sc
+			return newTyChar(), isTypeDef, sc
 		}
 		if p.consume("short") {
 			p.consume("int")
-			return newTyShort(), isTypeDef,sc
+			return newTyShort(), isTypeDef, sc
 		}
 		if p.consume("long") {
 			p.consume("long")
 			p.consume("int")
-			return newTyLong(), isTypeDef,sc
+			return newTyLong(), isTypeDef, sc
 		}
 		if p.consume("void") {
-			return newTyVoid(), isTypeDef,sc
+			return newTyVoid(), isTypeDef, sc
 		}
 		if p.consume("_Bool") {
-			return newTyBool(), isTypeDef,sc
+			return newTyBool(), isTypeDef, sc
 		}
 	}
 	log.Fatalf("type expected but got %T: %s", cur, cur.getStr())
@@ -502,7 +502,7 @@ func (p *parser) constExpr() int64 {
 }
 
 func eval(nd node) int64 {
-	switch n := nd.(type){
+	switch n := nd.(type) {
 	case *arithNode:
 		switch n.op {
 		case ndAdd:
@@ -781,7 +781,7 @@ func (p *parser) stmt() node {
 
 		var cases []*caseNode
 		var dflt *defaultNode = nil
-		for idx := 0;; idx++ {
+		for idx := 0; ; idx++ {
 			if c := p.switchCase(idx); c == nil {
 				break
 			} else {
@@ -986,7 +986,7 @@ func (p *parser) bitXor() node {
 func (p *parser) bitAnd() node {
 	node := p.equality()
 	for p.consume("&") {
-		node = newArithNode(ndBitAnd,node, p.equality())
+		node = newArithNode(ndBitAnd, node, p.equality())
 	}
 	return node
 }
@@ -1068,7 +1068,7 @@ func (p *parser) cast() node {
 	orig := p.toks
 	if p.consume("(") {
 		if p.isType() {
-			t, _,_ := p.baseType()
+			t, _, _ := p.baseType()
 			for p.consume("*") {
 				t = newTyPtr(t)
 			}
