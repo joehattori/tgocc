@@ -30,49 +30,58 @@ func (a *ast) genData() {
 	}
 }
 
-func genDataVar(init gVarInit, ty ty) {
+func genDataVar(init gVarInit, t ty) {
 	if init == nil {
-		fmt.Printf("	.zero %d\n", ty.size())
+		fmt.Printf("	.zero %d\n", t.size())
 	} else {
-		switch init := init.(type) {
-		case *gVarInitArr:
-			switch ty := ty.(type) {
-			case *tyArr:
-				for _, e := range init.body {
-					genDataVar(e, ty.of)
-				}
-			case *tyStruct:
-				for i, e := range init.body {
-					genDataVar(e, ty.members[i].ty)
-				}
-			default:
-				for _, e := range init.body {
-					genDataVar(e, ty)
-				}
-			}
-		case *gVarInitLabel:
-			fmt.Printf("	.quad %s\n", init.label)
-		case *gVarInitStr:
-			trimmed := strings.TrimRight(init.content, string('\000'))
-			fmt.Printf("	.string \"%s\"\n", trimmed)
-			fmt.Printf("	.zero %d\n", len(init.content)-len(trimmed))
-		case *gVarInitInt:
-			switch init.sz {
-			case 1:
-				fmt.Printf("	.byte %d\n", init.val)
-			case 2:
-				fmt.Printf("	.value %d\n", init.val)
-			case 4:
-				fmt.Printf("	.long %d\n", init.val)
-			case 8:
-				fmt.Printf("	.quad %d\n", init.val)
-			default:
-				log.Fatalf("unhandled type size %d on global variable initialization.", init.sz)
-			}
-		default:
-			log.Fatalf("unexpected type on gVar content: %T", init)
+		init.genInit(t)
+	}
+}
+
+func (init *gVarInitArr) genInit(t ty) {
+	switch t := t.(type) {
+	case *tyArr:
+		for _, e := range init.body {
+			genDataVar(e, t.of)
+		}
+	case *tyStruct:
+		for i, e := range init.body {
+			genDataVar(e, t.members[i].ty)
+		}
+	default:
+		for _, e := range init.body {
+			genDataVar(e, t)
 		}
 	}
+}
+
+func (init *gVarInitLabel) genInit(_ ty) {
+	fmt.Printf("	.quad %s\n", init.label)
+}
+
+func (init *gVarInitStr) genInit(_ ty) {
+	trimmed := strings.TrimRight(init.content, string('\000'))
+	fmt.Printf("	.string \"%s\"\n", trimmed)
+	fmt.Printf("	.zero %d\n", len(init.content)-len(trimmed))
+}
+
+func (init *gVarInitInt) genInit(_ ty) {
+	switch init.sz {
+	case 1:
+		fmt.Printf("	.byte %d\n", init.val)
+	case 2:
+		fmt.Printf("	.value %d\n", init.val)
+	case 4:
+		fmt.Printf("	.long %d\n", init.val)
+	case 8:
+		fmt.Printf("	.quad %d\n", init.val)
+	default:
+		log.Fatalf("unhandled type size %d on global variable initialization.", init.sz)
+	}
+}
+
+func (init *gVarInitZero) genInit(_ ty) {
+	fmt.Printf("	.zero %d\n", init.len)
 }
 
 func (a *ast) genText() {

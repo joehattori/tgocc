@@ -13,7 +13,9 @@ type (
 		ty   ty
 	}
 
-	gVarInit interface{} // TODO: brush up
+	gVarInit interface {
+		genInit(ty)
+	}
 
 	gVarInitArr struct {
 		body []gVarInit
@@ -30,6 +32,10 @@ type (
 	gVarInitInt struct {
 		val int64
 		sz  int
+	}
+
+	gVarInitZero struct {
+		len int
 	}
 
 	lVar struct {
@@ -78,6 +84,10 @@ func newGVarInitStr(content string) *gVarInitStr {
 
 func newGVarInitInt(i int64, sz int) *gVarInitInt {
 	return &gVarInitInt{i, sz}
+}
+
+func newGVarInitZero(len int) *gVarInitZero {
+	return &gVarInitZero{len}
 }
 
 func newLVar(name string, t ty) *lVar {

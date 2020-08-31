@@ -266,7 +266,7 @@ func buildGVarInit(ty ty, rhs node) gVarInit {
 			// zero out the rest
 			if _, ok := t.of.(*tyArr); !ok {
 				for i := idx; i < t.len; i++ {
-					body = append(body, newGVarInitInt(0, t.of.size()))
+					body = append(body, newGVarInitZero(t.of.size()))
 				}
 			}
 			return newGVarInitArr(body)
@@ -292,20 +292,20 @@ func buildGVarInit(ty ty, rhs node) gVarInit {
 			mem := t.members[i]
 			var toAppend []gVarInit
 			toAppend = append(toAppend, buildGVarInit(mem.ty, e))
+			// padding for struct members
 			var end int
 			if i < len(t.members) - 1 {
 				end = t.members[i+1].offset
 			} else {
 				end = t.size()
 			}
-			for j := mem.offset + mem.ty.size(); j < end; j++ {
-				toAppend = append(toAppend, newGVarInitInt(0, 1))
-			}
+			start := mem.offset + mem.ty.size()
+			toAppend = append(toAppend, newGVarInitZero(end - start))
 			body = append(body, newGVarInitArr(toAppend))
 		}
 		// zero out the rest
 		for i := idx; i < len(t.members); i++ {
-			body = append(body, newGVarInitInt(0, t.members[i].ty.size()))
+			body = append(body, newGVarInitZero(t.members[i].ty.size()))
 		}
 		return newGVarInitArr(body)
 	default:
