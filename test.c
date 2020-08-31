@@ -41,7 +41,7 @@ char *g8 = "abc";
 int g9[3] = {0, 1, 2};
 char *g10[] = {"foo", "bar"};
 struct {char a; int b;} g11[2] = {{1, 2}, {3, 4}};
-/*struct {int a[2];} g12[2] = {{{1, 2}}};*/
+struct {int a[2];} g12[2] = {{{1, 2}}};
 
 int *gref() {
     return &g1;
@@ -496,6 +496,11 @@ int main() {
     test(2, g11[0].b, "g11[0].b");
     test(3, g11[1].a, "g11[1].a");
     test(4, g11[1].b, "g11[1].b");
+
+    test(1, g12[0].a[0], "g12[0].a[0]");
+    test(2, g12[0].a[1], "g12[0].a[1]");
+    test(0, g12[1].a[0], "g12[1].a[0]");
+    test(0, g12[1].a[1], "g12[1].a[1]");
 
     printf("OK\n");
     return 0;

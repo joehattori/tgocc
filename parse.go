@@ -361,17 +361,19 @@ func (p *parser) initializer(t ty) node {
 			return newVarNode(s)
 		}
 		p.expect("{")
+		idx := 0
 		for !p.consume("}") {
 			switch t := t.(type) {
 			case *tyArr:
 				nodes = append(nodes, p.initializer(t.of))
 			case *tyStruct:
-				nodes = append(nodes, p.assign())
+				nodes = append(nodes, p.initializer(t.members[idx].ty))
 			}
 			if !p.consume(",") {
 				p.expect("}")
 				break
 			}
+			idx++
 		}
 		return newBlkNode(nodes)
 	}
