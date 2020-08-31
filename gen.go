@@ -53,7 +53,9 @@ func genDataVar(init gVarInit, ty ty) {
 		case *gVarInitLabel:
 			fmt.Printf("	.quad %s\n", init.label)
 		case *gVarInitStr:
-			fmt.Printf("	.string \"%s\"\n", strings.TrimSuffix(init.content, string('\000')))
+			trimmed := strings.TrimRight(init.content, string('\000'))
+			fmt.Printf("	.string \"%s\"\n", trimmed)
+			fmt.Printf("	.zero %d\n", len(init.content)-len(trimmed))
 		case *gVarInitInt:
 			switch init.sz {
 			case 1:

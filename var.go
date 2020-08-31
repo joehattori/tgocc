@@ -72,8 +72,8 @@ func newGVarInitLabel(label string) *gVarInitLabel {
 	return &gVarInitLabel{label}
 }
 
-func newGVarInitStr(s string) *gVarInitStr {
-	return &gVarInitStr{s}
+func newGVarInitStr(content string) *gVarInitStr {
+	return &gVarInitStr{content}
 }
 
 func newGVarInitInt(i int64, sz int) *gVarInitInt {

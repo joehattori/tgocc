@@ -252,22 +252,38 @@ func buildGVarInit(ty ty, rhs node) gVarInit {
 	}
 	switch t := ty.(type) {
 	case *tyArr:
-		var body []gVarInit
-		idx := 0
-		for _, e := range rhs.(*blkNode).body {
-			idx++
-			body = append(body, buildGVarInit(t.of, e))
-		}
-		if t.len < 0 {
-			t.len = idx
-		}
-		// zero out the rest
-		if _, ok := t.of.(*tyArr); !ok {
-			for i := idx; i < t.len; i++ {
-				body = append(body, newGVarInitInt(0, t.of.size()))
+		switch rhs := rhs.(type) {
+		case *blkNode:
+			var body []gVarInit
+			idx := 0
+			for _, e := range rhs.body {
+				idx++
+				body = append(body, buildGVarInit(t.of, e))
 			}
+			if t.len < 0 {
+				t.len = idx
+			}
+			// zero out the rest
+			if _, ok := t.of.(*tyArr); !ok {
+				for i := idx; i < t.len; i++ {
+					body = append(body, newGVarInitInt(0, t.of.size()))
+				}
+			}
+			return newGVarInitArr(body)
+		default:
+			if ok, str := isNodeStr(rhs); ok {
+				if t.len < 0 {
+					t.len = len(str)
+				} else if t.len > len(str) {
+					for i := len(str); i < t.len; i++ {
+						str += string('\000')
+					}
+				}
+				return newGVarInitStr(str)
+			}
+			log.Fatalf("unhandled case in global variable initialization: %T", rhs)
+			return nil
 		}
-		return newGVarInitArr(body)
 	case *tyStruct:
 		var body []gVarInit
 		idx := 0
