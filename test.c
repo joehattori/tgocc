@@ -532,6 +532,10 @@ int main() {
     test(4, counter(), "counter()");
     test(6, counter(), "counter()");
 
+    test(7, ({ int i=0; int j=0; do { j++; } while (i++ < 6); j; }), "int i=0; int j=0; do { j++; } while (i++ < 6); j;");
+    test(4, ({ int i=0; int j=0; int k=0; do { if (++j > 3) break; continue; k++; } while (1); j; }),
+        "int i=0; int j=0; int k=0; do { if (j++ > 3) break; continue; k++; } while (1); j;");
+
     printf("OK\n");
     return 0;
 }

@@ -70,6 +70,11 @@ type (
 		ty  ty
 	}
 
+	doWhileNode struct {
+		cond node
+		then node
+	}
+
 	exprNode struct {
 		body node
 	}
@@ -269,6 +274,10 @@ func newDerefNode(ptr node) *derefNode {
 	return &derefNode{ptr: ptr}
 }
 
+func newDoWhileNode(cond node, then node) *doWhileNode {
+	return &doWhileNode{cond, then}
+}
+
 func newExprNode(body node) *exprNode {
 	return &exprNode{body}
 }
@@ -428,6 +437,10 @@ func (d *derefNode) loadType() ty {
 		log.Fatalf("cannot dereference type %T", d.ptr.loadType())
 	}
 	return d.ty
+}
+
+func (d *doWhileNode) loadType() ty {
+	return newTyEmpty()
 }
 
 func (e *exprNode) loadType() ty {

@@ -191,6 +191,7 @@ Actual parsing process from here.
   				| "return" expr ";"
   				| "if" "(" expr ")" stmt ("else" stmt) ?
   				| "while" "(" expr ")" stmt
+				| "do" stmt "while" "(" expr ")" ";"
   				| "for" "(" (expr? ";" | decl) expr? ";" expr? ")" stmt
 				| "typedef" ty ident ("[" constExpr "]")* ";"
 				| "switch" "(" expr ")" "{" switchCase* ("default" ":" stmt*)? }"
@@ -728,10 +729,21 @@ func (p *parser) stmt() node {
 	// handle while statement
 	if p.consume("while") {
 		p.expect("(")
-		condNode := p.expr()
+		cond := p.expr()
 		p.expect(")")
-		thenNode := p.stmt()
-		return newWhileNode(condNode, thenNode)
+		then:= p.stmt()
+		return newWhileNode(cond, then)
+	}
+
+	// handle do-while statement
+	if p.consume("do") {
+		then := p.stmt()
+		p.expect("while")
+		p.expect("(")
+		cond := p.expr()
+		p.expect(")")
+		p.expect(";")
+		return newDoWhileNode(cond, then)
 	}
 
 	// handle for statement

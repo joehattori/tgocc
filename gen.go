@@ -300,6 +300,22 @@ func (d *derefNode) gen() {
 	}
 }
 
+func (d *doWhileNode) gen() {
+	c := labelCount
+	labelCount++
+	prev := jmpLabelNum
+	jmpLabelNum = c
+	fmt.Printf(".L.do.while.%d:\n", c)
+	d.then.gen()
+	fmt.Printf(".L.continue.%d:\n", jmpLabelNum)
+	d.cond.gen()
+	fmt.Println("	pop rax")
+	fmt.Println("	cmp rax, 0")
+	fmt.Printf("	jne .L.do.while.%d\n", c)
+	fmt.Printf(".L.break.%d:\n", jmpLabelNum)
+	jmpLabelNum = prev
+}
+
 func (e *exprNode) gen() {
 	e.body.gen()
 	fmt.Println("	add rsp, 8")
@@ -323,7 +339,7 @@ func (f *forNode) gen() {
 	if f.body != nil {
 		f.body.gen()
 	}
-	fmt.Printf(".L.continue.%d:\n", c)
+	fmt.Printf(".L.continue.%d:\n", jmpLabelNum)
 	if f.inc != nil {
 		f.inc.gen()
 	}
