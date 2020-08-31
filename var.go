@@ -15,6 +15,10 @@ type (
 
 	gVarInit interface{} // TODO: brush up
 
+	gVarInitArr struct {
+		body []gVarInit
+	}
+
 	gVarInitLabel struct { // reference to another global var
 		label string
 	}
@@ -58,6 +62,10 @@ func (e *enum) getType() ty    { return e.ty }
 
 func newGVar(name string, t ty, init gVarInit) *gVar {
 	return &gVar{init, name, t}
+}
+
+func newGVarInitArr(body []gVarInit) *gVarInitArr {
+	return &gVarInitArr{body}
 }
 
 func newGVarInitLabel(label string) *gVarInitLabel {

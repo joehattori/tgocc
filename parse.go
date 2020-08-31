@@ -238,25 +238,70 @@ func (p *parser) parse() {
 			// global variable initialization
 			ty, id, rhs := p.decl()
 			if ty != nil {
-				var init gVarInit
-				switch nd := rhs.(type) {
-				case *addrNode:
-					init = newGVarInitLabel(nd.v.(*varNode).v.getName())
-				case *varNode:
-					if _, ok := nd.v.getType().(*tyArr); ok {
-						init = newGVarInitLabel(nd.v.getName())
-					} else {
-						init = newGVarInitInt(eval(rhs), ty.size())
-					}
-				default:
-					if rhs != nil {
-						init = newGVarInitInt(eval(rhs), ty.size())
-					}
-				}
+				init := buildGVarInit(ty, rhs)
 				p.curScope.addGVar(id, ty, init)
 				ast.gVars = append(ast.gVars, newGVar(id, ty, init))
 			}
 		}
+	}
+}
+
+func buildGVarInit(ty ty, rhs node) gVarInit {
+	if rhs == nil {
+		return nil
+	}
+	switch t := ty.(type) {
+	case *tyArr:
+		var body []gVarInit
+		idx := 0
+		for _, e := range rhs.(*blkNode).body {
+			idx++
+			body = append(body, buildGVarInit(t.of, e))
+		}
+		if t.len < 0 {
+			t.len = idx
+		}
+		// zero out the rest
+		if _, ok := t.of.(*tyArr); !ok {
+			for i := idx; i < t.len; i++ {
+				body = append(body, newGVarInitInt(0, t.of.size()))
+			}
+		}
+		return newGVarInitArr(body)
+	case *tyStruct:
+		var body []gVarInit
+		idx := 0
+		for i, e := range rhs.(*blkNode).body {
+			idx++
+			mem := t.members[i]
+			var toAppend []gVarInit
+			toAppend = append(toAppend, buildGVarInit(mem.ty, e))
+			var end int
+			if i < len(t.members) - 1 {
+				end = t.members[i+1].offset
+			} else {
+				end = t.size()
+			}
+			for j := mem.offset + mem.ty.size(); j < end; j++ {
+				toAppend = append(toAppend, newGVarInitInt(0, 1))
+			}
+			body = append(body, newGVarInitArr(toAppend))
+		}
+		// zero out the rest
+		for i := idx; i < len(t.members); i++ {
+			body = append(body, newGVarInitInt(0, t.members[i].ty.size()))
+		}
+		return newGVarInitArr(body)
+	default:
+		switch nd := rhs.(type) {
+		case *addrNode:
+			return newGVarInitLabel(nd.v.(*varNode).v.getName())
+		case *varNode:
+			if _, ok := nd.v.getType().(*tyArr); ok {
+				return newGVarInitLabel(nd.v.getName())
+			}
+		}
+		return newGVarInitInt(eval(rhs), t.size())
 	}
 }
 
@@ -300,12 +345,12 @@ func (p *parser) decl() (t ty, id string, rhs node) {
 		return
 	}
 	p.expect("=")
-	rhs = p.initialize(t)
+	rhs = p.initializer(t)
 	p.expect(";")
 	return
 }
 
-func (p *parser) initialize(t ty) node {
+func (p *parser) initializer(t ty) node {
 	switch t := t.(type) {
 	case *tyArr, *tyStruct:
 		var nodes []node
@@ -319,7 +364,7 @@ func (p *parser) initialize(t ty) node {
 		for !p.consume("}") {
 			switch t := t.(type) {
 			case *tyArr:
-				nodes = append(nodes, p.initialize(t.of))
+				nodes = append(nodes, p.initializer(t.of))
 			case *tyStruct:
 				nodes = append(nodes, p.assign())
 			}

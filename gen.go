@@ -26,30 +26,49 @@ func (a *ast) genData() {
 	fmt.Println(".data")
 	for _, g := range a.gVars {
 		fmt.Printf("%s:\n", g.name)
-		if init := g.init; init == nil {
-			fmt.Printf("	.zero %d\n", g.ty.size())
-		} else {
-			switch init := init.(type) {
-			case *gVarInitLabel:
-				fmt.Printf("	.quad %s\n", init.label)
-			case *gVarInitStr:
-				fmt.Printf("	.string \"%s\"\n", strings.TrimSuffix(init.content, string('\000')))
-			case *gVarInitInt:
-				switch init.sz {
-				case 1:
-					fmt.Printf("	.byte %d\n", init.val)
-				case 2:
-					fmt.Printf("	.value %d\n", init.val)
-				case 4:
-					fmt.Printf("	.long %d\n", init.val)
-				case 8:
-					fmt.Printf("	.quad %d\n", init.val)
-				default:
-					log.Fatalf("unhandled type size %d on global variable initialization.", init.sz)
+		genDataVar(g.init, g.ty)
+	}
+}
+
+func genDataVar(init gVarInit, ty ty) {
+	if init == nil {
+		fmt.Printf("	.zero %d\n", ty.size())
+	} else {
+		switch init := init.(type) {
+		case *gVarInitArr:
+			switch ty := ty.(type) {
+			case *tyArr:
+				for _, e := range init.body {
+					genDataVar(e, ty.of)
+				}
+			case *tyStruct:
+				for i, e := range init.body {
+					genDataVar(e, ty.members[i].ty)
 				}
 			default:
-				log.Fatalf("unexpected type on gVar content: %T", init)
+				for _, e := range init.body {
+					genDataVar(e, ty)
+				}
 			}
+		case *gVarInitLabel:
+			fmt.Printf("	.quad %s\n", init.label)
+		case *gVarInitStr:
+			fmt.Printf("	.string \"%s\"\n", strings.TrimSuffix(init.content, string('\000')))
+		case *gVarInitInt:
+			switch init.sz {
+			case 1:
+				fmt.Printf("	.byte %d\n", init.val)
+			case 2:
+				fmt.Printf("	.value %d\n", init.val)
+			case 4:
+				fmt.Printf("	.long %d\n", init.val)
+			case 8:
+				fmt.Printf("	.quad %d\n", init.val)
+			default:
+				log.Fatalf("unhandled type size %d on global variable initialization.", init.sz)
+			}
+		default:
+			log.Fatalf("unexpected type on gVar content: %T", init)
 		}
 	}
 }

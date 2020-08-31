@@ -38,6 +38,10 @@ int g5 = 5;
 long g6 = 6;
 int *g7 = &g5;
 char *g8 = "abc";
+int g9[3] = {0, 1, 2};
+char *g10[] = {"foo", "bar"};
+struct {char a; int b;} g11[2] = {{1, 2}, {3, 4}};
+/*struct {int a[2];} g12[2] = {{{1, 2}}};*/
 
 int *gref() {
     return &g1;
@@ -478,6 +482,20 @@ int main() {
     test(6, g6, "g6");
     test(5, *g7, "*g7");
     test(0, strcmp(g8, "abc"), "strcmp(g8, \"abc\")");
+
+    test(0, g9[0], "g9[0]");
+    test(1, g9[1], "g9[1]");
+    test(2, g9[2], "g9[2]");
+
+    test(0, strcmp(g10[0], "foo"), "strcmp(g10[0], \"foo\")");
+    test(0, strcmp(g10[1], "bar"), "strcmp(g10[1], \"bar\")");
+    test(0, g10[1][3], "g10[1][3]");
+    test(2, sizeof(g10) / sizeof(*g10), "sizeof(g10) / sizeof(*g10)");
+
+    test(1, g11[0].a, "g11[0].a");
+    test(2, g11[0].b, "g11[0].b");
+    test(3, g11[1].a, "g11[1].a");
+    test(4, g11[1].b, "g11[1].b");
 
     printf("OK\n");
     return 0;
