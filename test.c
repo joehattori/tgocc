@@ -61,6 +61,12 @@ typedef long long ll;
 
 static int static_fn(void) { return 3; }
 
+int counter() {
+    static int i;
+    static int j = 1+1;
+    return i++ + j++;
+}
+
 int param_decay(int x[]) { return x[0]; }
 
 void store(int *x) {
@@ -521,6 +527,10 @@ int main() {
 
     ext2 = &ext1;
     test(5, *ext2, "*ext2");
+
+    test(2, counter(), "counter()");
+    test(4, counter(), "counter()");
+    test(6, counter(), "counter()");
 
     printf("OK\n");
     return 0;

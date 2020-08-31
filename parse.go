@@ -25,17 +25,17 @@ func (p *parser) spawnScope() {
 func (p *parser) rewindScope() {
 	offset := p.curScope.curOffset
 	base := p.curScope.baseOffset
-	for _, v := range p.curScope.vars {
+	lvars, gvars, _ := p.curScope.segregateScopeVars()
+	for _, v := range lvars {
 		offset = alignTo(offset, v.getType().size())
 		offset += v.getType().size()
-		if lv, ok := v.(*lVar); ok {
-			lv.offset = offset + base
-		}
+		v.offset = offset + base
 	}
 	p.curScope.curOffset += offset
 	p.curScope = p.curScope.super
 	// maybe this is not necessary if we zero out the memory for child scope?
 	p.curScope.curOffset += offset
+	p.res.gVars = append(p.res.gVars, gvars...)
 }
 
 func (p *parser) findVar(s string) variable {
@@ -235,9 +235,10 @@ func (p *parser) parse() {
 				ast.fns = append(ast.fns, fn)
 			}
 		} else {
-			ty, id, rhs, emit := p.decl()
+			ty, id, rhs, sc := p.decl()
 			if ty != nil {
 				init := buildGVarInit(ty, rhs)
+				emit := (sc & extern) == 0
 				p.curScope.addGVar(emit, id, ty, init)
 				ast.gVars = append(ast.gVars, newGVar(emit, id, ty, init))
 			}
@@ -352,9 +353,8 @@ const (
 	extern = 0b10
 )
 
-func (p *parser) decl() (t ty, id string, rhs node, emit bool) {
+func (p *parser) decl() (t ty, id string, rhs node, sc storageClass) {
 	t, isTypeDef, sc := p.baseType()
-	emit = (sc & extern) == 0
 	if p.consume(";") {
 		return
 	}
@@ -363,13 +363,13 @@ func (p *parser) decl() (t ty, id string, rhs node, emit bool) {
 		p.expect(";")
 		p.curScope.addTypeDef(id, t)
 		// returned t is nil when it is typedef (no need to add to scope.vars)
-		return nil, "", nil, emit
+		return nil, "", nil, sc
 	}
 	t = p.tySuffix(t)
 	if p.consume(";") {
 		return
 	}
-	if !emit {
+	if (sc & extern) != 0 {
 		p.expect(";")
 		return
 	}
@@ -804,8 +804,13 @@ func (p *parser) stmt() node {
 
 	// handle variable definition
 	if p.isType() {
-		t, id, rhs, _ := p.decl()
+		t, id, rhs, sc := p.decl()
 		if id == "" {
+			return newNullNode()
+		}
+		if (sc & static) != 0 {
+			init := buildGVarInit(t, rhs)
+			p.curScope.addGVar(true, id, t, init)
 			return newNullNode()
 		}
 		p.curScope.addLVar(id, t)

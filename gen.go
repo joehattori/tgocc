@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"strings"
 )
 
@@ -271,7 +272,7 @@ func (d *decNode) gen() {
 	}
 
 	body.genAddr()
-	fmt.Println("	push rax")
+	fmt.Println("	push [rsp]")
 	load(t)
 	fmt.Println("	pop rax")
 	fmt.Printf("	sub rax, %d\n", diff)
@@ -423,7 +424,7 @@ func (i *incNode) gen() {
 	}
 
 	body.genAddr()
-	fmt.Println("	push rax")
+	fmt.Println("	push [rsp]")
 	load(t)
 	fmt.Println("	pop rax")
 	fmt.Printf("	add rax, %d\n", diff)
@@ -456,7 +457,7 @@ func (n *notNode) gen() {
 func (*nullNode) gen() {}
 
 func (n *numNode) gen() {
-	if n.val >= int64(int(n.val)) {
+	if n.val > math.MaxInt32 {
 		fmt.Printf("	movabs rax, %d\n", n.val)
 		fmt.Println("	push rax")
 	} else {
