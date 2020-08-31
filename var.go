@@ -8,6 +8,7 @@ type (
 	}
 
 	gVar struct {
+		emit bool
 		init gVarInit
 		name string
 		ty   ty
@@ -66,8 +67,8 @@ func (v *lVar) getType() ty    { return v.ty }
 func (t *typeDef) getType() ty { return t.ty }
 func (e *enum) getType() ty    { return e.ty }
 
-func newGVar(name string, t ty, init gVarInit) *gVar {
-	return &gVar{init, name, t}
+func newGVar(emit bool, name string, t ty, init gVarInit) *gVar {
+	return &gVar{emit, init, name, t}
 }
 
 func newGVarInitArr(body []gVarInit) *gVarInitArr {

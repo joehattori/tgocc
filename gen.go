@@ -25,16 +25,10 @@ func (a *ast) gen() {
 func (a *ast) genData() {
 	fmt.Println(".data")
 	for _, g := range a.gVars {
-		fmt.Printf("%s:\n", g.name)
-		genDataVar(g.init, g.ty)
-	}
-}
-
-func genDataVar(init gVarInit, t ty) {
-	if init == nil {
-		fmt.Printf("	.zero %d\n", t.size())
-	} else {
-		init.genInit(t)
+		if g.emit {
+			fmt.Printf("%s:\n", g.name)
+		}
+		genDataGVar(g.init, g.ty)
 	}
 }
 
@@ -42,16 +36,24 @@ func (init *gVarInitArr) genInit(t ty) {
 	switch t := t.(type) {
 	case *tyArr:
 		for _, e := range init.body {
-			genDataVar(e, t.of)
+			genDataGVar(e, t.of)
 		}
 	case *tyStruct:
 		for i, e := range init.body {
-			genDataVar(e, t.members[i].ty)
+			genDataGVar(e, t.members[i].ty)
 		}
 	default:
 		for _, e := range init.body {
-			genDataVar(e, t)
+			genDataGVar(e, t)
 		}
+	}
+}
+
+func genDataGVar(init gVarInit, t ty) {
+	if init == nil {
+		fmt.Printf("	.zero %d\n", t.size())
+	} else {
+		init.genInit(t)
 	}
 }
 

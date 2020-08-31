@@ -235,12 +235,11 @@ func (p *parser) parse() {
 				ast.fns = append(ast.fns, fn)
 			}
 		} else {
-			// global variable initialization
-			ty, id, rhs := p.decl()
+			ty, id, rhs, emit := p.decl()
 			if ty != nil {
 				init := buildGVarInit(ty, rhs)
-				p.curScope.addGVar(id, ty, init)
-				ast.gVars = append(ast.gVars, newGVar(id, ty, init))
+				p.curScope.addGVar(emit, id, ty, init)
+				ast.gVars = append(ast.gVars, newGVar(emit, id, ty, init))
 			}
 		}
 	}
@@ -327,8 +326,8 @@ func (p *parser) function() *fnNode {
 	ty, _, sc := p.baseType()
 	fnName, ty := p.tyDecl(ty)
 	p.curFnName = fnName
-	p.curScope.addGVar(fnName, newTyFn(ty), nil)
-	fn := newFnNode((sc & static)!= 0, fnName, ty)
+	p.curScope.addGVar((sc & static) != 0, fnName, newTyFn(ty), nil)
+	fn := newFnNode((sc & static) != 0, fnName, ty)
 	p.spawnScope()
 	p.readFnParams(fn)
 	if p.consume(";") {
@@ -346,8 +345,16 @@ func (p *parser) function() *fnNode {
 	return fn
 }
 
-func (p *parser) decl() (t ty, id string, rhs node) {
-	t, isTypeDef, _ := p.baseType()
+type storageClass int
+
+const (
+	static = 0b01
+	extern = 0b10
+)
+
+func (p *parser) decl() (t ty, id string, rhs node, emit bool) {
+	t, isTypeDef, sc := p.baseType()
+	emit = (sc & extern) == 0
 	if p.consume(";") {
 		return
 	}
@@ -356,25 +363,29 @@ func (p *parser) decl() (t ty, id string, rhs node) {
 		p.expect(";")
 		p.curScope.addTypeDef(id, t)
 		// returned t is nil when it is typedef (no need to add to scope.vars)
-		return nil, "", nil
+		return nil, "", nil, emit
 	}
 	t = p.tySuffix(t)
 	if p.consume(";") {
 		return
 	}
+	if !emit {
+		p.expect(";")
+		return
+	}
 	p.expect("=")
-	rhs = p.initializer(t)
+	rhs = p.initializer(t, sc)
 	p.expect(";")
 	return
 }
 
-func (p *parser) initializer(t ty) node {
+func (p *parser) initializer(t ty, sc storageClass) node {
 	switch t := t.(type) {
 	case *tyArr, *tyStruct:
 		var nodes []node
 		if str, ok := p.consumeStr(); ok {
 			init := newGVarInitStr(str)
-			s := newGVar(newGVarLabel(), newTyArr(newTyChar(), len(str)), init)
+			s := newGVar((sc & static) != 0, newGVarLabel(), newTyArr(newTyChar(), len(str)), init)
 			p.res.gVars = append(p.res.gVars, s)
 			return newVarNode(s)
 		}
@@ -383,9 +394,9 @@ func (p *parser) initializer(t ty) node {
 		for !p.consume("}") {
 			switch t := t.(type) {
 			case *tyArr:
-				nodes = append(nodes, p.initializer(t.of))
+				nodes = append(nodes, p.initializer(t.of, sc))
 			case *tyStruct:
-				nodes = append(nodes, p.initializer(t.members[idx].ty))
+				nodes = append(nodes, p.initializer(t.members[idx].ty, sc))
 			}
 			if !p.consume(",") {
 				p.expect("}")
@@ -398,19 +409,18 @@ func (p *parser) initializer(t ty) node {
 	return p.assign()
 }
 
-type storageClass int
-
-const (
-	static = 0b01
-	extern = 0b10 // TODO
-)
-
 func (p *parser) baseType() (t ty, isTypeDef bool, sc storageClass) {
 	if p.consume("typedef") {
 		isTypeDef = true
 	}
 	if p.consume("static")  {
 		sc |= static
+	}
+	if p.consume("extern") {
+		sc |= extern
+	}
+	if isTypeDef && (sc != 0) || (sc == 0b11) {
+		log.Fatal("typedef, static and extern should not be used together.")
 	}
 	cur := p.toks[0]
 	switch tok := cur.(type) {
@@ -618,7 +628,7 @@ func (p *parser) structDecl() ty {
 	offset, align := 0, 0
 	for !p.consume("}") {
 		// TODO: handle when rhs is not null
-		ty, tag, _ := p.decl()
+		ty, tag, _, _ := p.decl()
 		offset = alignTo(offset, ty.alignment())
 		members = append(members, newMember(tag, offset, ty))
 		offset += ty.size()
@@ -733,7 +743,7 @@ func (p *parser) stmt() node {
 		p.spawnScope()
 		if !p.consume(";") {
 			if p.isType() {
-				t, id, rhs := p.decl()
+				t, id, rhs, _ := p.decl()
 				p.curScope.addLVar(id, t)
 				if rhs == nil {
 					init = newNullNode()
@@ -794,7 +804,7 @@ func (p *parser) stmt() node {
 
 	// handle variable definition
 	if p.isType() {
-		t, id, rhs := p.decl()
+		t, id, rhs, _ := p.decl()
 		if id == "" {
 			return newNullNode()
 		}
@@ -1209,7 +1219,7 @@ func (p *parser) primary() node {
 
 	if str, isStr := p.consumeStr(); isStr {
 		init := newGVarInitStr(str)
-		s := newGVar(newGVarLabel(), newTyArr(newTyChar(), utf8.RuneCountInString(str)), init)
+		s := newGVar(true, newGVarLabel(), newTyArr(newTyChar(), utf8.RuneCountInString(str)), init)
 		p.res.gVars = append(p.res.gVars, s)
 		return newVarNode(s)
 	}

@@ -46,6 +46,9 @@ char g17[] = "foobar";
 char g18[10] = "foobar";
 char g19[3] = "foobar";
 
+extern int ext1;
+extern int *ext2;
+
 int *gref(void) {
     return &g1;
 }
@@ -512,6 +515,12 @@ int main() {
     test(0, memcmp(g17, "foobar", 7), "memcmp(g17, \"foobar\", 7)");
     test(0, memcmp(g18, "foobar\0\0\0", 10), "memcmp(g18, \"foobar\\0\\0\\0\", 10)");
     test(0, memcmp(g19, "foo", 3), "memcmp(g19, \"foo\", 3)");
+
+    ext1 = 5;
+    test(5, ext1, "ext1");
+
+    ext2 = &ext1;
+    test(5, *ext2, "*ext2");
 
     printf("OK\n");
     return 0;

@@ -8,7 +8,8 @@ clean:
 
 test: tgocc
 	./tgocc test.c > tmp.s
-	cc -static -o tmp tmp.s
+	echo 'int ext1; int *ext2; int char_fn() { return 257; }' | cc -xc -c -o tmp2.o -
+	cc -static -o tmp tmp.s tmp2.o
 	./tmp
 
 test_old: tgocc
