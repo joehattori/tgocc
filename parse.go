@@ -235,6 +235,7 @@ func (p *parser) parse() {
 				ast.fns = append(ast.fns, fn)
 			}
 		} else {
+			// global variable initialization
 			ty, id, rhs := p.decl()
 			if ty != nil {
 				var init gVarInit
@@ -742,10 +743,8 @@ func (p *parser) stmt() node {
 func (p *parser) storeInit(t ty, dst addressableNode, rhs node) node {
 	switch t := t.(type) {
 	case *tyArr:
-		var body []node
-		// zero out on initialization
-
 		// TODO: clean up
+		var body []node
 		var ln, idx int
 		_, isChar := t.of.(*tyChar)
 		isString, str := isNodeStr(rhs)
@@ -771,6 +770,7 @@ func (p *parser) storeInit(t ty, dst addressableNode, rhs node) node {
 		}
 
 		if _, ok := t.of.(*tyArr); !ok {
+			// zero out on initialization
 			for i := idx; i < ln; i++ {
 				addr := newDerefNode(newAddNode(dst, newNumNode(int64(i))))
 				body = append(body, p.storeInit(t.of, addr, newNumNode(0)))
