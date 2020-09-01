@@ -12,7 +12,7 @@ import (
 var (
 	idRegexp   = regexp.MustCompile(`^[a-zA-Z_]+\w*`)
 	typeRegexp = regexp.MustCompile(
-		`^(int|char|long|short|struct|void|_Bool|typedef|enum|static|continue|switch|case|default|extern|do)\W`)
+		`^(int|char|long|short|struct|void|_Bool|typedef|enum|static|continue|switch|case|default|extern|do|define)\W`)
 )
 
 type token interface {
@@ -156,6 +156,14 @@ func (t *tokenizer) readMultiCharOp() token {
 	return nil
 }
 
+func (t *tokenizer) readNewLine() token {
+	if t.head() != '\n' {
+		return nil
+	}
+	t.pos++
+	return newReservedTok("\n", 1)
+}
+
 func (t *tokenizer) readReserved() token {
 	s := t.cur()
 	r := regexp.MustCompile(`^(if|else|while|for|return|sizeof|break)\W`)
@@ -211,13 +219,20 @@ func (t *tokenizer) tokenize(input string) *parser {
 	t.input = input
 	var toks []token
 	for {
-		t.trimSpace()
-		if t.isComment() {
+		// new line will be omitted in preprocessor, but still needed to parse #include ... and #define ...
+		if tok := t.readNewLine(); tok != nil {
+			toks = append(toks, tok)
 			continue
 		}
+
+		t.trimSpace()
+
 		s := t.cur()
 		if s == "" {
 			break
+		}
+		if t.isComment() {
+			continue
 		}
 
 		if tok := t.readStrLiteral(); tok != nil {
@@ -245,7 +260,7 @@ func (t *tokenizer) tokenize(input string) *parser {
 			continue
 		}
 
-		if tok := t.readRuneFrom("+-*/(){}[]<>;=,&.!|^:?~"); tok != nil {
+		if tok := t.readRuneFrom("+-*/(){}[]<>;=,&.!|^:?~#"); tok != nil {
 			toks = append(toks, tok)
 			continue
 		}
@@ -258,5 +273,7 @@ func (t *tokenizer) tokenize(input string) *parser {
 		log.Fatalf("unexpected input %s\n", s)
 	}
 	toks = append(toks, newEOFTok())
-	return newParser(toks)
+	parser := newParser(toks)
+	parser.preprocess()
+	return parser
 }

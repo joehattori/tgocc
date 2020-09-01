@@ -17,7 +17,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	toks := t.tokenize(string(input))
-	toks.parse()
-	toks.res.gen()
+	parser := t.tokenize(string(input))
+	parser.parse()
+	parser.res.gen()
 }

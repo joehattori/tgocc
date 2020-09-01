@@ -2,6 +2,9 @@
 /* Compile this code,
  * and see if it passes! */
 
+#define ZERO 0
+#define WEEKS (365/7)
+
 int printf();
 int exit();
 int strcmp(char *p, char *q);
@@ -535,6 +538,9 @@ int main() {
     test(7, ({ int i=0; int j=0; do { j++; } while (i++ < 6); j; }), "int i=0; int j=0; do { j++; } while (i++ < 6); j;");
     test(4, ({ int i=0; int j=0; int k=0; do { if (++j > 3) break; continue; k++; } while (1); j; }),
         "int i=0; int j=0; int k=0; do { if (j++ > 3) break; continue; k++; } while (1); j;");
+
+    test(0, ZERO, "ZERO");
+    test(52, WEEKS, "WEEKS");
 
     printf("OK\n");
     return 0;

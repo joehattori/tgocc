@@ -115,6 +115,11 @@ func (p *parser) consumeStr() (string, bool) {
 	return "", false
 }
 
+func (p *parser) isEOF() (ok bool) {
+	_, ok = p.toks[0].(*eofTok)
+	return
+}
+
 func (p *parser) expect(str string) {
 	cur := p.toks[0]
 	if r, ok := cur.(*reservedTok); ok &&
@@ -226,10 +231,7 @@ Actual parsing process from here.
 
 func (p *parser) parse() {
 	ast := p.res
-	for {
-		if _, ok := p.toks[0].(*eofTok); ok {
-			break
-		}
+	for !p.isEOF() {
 		if p.isFunction() {
 			fn := p.function()
 			if fn != nil {
