@@ -79,7 +79,7 @@ func (init *gVarInitInt) genInit(_ ty) {
 	case 8:
 		fmt.Printf("	.quad %d\n", init.val)
 	default:
-		log.Fatalf("unhandled type size %d on global variable initialization.", init.sz)
+		log.Fatalf("Unhandled type size %d on global variable initialization.", init.sz)
 	}
 }
 
@@ -193,7 +193,7 @@ func (a *arithNode) gen() {
 		fmt.Println("	mov cl, dil")
 		fmt.Println("	sar rax, cl")
 	default:
-		log.Fatal("unhandled node kind")
+		log.Fatal("Unhandled node kind")
 	}
 
 	fmt.Println("	push rax")
@@ -220,7 +220,7 @@ func (b *blkNode) gen() {
 
 func (b *breakNode) gen() {
 	if jmpLabelNum == 0 {
-		log.Fatal("invalid break statement.")
+		log.Fatal("Invalid break statement.")
 	}
 	fmt.Printf("	jmp .L.break.%d\n", jmpLabelNum)
 }
@@ -249,7 +249,7 @@ func (c *castNode) gen() {
 	case 8:
 		// rax is 8 bits register
 	default:
-		log.Fatalf("unhandled type size: %d", t)
+		log.Fatalf("Unhandled type size: %d", t)
 	}
 	fmt.Println("	push rax")
 }
@@ -393,7 +393,7 @@ func (f *fnNode) gen() {
 		case 8:
 			r = paramRegs8
 		default:
-			log.Fatalf("unhandled type size: %d", param.ty.size())
+			log.Fatalf("Unhandled type size: %d", param.ty.size())
 		}
 		fmt.Printf("	mov [rbp-%d], %s\n", param.offset, r[i])
 	}
@@ -578,7 +578,7 @@ func (v *varNode) genAddr() {
 		fmt.Printf("	lea rax, [rbp-%d]\n", vr.offset)
 		fmt.Println("	push rax")
 	default:
-		log.Fatalf("unhandled case in genAddr()")
+		log.Fatalf("Unhandled case in genAddr()")
 	}
 }
 
@@ -594,7 +594,7 @@ func load(t ty) {
 	case 8:
 		fmt.Println("	mov rax, [rax]")
 	default:
-		log.Fatalf("unhandled type size: %d", t.size())
+		log.Fatalf("Unhandled type size: %d", t.size())
 	}
 	fmt.Println("	push rax")
 }
@@ -618,7 +618,7 @@ func store(t ty) {
 	case 8:
 		r = "rdi"
 	default:
-		log.Fatalf("unhandled type size: %d", t.size())
+		log.Fatalf("Unhandled type size: %d", t.size())
 	}
 	fmt.Printf("	mov [rax], %s\n", r)
 	fmt.Println("	push rdi")

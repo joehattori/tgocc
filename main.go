@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
-	"log"
 	"os"
 )
 
@@ -13,11 +11,7 @@ func main() {
 		return
 	}
 	t := newTokenizer()
-	input, err := ioutil.ReadFile(os.Args[1])
-	if err != nil {
-		log.Fatal(err)
-	}
-	parser := t.tokenize(string(input))
+	parser := t.tokenize(os.Args[1])
 	parser.parse()
 	parser.res.gen()
 }

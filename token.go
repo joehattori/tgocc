@@ -1,7 +1,9 @@
 package main
 
 import (
+	"io/ioutil"
 	"log"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -90,7 +92,7 @@ func (t *tokenizer) isComment() bool {
 		t.pos += 2
 		for !strings.HasPrefix(t.cur(), "*/") {
 			if t.cur() == "" {
-				log.Fatalf("comment unclosed: %s", t.input)
+				log.Fatalf("Comment unclosed: %s", t.input)
 			}
 			t.pos++
 		}
@@ -108,7 +110,7 @@ func (t *tokenizer) readCharLiteral() token {
 	c := int64(t.head())
 	t.pos++
 	if t.head() != '\'' {
-		log.Fatalf("char literal is too long: %s", t.input[t.pos:])
+		log.Fatalf("Char literal is too long: %s", t.input[t.pos:])
 	}
 	t.pos++
 	return newNumTok(c, 1)
@@ -215,8 +217,12 @@ func (t *tokenizer) trimSpace() {
 	}
 }
 
-func (t *tokenizer) tokenize(input string) *parser {
-	t.input = input
+func (t *tokenizer) tokenize(path string) *parser {
+	input, err := ioutil.ReadFile(os.Args[1])
+	if err != nil {
+		log.Fatal(err)
+	}
+	t.input = string(input)
 	var toks []token
 	for {
 		// new line will be omitted in preprocessor, but still needed to parse #include ... and #define ...
@@ -270,7 +276,7 @@ func (t *tokenizer) tokenize(input string) *parser {
 			continue
 		}
 
-		log.Fatalf("unexpected input %s\n", s)
+		log.Fatalf("Unexpected input %s\n", s)
 	}
 	toks = append(toks, newEOFTok())
 	parser := newParser(toks)

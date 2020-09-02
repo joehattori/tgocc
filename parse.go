@@ -41,7 +41,7 @@ func (p *parser) rewindScope() {
 func (p *parser) findVar(s string) variable {
 	v := p.searchVar(s)
 	if v == nil {
-		log.Fatalf("undefined variable %s", s)
+		log.Fatalf("Undefined variable %s", s)
 	}
 	return v
 }
@@ -149,6 +149,16 @@ func (p *parser) expectNum() int64 {
 	}
 	log.Fatalf("Number was expected but got %s", cur.getStr())
 	return -1
+}
+
+func (p *parser) expectStr() string {
+	cur := p.toks[0]
+	if s, ok := cur.(*strTok); ok {
+		p.popToks()
+		return s.content
+	}
+	log.Fatalf("String literal was expected but got %s", cur.getStr())
+	return ""
 }
 
 func (p *parser) isFunction() bool {
@@ -274,7 +284,7 @@ func buildGVarInit(ty ty, rhs node) gVarInit {
 			}
 			return newGVarInitArr(body)
 		default:
-			if ok, str := isNodeStr(rhs); ok {
+			if ok, str := isStrNode(rhs); ok {
 				if t.len < 0 {
 					t.len = len(str)
 				} else if t.len > len(str) {
@@ -284,7 +294,7 @@ func buildGVarInit(ty ty, rhs node) gVarInit {
 				}
 				return newGVarInitStr(str)
 			}
-			log.Fatalf("unhandled case in global variable initialization: %T", rhs)
+			log.Fatalf("Unhandled case in global variable initialization: %T", rhs)
 			return nil
 		}
 	case *tyStruct:
@@ -462,7 +472,7 @@ func (p *parser) baseType() (t ty, isTypeDef bool, sc storageClass) {
 			return newTyBool(), isTypeDef, sc
 		}
 	}
-	log.Fatalf("type expected but got %T: %s", cur, cur.getStr())
+	log.Fatalf("Type expected but got %T: %s", cur, cur.getStr())
 	return
 }
 
@@ -576,7 +586,7 @@ func eval(nd node) int64 {
 		}
 		return eval(n.lhs)
 	}
-	log.Fatalf("not a constant expression.")
+	log.Fatalf("Not a constant expression.")
 	return 0
 }
 
@@ -624,7 +634,7 @@ func (p *parser) structDecl() ty {
 		if tag := p.searchStructTag(tagStr); tag != nil {
 			return tag.ty
 		}
-		log.Fatalf("no such struct tag %s", tagStr)
+		log.Fatalf("No such struct tag %s", tagStr)
 	}
 	p.expect("{")
 	var members []*member
@@ -653,7 +663,7 @@ func (p *parser) enumDecl() ty {
 		if tag := p.searchEnumTag(tagStr); tag != nil {
 			return tag.ty
 		}
-		log.Fatalf("no such enum tag %s", tagStr)
+		log.Fatalf("No such enum tag %s", tagStr)
 	}
 	t := newTyEnum()
 
@@ -804,7 +814,7 @@ func (p *parser) stmt() node {
 					cases = append(cases, n)
 				case *defaultNode:
 					if dflt != nil {
-						log.Fatal("multiple definition of default clause.")
+						log.Fatal("Multiple definition of default clause.")
 					}
 					dflt = n
 				default:
@@ -846,7 +856,7 @@ func (p *parser) storeInit(t ty, dst addressableNode, rhs node) node {
 		var body []node
 		var ln, idx int
 		_, isChar := t.of.(*tyChar)
-		isString, str := isNodeStr(rhs)
+		isString, str := isStrNode(rhs)
 		// string literal
 		if isChar && isString {
 			for i, r := range str {
@@ -896,7 +906,7 @@ func (p *parser) storeInit(t ty, dst addressableNode, rhs node) node {
 	}
 }
 
-func isNodeStr(n node) (bool, string) {
+func isStrNode(n node) (bool, string) {
 	if v, ok := n.(*varNode); !ok {
 		return false, ""
 	} else if g, ok := v.v.(*gVar); !ok {
@@ -1142,7 +1152,7 @@ func (p *parser) postfix() node {
 				node = newMemberNode(node.(addressableNode), mem)
 				continue
 			}
-			log.Fatalf("expected struct but got %T", node.loadType())
+			log.Fatalf("Expected struct but got %T", node.loadType())
 		}
 		if p.consume("->") {
 			if t, ok := node.loadType().(*tyPtr); ok {
@@ -1150,7 +1160,7 @@ func (p *parser) postfix() node {
 				node = newMemberNode(newDerefNode(node.(addressableNode)), mem)
 				continue
 			}
-			log.Fatalf("expected pointer but got %T", node.loadType())
+			log.Fatalf("Expected pointer but got %T", node.loadType())
 		}
 		if p.consume("++") {
 			node = newIncNode(node.(addressableNode), false)
@@ -1174,7 +1184,7 @@ func (p *parser) stmtExpr() node {
 	}
 	p.expect(")")
 	if ex, ok := body[len(body)-1].(*exprNode); !ok {
-		log.Fatal("statement expression returning void is not supported")
+		log.Fatal("Statement expression returning void is not supported")
 	} else {
 		body[len(body)-1] = ex.body
 	}
@@ -1232,7 +1242,7 @@ func (p *parser) primary() node {
 		case *lVar, *gVar:
 			return newVarNode(v)
 		default:
-			log.Fatalf("unhandled case of variable in primary: %T", p.findVar(id))
+			log.Fatalf("Unhandled case of variable in primary: %T", p.findVar(id))
 		}
 	}
 
