@@ -1248,7 +1248,7 @@ func (p *parser) primary() node {
 
 	if str, isStr := p.consumeStr(); isStr {
 		init := newGVarInitStr(str)
-		s := newGVar(true, newGVarLabel(), newTyArr(newTyChar(), utf8.RuneCountInString(str)), init)
+		s := newGVar(true, newGVarLabel(), newTyArr(newTyChar(), len(str)), init)
 		p.res.gVars = append(p.res.gVars, s)
 		return newVarNode(s)
 	}

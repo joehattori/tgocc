@@ -1,8 +1,14 @@
 package main
 
+import (
+	"path/filepath"
+	"strings"
+)
+
 var macros = make(map[string][]token)
 
-func (p *parser) preprocess() {
+func (t *tokenizer) preprocess() {
+	p := t.res
 	var output []token
 	for !p.isEOF() {
 		if p.consume("\n") {
@@ -37,7 +43,11 @@ func (p *parser) preprocess() {
 			}
 			macros[id] = def
 		} else if p.consume("include") {
+			path := p.expectStr()
+			newTok := newTokenizer(filepath.Join(filepath.Dir(t.filePath), strings.TrimRight(path, string('\000'))))
+			newTok.tokenize()
 		}
 	}
 	p.toks = append(output, p.toks[0])
+	t.res = p
 }

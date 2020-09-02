@@ -3,7 +3,6 @@ package main
 import (
 	"io/ioutil"
 	"log"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -14,7 +13,7 @@ import (
 var (
 	idRegexp   = regexp.MustCompile(`^[a-zA-Z_]+\w*`)
 	typeRegexp = regexp.MustCompile(
-		`^(int|char|long|short|struct|void|_Bool|typedef|enum|static|continue|switch|case|default|extern|do|define)\W`)
+		`^(int|char|long|short|struct|void|_Bool|typedef|enum|static|continue|switch|case|default|extern|do|define|include)\W`)
 )
 
 type token interface {
@@ -61,13 +60,14 @@ type ast struct {
 }
 
 type tokenizer struct {
-	input string
-	pos   int
-	res   parser
+	filePath string
+	input    string
+	pos      int
+	res      *parser
 }
 
-func newTokenizer() *tokenizer {
-	return new(tokenizer)
+func newTokenizer(path string) *tokenizer {
+	return &tokenizer{filePath: path}
 }
 
 func (t *tokenizer) cur() string {
@@ -217,8 +217,8 @@ func (t *tokenizer) trimSpace() {
 	}
 }
 
-func (t *tokenizer) tokenize(path string) *parser {
-	input, err := ioutil.ReadFile(os.Args[1])
+func (t *tokenizer) tokenize() *parser {
+	input, err := ioutil.ReadFile(t.filePath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -279,7 +279,7 @@ func (t *tokenizer) tokenize(path string) *parser {
 		log.Fatalf("Unexpected input %s\n", s)
 	}
 	toks = append(toks, newEOFTok())
-	parser := newParser(toks)
-	parser.preprocess()
-	return parser
+	t.res = newParser(toks)
+	t.preprocess()
+	return t.res
 }

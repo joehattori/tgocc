@@ -2,12 +2,7 @@
 /* Compile this code,
  * and see if it passes! */
 
-#define ZERO 0
-#define WEEKS (365/7)
-
-int printf();
-int exit();
-int strcmp(char *p, char *q);
+#include "test.h"
 
 int test(long expected, long actual, char *input) {
     if (actual == expected) {
@@ -23,15 +18,6 @@ int ret2(void) {
     return 2;
     return 1;
 }
-
-int add2(int x, int y) { return x+y; }
-int sub2(int x, int y) { return x-y; }
-int add6(int a, int b, int c, int d, int e, int f) { return a+b+c+d+e+f; }
-int fib(int x) { if (x<=1) return 1; return fib(x-1) + fib(x-2); }
-int addx(int *x, int y) { return *x+y; }
-int sub_char(char a, char b, char c) { return a-b-c; }
-int sub_short(short a, short b, short c) { return a-b-c; }
-int sub_long(long a, long b, long c) { return a-b-c; }
 
 int g1;
 int g2[4];
