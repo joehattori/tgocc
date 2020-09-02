@@ -10,7 +10,7 @@ import (
 type parser struct {
 	curFnName string
 	curScope  *scope
-	res       *ast
+	res       *ast // TODO: maybe better to declare ast in global
 	toks      []token
 }
 
@@ -97,6 +97,7 @@ func (p *parser) consume(str string) bool {
 	return false
 }
 
+// TODO: might be better to return token in consume...() and expect...()
 func (p *parser) consumeID() (string, bool) {
 	cur := p.toks[0]
 	id := idRegexp.FindString(cur.getStr())
@@ -116,6 +117,9 @@ func (p *parser) consumeStr() (string, bool) {
 }
 
 func (p *parser) isEOF() (ok bool) {
+	if len(p.toks) == 0 {
+		return true
+	}
 	_, ok = p.toks[0].(*eofTok)
 	return
 }

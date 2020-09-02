@@ -62,12 +62,13 @@ type ast struct {
 type tokenizer struct {
 	filePath string
 	input    string
+	addEOF   bool
 	pos      int
-	res      *parser
+	res      []token
 }
 
-func newTokenizer(path string) *tokenizer {
-	return &tokenizer{filePath: path}
+func newTokenizer(path string, addEOF bool) *tokenizer {
+	return &tokenizer{filePath: path, addEOF: addEOF}
 }
 
 func (t *tokenizer) cur() string {
@@ -217,7 +218,7 @@ func (t *tokenizer) trimSpace() {
 	}
 }
 
-func (t *tokenizer) tokenize() *parser {
+func (t *tokenizer) tokenize() []token {
 	input, err := ioutil.ReadFile(t.filePath)
 	if err != nil {
 		log.Fatal(err)
@@ -278,8 +279,10 @@ func (t *tokenizer) tokenize() *parser {
 
 		log.Fatalf("Unexpected input %s\n", s)
 	}
-	toks = append(toks, newEOFTok())
-	t.res = newParser(toks)
-	t.preprocess()
-	return t.res
+	if t.addEOF {
+		toks = append(toks, newEOFTok())
+	}
+	t.res = toks
+	toks = t.preprocess()
+	return toks
 }

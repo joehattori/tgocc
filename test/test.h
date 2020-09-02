@@ -12,3 +12,9 @@ int addx(int *x, int y);
 int sub_char(char a, char b, char c);
 int sub_short(short a, short b, short c);
 int sub_long(long a, long b, long c);
+
+typedef struct {
+    int a;
+    int b;
+    int c;
+} abc;

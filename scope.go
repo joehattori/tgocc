@@ -35,7 +35,7 @@ func newEnumTag(name string, t ty) *enumTag {
 
 func (s *scope) addGVar(emit bool, id string, t ty, init gVarInit) *gVar {
 	if _, exists := s.searchVar(id).(*gVar); exists {
-		log.Fatalf("variable %s is already defined", id)
+		log.Fatalf("identifier %s is already defined", id)
 	}
 	v := newGVar(emit, id, t, init)
 	s.vars = append(s.vars, v)
@@ -44,7 +44,7 @@ func (s *scope) addGVar(emit bool, id string, t ty, init gVarInit) *gVar {
 
 func (s *scope) addLVar(id string, t ty) *lVar {
 	if _, exists := s.searchVar(id).(*lVar); exists {
-		log.Fatalf("variable %s is already defined", id)
+		log.Fatalf("identifier %s is already defined", id)
 	}
 	v := newLVar(id, t)
 	s.vars = append(s.vars, v)
@@ -110,7 +110,6 @@ func (s *scope) searchEnumTag(tagStr string) *enumTag {
 	return nil
 }
 
-// currently unused
 func (s *scope) segregateScopeVars() (lVars []*lVar, gVars []*gVar, typeDefs []*typeDef) {
 	for _, sv := range s.vars {
 		switch v := sv.(type) {

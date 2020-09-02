@@ -10,8 +10,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "usage: ./tccgo <filename>")
 		return
 	}
-	t := newTokenizer(os.Args[1])
-	parser := t.tokenize()
+	t := newTokenizer(os.Args[1], true)
+	toks := t.tokenize()
+	parser := newParser(toks)
 	parser.parse()
 	parser.res.gen()
 }

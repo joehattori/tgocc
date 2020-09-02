@@ -7,8 +7,8 @@ import (
 
 var macros = make(map[string][]token)
 
-func (t *tokenizer) preprocess() {
-	p := t.res
+func (t *tokenizer) preprocess() []token {
+	p := newParser(t.res)
 	var output []token
 	for !p.isEOF() {
 		if p.consume("\n") {
@@ -43,11 +43,15 @@ func (t *tokenizer) preprocess() {
 			}
 			macros[id] = def
 		} else if p.consume("include") {
-			path := p.expectStr()
-			newTok := newTokenizer(filepath.Join(filepath.Dir(t.filePath), strings.TrimRight(path, string('\000'))))
-			newTok.tokenize()
+			relPath := p.expectStr()
+			includePath := filepath.Join(filepath.Dir(t.filePath), strings.TrimRight(relPath, string('\000')))
+			newTok := newTokenizer(includePath, false)
+			newToks := newTok.tokenize()
+			output = append(output, newToks...)
 		}
 	}
-	p.toks = append(output, p.toks[0])
-	t.res = p
+	if t.addEOF {
+		output = append(output, newEOFTok())
+	}
+	return output
 }

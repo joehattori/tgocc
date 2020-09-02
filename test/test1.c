@@ -528,6 +528,8 @@ int main() {
     test(0, ZERO, "ZERO");
     test(52, WEEKS, "WEEKS");
 
+    test(1, ({ abc x={1,2,3}; x.a; }), "abc x={1,2,3}; x.a;");
+
     printf("OK\n");
     return 0;
 }
