@@ -171,17 +171,14 @@ func (p *parser) isFunction() bool {
 	return isID && p.consume("(")
 }
 
-func (p *parser) isType() bool {
-	cur := p.toks[0]
-	switch tok := cur.(type) {
+func (p *parser) isType() (ret bool) {
+	switch tok := p.toks[0].(type) {
 	case *idTok:
-		id := idMatcher.FindString(tok.id)
-		_, ok := p.searchVar(id).(*typeDef)
-		return ok
+		_, ret = p.searchVar(tok.id).(*typeDef)
 	case *reservedTok:
-		return typeMatcher.MatchString(tok.str)
+		ret = typeMatcher.MatchString(tok.str)
 	}
-	return false
+	return
 }
 
 func (p *parser) popToks() {
@@ -243,13 +240,11 @@ func (p *parser) parse() {
 	ast := p.res
 	for !p.isEOF() {
 		if p.isFunction() {
-			fn := p.function()
-			if fn != nil {
+			if fn := p.function(); fn != nil {
 				ast.fns = append(ast.fns, fn)
 			}
 		} else {
-			ty, id, rhs, sc := p.decl()
-			if ty != nil {
+			if ty, id, rhs, sc := p.decl(); ty != nil {
 				init := buildGVarInit(ty, rhs)
 				emit := (sc & extern) == 0
 				p.curScope.addGVar(emit, id, ty, init)
@@ -259,11 +254,11 @@ func (p *parser) parse() {
 	}
 }
 
-func buildGVarInit(ty ty, rhs node) gVarInit {
+func buildGVarInit(t ty, rhs node) gVarInit {
 	if rhs == nil {
 		return nil
 	}
-	switch t := ty.(type) {
+	switch t := t.(type) {
 	case *tyArr:
 		switch rhs := rhs.(type) {
 		case *blkNode:
@@ -418,8 +413,9 @@ func (p *parser) initializer(t ty, sc storageClass) node {
 			idx++
 		}
 		return newBlkNode(nodes)
+	default:
+		return p.assign()
 	}
-	return p.assign()
 }
 
 func (p *parser) baseType() (t ty, isTypeDef bool, sc storageClass) {

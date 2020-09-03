@@ -174,7 +174,7 @@ func newMember(name string, offset int, t ty) *member {
 type nodeKind int
 
 const (
-	ndAdd = iota
+	ndAdd nodeKind = iota
 	ndSub
 	ndMul
 	ndDiv
