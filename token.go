@@ -14,7 +14,7 @@ import (
 var (
 	idMatcher   = regexp.MustCompile(`^[a-zA-Z_]+\w*`)
 	typeMatcher = regexp.MustCompile(
-		`^(int|char|long|short|struct|void|_Bool|typedef|enum|static|extern|signed|unsigned)\W`)
+		`^(int|char|long|short|struct|void|_Bool|typedef|enum|static|extern|signed|unsigned|volatile)\W`)
 )
 
 type (

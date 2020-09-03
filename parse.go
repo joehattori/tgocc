@@ -472,6 +472,8 @@ func (p *parser) baseType() (t ty, isTypeDef bool, sc storageClass) {
 		if p.consume("_Bool") {
 			return newTyBool(), isTypeDef, sc
 		}
+		// just skip `volatile` keyword since there is no optimisation yet.
+		p.consume("volatile")
 		// TODO: handle unsigned properly
 		p.consume("unsigned")
 		p.consume("signed")

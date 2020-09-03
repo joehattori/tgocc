@@ -564,6 +564,8 @@ int main() {
     test(8, sizeof(signed long long), "sizeof(signed long long)");
     test(8, sizeof(signed long long int), "sizeof(signed long long int)");
 
+    test(3, ({ volatile int i=3; i; }), "volatile int i=3; i;");
+
     printf("OK\n");
     return 0;
 }
