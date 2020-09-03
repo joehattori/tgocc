@@ -453,11 +453,9 @@ func (p *parser) baseType() (t ty, isTypeDef bool, sc storageClass) {
 	if isTypeDef && (sc != 0) || (sc == 0b11) {
 		log.Fatal("typedef, static and extern should not be used together.")
 	}
-	cur := p.toks[0]
-	switch tok := cur.(type) {
+	switch tok := p.toks[0].(type) {
 	case *idTok:
-		id := idMatcher.FindString(tok.name)
-		if tyDef, ok := p.searchVar(id).(*typeDef); ok {
+		if tyDef, ok := p.searchVar(tok.name).(*typeDef); ok {
 			p.popToks()
 			return tyDef.ty, isTypeDef, sc
 		}
@@ -468,9 +466,15 @@ func (p *parser) baseType() (t ty, isTypeDef bool, sc storageClass) {
 		if p.beginsWith("enum") {
 			return p.enumDecl(), isTypeDef, sc
 		}
-		if p.consume("int") {
-			return newTyInt(), isTypeDef, sc
+		if p.consume("void") {
+			return newTyVoid(), isTypeDef, sc
 		}
+		if p.consume("_Bool") {
+			return newTyBool(), isTypeDef, sc
+		}
+		// TODO: handle unsigned properly
+		p.consume("unsigned")
+		p.consume("signed")
 		if p.consume("char") {
 			return newTyChar(), isTypeDef, sc
 		}
@@ -478,19 +482,17 @@ func (p *parser) baseType() (t ty, isTypeDef bool, sc storageClass) {
 			p.consume("int")
 			return newTyShort(), isTypeDef, sc
 		}
+		if p.consume("int") {
+			return newTyInt(), isTypeDef, sc
+		}
 		if p.consume("long") {
 			p.consume("long")
 			p.consume("int")
 			return newTyLong(), isTypeDef, sc
 		}
-		if p.consume("void") {
-			return newTyVoid(), isTypeDef, sc
-		}
-		if p.consume("_Bool") {
-			return newTyBool(), isTypeDef, sc
-		}
+		return newTyInt(), isTypeDef, sc
 	}
-	log.Fatalf("Type expected but got %T: %s", cur, cur.getStr())
+	log.Fatalf("Type expected but got %T: %s", p.toks[0], p.toks[0].getStr())
 	return
 }
 

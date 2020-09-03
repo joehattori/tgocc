@@ -14,8 +14,7 @@ import (
 var (
 	idMatcher   = regexp.MustCompile(`^[a-zA-Z_]+\w*`)
 	typeMatcher = regexp.MustCompile(
-		`^(int|char|long|short|struct|void|_Bool|typedef|enum|static|continue|switch|case|default|extern|do|define|include)\W`,
-	)
+		`^(int|char|long|short|struct|void|_Bool|typedef|enum|static|extern|signed|unsigned)\W`)
 )
 
 type (
@@ -174,7 +173,7 @@ func (t *tokenizer) readNewLine() token {
 
 func (t *tokenizer) readReserved() token {
 	s := t.cur()
-	r := regexp.MustCompile(`^(if|else|while|for|return|sizeof|break)\W`)
+	r := regexp.MustCompile(`^(if|else|while|for|return|sizeof|break|continue|switch|case|default|do|define|include)\W`)
 	if res := r.FindString(s); res != "" {
 		l := utf8.RuneCountInString(res) - 1
 		t.pos += l

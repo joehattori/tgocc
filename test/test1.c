@@ -545,6 +545,25 @@ int main() {
 
     test(1, ({ abc x={1,2,3}; x.a; }), "abc x={1,2,3}; x.a;");
 
+    test(1, sizeof(char), "sizeof(char)");
+    test(1, sizeof(signed char), "sizeof(signed char)");
+
+    test(2, sizeof(short), "sizeof(short)");
+    test(2, sizeof(short int), "sizeof(short int)");
+    test(2, sizeof(signed short), "sizeof(signed short)");
+
+    test(4, sizeof(int), "sizeof(int)");
+    test(4, sizeof(signed int), "sizeof(signed int)");
+    test(4, sizeof(signed), "sizeof(signed)");
+
+    test(8, sizeof(long), "sizeof(long)");
+    test(8, sizeof(signed long), "sizeof(signed long)");
+    test(8, sizeof(signed long int), "sizeof(signed long int)");
+
+    test(8, sizeof(long long), "sizeof(long long)");
+    test(8, sizeof(signed long long), "sizeof(signed long long)");
+    test(8, sizeof(signed long long int), "sizeof(signed long long int)");
+
     printf("OK\n");
     return 0;
 }
