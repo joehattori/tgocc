@@ -541,3 +541,79 @@ func (w *whileNode) loadType() ty {
 	w.then.loadType()
 	return newTyEmpty()
 }
+
+func eval(nd node) int64 {
+	switch n := nd.(type) {
+	case *binaryNode:
+		switch n.op {
+		case ndAdd:
+			return eval(n.lhs) + eval(n.rhs)
+		case ndSub:
+			return eval(n.lhs) - eval(n.rhs)
+		case ndMul:
+			return eval(n.lhs) * eval(n.rhs)
+		case ndDiv:
+			return eval(n.lhs) / eval(n.rhs)
+		case ndBitOr:
+			return eval(n.lhs) | eval(n.rhs)
+		case ndBitXor:
+			return eval(n.lhs) ^ eval(n.rhs)
+		case ndBitAnd:
+			return eval(n.lhs) & eval(n.rhs)
+		case ndShl:
+			return eval(n.lhs) << eval(n.rhs)
+		case ndShr:
+			return eval(n.lhs) >> eval(n.rhs)
+		case ndEq:
+			if eval(n.lhs) == eval(n.rhs) {
+				return 1
+			}
+			return 0
+		case ndNeq:
+			if eval(n.lhs) != eval(n.rhs) {
+				return 1
+			}
+			return 0
+		case ndLt:
+			if eval(n.lhs) < eval(n.rhs) {
+				return 1
+			}
+			return 0
+		case ndLeq:
+			if eval(n.lhs) <= eval(n.rhs) {
+				return 1
+			}
+			return 0
+		case ndGt:
+			if eval(n.lhs) > eval(n.rhs) {
+				return 1
+			}
+			return 0
+		case ndGeq:
+			if eval(n.lhs) <= eval(n.rhs) {
+				return 1
+			}
+			return 0
+		case ndLogAnd:
+			return eval(n.lhs) & eval(n.rhs)
+		case ndLogOr:
+			return eval(n.lhs) | eval(n.rhs)
+		}
+	case *bitNotNode:
+		return ^eval(n.body)
+	case *notNode:
+		if eval(n.body) != 0 {
+			return 1
+		}
+		return 0
+	case *numNode:
+		return n.val
+	case *ternaryNode:
+		if eval(n.cond) == 0 {
+			return eval(n.rhs)
+		}
+		return eval(n.lhs)
+	}
+	log.Fatalf("Not a constant expression.")
+	return 0
+}

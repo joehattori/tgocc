@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"regexp"
@@ -11,42 +12,45 @@ import (
 )
 
 var (
-	idRegexp   = regexp.MustCompile(`^[a-zA-Z_]+\w*`)
-	typeRegexp = regexp.MustCompile(
-		`^(int|char|long|short|struct|void|_Bool|typedef|enum|static|continue|switch|case|default|extern|do|define|include)\W`)
+	idMatcher   = regexp.MustCompile(`^[a-zA-Z_]+\w*`)
+	typeMatcher = regexp.MustCompile(
+		`^(int|char|long|short|struct|void|_Bool|typedef|enum|static|continue|switch|case|default|extern|do|define|include)\W`,
+	)
 )
 
-type token interface {
-	getStr() string
-}
+type (
+	token interface {
+		getStr() string
+	}
 
-type eofTok struct{}
+	eofTok struct{}
 
-type idTok struct {
-	id  string
-	len int
-}
+	idTok struct {
+		id  string
+		len int
+	}
 
-type numTok struct {
-	val int64
-	len int
-}
+	numTok struct {
+		val int64
+		len int
+	}
 
-type reservedTok struct {
-	str string
-	len int
-}
+	reservedTok struct {
+		str string
+		len int
+	}
 
-type strTok struct {
-	content string
-	len     int
-}
+	strTok struct {
+		content string
+		len     int
+	}
+)
 
 func (e *eofTok) getStr() string      { return "" }
 func (i *idTok) getStr() string       { return i.id }
-func (n *numTok) getStr() string      { return "" }
+func (n *numTok) getStr() string      { return fmt.Sprintf("%d", n.val) }
 func (r *reservedTok) getStr() string { return r.str }
-func (s *strTok) getStr() string      { return "" }
+func (s *strTok) getStr() string      { return s.content }
 
 func newEOFTok() *eofTok                            { return &eofTok{} }
 func newIDTok(str string, l int) *idTok             { return &idTok{str, l} }
@@ -135,12 +139,13 @@ func (t *tokenizer) readDigitLiteral() token {
 
 func (t *tokenizer) readID() token {
 	s := t.cur()
-	if !idRegexp.MatchString(s) {
+	if !idMatcher.MatchString(s) {
 		return nil
 	}
-	l := utf8.RuneCountInString(idRegexp.FindString(s))
+	id := idMatcher.FindString(s)
+	l := utf8.RuneCountInString(id)
 	t.pos += l
-	return newIDTok(s, l)
+	return newIDTok(id, l)
 }
 
 func (t *tokenizer) readMultiCharOp() token {
@@ -153,7 +158,7 @@ func (t *tokenizer) readMultiCharOp() token {
 	for _, op := range ops {
 		if strings.HasPrefix(s, op) {
 			t.pos += utf8.RuneCountInString(op)
-			return newReservedTok(s, utf8.RuneCountInString(op))
+			return newReservedTok(op, utf8.RuneCountInString(op))
 		}
 	}
 	return nil
@@ -170,15 +175,15 @@ func (t *tokenizer) readNewLine() token {
 func (t *tokenizer) readReserved() token {
 	s := t.cur()
 	r := regexp.MustCompile(`^(if|else|while|for|return|sizeof|break)\W`)
-	if r.MatchString(s) {
-		l := utf8.RuneCountInString(r.FindString(s)) - 1
+	if res := r.FindString(s); res != "" {
+		l := utf8.RuneCountInString(res) - 1
 		t.pos += l
-		return newReservedTok(s, l)
+		return newReservedTok(res, l)
 	}
-	if typeRegexp.MatchString(s) {
-		l := utf8.RuneCountInString(typeRegexp.FindString(s)) - 1
+	if res := typeMatcher.FindString(s); res != "" {
+		l := utf8.RuneCountInString(res) - 1
 		t.pos += l
-		return newReservedTok(s, l)
+		return newReservedTok(res, l)
 	}
 	return nil
 }
@@ -189,7 +194,7 @@ func (t *tokenizer) readRuneFrom(s string) token {
 	}
 	cur := t.cur()
 	t.pos++
-	return newReservedTok(cur, 1)
+	return newReservedTok(cur[:1], 1)
 }
 
 func (t *tokenizer) readStrLiteral() token {

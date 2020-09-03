@@ -16,7 +16,7 @@ func (t *tokenizer) preprocess() []token {
 		}
 		cur := p.toks[0]
 		if id, ok := p.consumeID(); ok {
-			if macro, ok := macros[id]; ok {
+			if macro, ok := macros[id.getStr()]; ok {
 				output = append(output, macro...)
 			} else {
 				output = append(output, cur)
@@ -41,9 +41,9 @@ func (t *tokenizer) preprocess() []token {
 				p.popToks()
 				def = append(def, cur)
 			}
-			macros[id] = def
+			macros[id.getStr()] = def
 		} else if p.consume("include") {
-			relPath := p.expectStr()
+			relPath := p.expectStr().getStr()
 			includePath := filepath.Join(filepath.Dir(t.filePath), strings.TrimRight(relPath, string('\000')))
 			newTok := newTokenizer(includePath, false)
 			newToks := newTok.tokenize()

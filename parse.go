@@ -97,23 +97,24 @@ func (p *parser) consume(str string) bool {
 	return false
 }
 
-// TODO: might be better to return token in consume...() and expect...()
-func (p *parser) consumeID() (string, bool) {
-	cur := p.toks[0]
-	id := idRegexp.FindString(cur.getStr())
-	if _, ok := cur.(*idTok); ok && id != "" {
-		p.popToks()
-		return id, true
-	}
-	return "", false
+func (p *parser) consumeID() (tok *idTok, ok bool) {
+	defer func() {
+		if ok {
+			p.popToks()
+		}
+	}()
+	tok, ok = p.toks[0].(*idTok)
+	return
 }
 
-func (p *parser) consumeStr() (string, bool) {
-	if s, ok := p.toks[0].(*strTok); ok {
-		p.popToks()
-		return s.content, true
-	}
-	return "", false
+func (p *parser) consumeStr() (tok *strTok, ok bool) {
+	defer func() {
+		if ok {
+			p.popToks()
+		}
+	}()
+	tok, ok = p.toks[0].(*strTok)
+	return
 }
 
 func (p *parser) isEOF() (ok bool) {
@@ -125,44 +126,39 @@ func (p *parser) isEOF() (ok bool) {
 }
 
 func (p *parser) expect(str string) {
-	cur := p.toks[0]
-	if r, ok := cur.(*reservedTok); ok &&
-		r.len == utf8.RuneCountInString(str) && strings.HasPrefix(cur.getStr(), str) {
+	if r, ok := p.toks[0].(*reservedTok); ok &&
+		r.len == utf8.RuneCountInString(str) && strings.HasPrefix(r.str, str) {
 		p.popToks()
 		return
 	}
-	log.Fatalf("%s was expected but got %s", str, cur.getStr())
+	log.Fatalf("%s was expected but got %s", str, p.toks[0].getStr())
 }
 
-func (p *parser) expectID() string {
-	cur := p.toks[0]
-	id := idRegexp.FindString(cur.getStr())
-	if _, ok := cur.(*idTok); ok && id != "" {
-		p.popToks()
-		return id
+func (p *parser) expectID() (tok *idTok) {
+	tok, _ = p.toks[0].(*idTok)
+	if tok == nil {
+		log.Fatalf("ID was expected but got %s", p.toks[0].getStr())
 	}
-	log.Fatalf("ID was expected but got %s", cur.getStr())
-	return ""
+	p.popToks()
+	return
 }
 
-func (p *parser) expectNum() int64 {
-	cur := p.toks[0]
-	if n, ok := cur.(*numTok); ok {
-		p.popToks()
-		return n.val
+func (p *parser) expectNum() (tok *numTok) {
+	tok, _ = p.toks[0].(*numTok)
+	if tok == nil {
+		log.Fatalf("Number was expected but got %s", p.toks[0].getStr())
 	}
-	log.Fatalf("Number was expected but got %s", cur.getStr())
-	return -1
+	p.popToks()
+	return
 }
 
-func (p *parser) expectStr() string {
-	cur := p.toks[0]
-	if s, ok := cur.(*strTok); ok {
-		p.popToks()
-		return s.content
+func (p *parser) expectStr() (tok *strTok) {
+	tok, _ = p.toks[0].(*strTok)
+	if tok == nil {
+		log.Fatalf("String literal was expected but got %s", p.toks[0].getStr())
 	}
-	log.Fatalf("String literal was expected but got %s", cur.getStr())
-	return ""
+	p.popToks()
+	return
 }
 
 func (p *parser) isFunction() bool {
@@ -179,11 +175,11 @@ func (p *parser) isType() bool {
 	cur := p.toks[0]
 	switch tok := cur.(type) {
 	case *idTok:
-		id := idRegexp.FindString(tok.id)
+		id := idMatcher.FindString(tok.id)
 		_, ok := p.searchVar(id).(*typeDef)
 		return ok
 	case *reservedTok:
-		return typeRegexp.MatchString(tok.str)
+		return typeMatcher.MatchString(tok.str)
 	}
 	return false
 }
@@ -400,9 +396,9 @@ func (p *parser) initializer(t ty, sc storageClass) node {
 	switch t := t.(type) {
 	case *tyArr, *tyStruct:
 		var nodes []node
-		if str, ok := p.consumeStr(); ok {
-			init := newGVarInitStr(str)
-			s := newGVar((sc&static) != 0, newGVarLabel(), newTyArr(newTyChar(), len(str)), init)
+		if strTok, ok := p.consumeStr(); ok {
+			init := newGVarInitStr(strTok.getStr())
+			s := newGVar((sc&static) != 0, newGVarLabel(), newTyArr(newTyChar(), strTok.len), init)
 			p.res.gVars = append(p.res.gVars, s)
 			return newVarNode(s)
 		}
@@ -442,7 +438,7 @@ func (p *parser) baseType() (t ty, isTypeDef bool, sc storageClass) {
 	cur := p.toks[0]
 	switch tok := cur.(type) {
 	case *idTok:
-		id := idRegexp.FindString(tok.id)
+		id := idMatcher.FindString(tok.id)
 		if tyDef, ok := p.searchVar(id).(*typeDef); ok {
 			p.popToks()
 			return tyDef.ty, isTypeDef, sc
@@ -498,7 +494,7 @@ func (p *parser) tyDecl(baseTy ty) (id string, newTy ty) {
 		}
 		return
 	}
-	return p.expectID(), p.tySuffix(baseTy)
+	return p.expectID().getStr(), p.tySuffix(baseTy)
 }
 
 func (p *parser) tySuffix(t ty) ty {
@@ -516,82 +512,6 @@ func (p *parser) tySuffix(t ty) ty {
 
 func (p *parser) constExpr() int64 {
 	return eval(p.ternary())
-}
-
-func eval(nd node) int64 {
-	switch n := nd.(type) {
-	case *binaryNode:
-		switch n.op {
-		case ndAdd:
-			return eval(n.lhs) + eval(n.rhs)
-		case ndSub:
-			return eval(n.lhs) - eval(n.rhs)
-		case ndMul:
-			return eval(n.lhs) * eval(n.rhs)
-		case ndDiv:
-			return eval(n.lhs) / eval(n.rhs)
-		case ndBitOr:
-			return eval(n.lhs) | eval(n.rhs)
-		case ndBitXor:
-			return eval(n.lhs) ^ eval(n.rhs)
-		case ndBitAnd:
-			return eval(n.lhs) & eval(n.rhs)
-		case ndShl:
-			return eval(n.lhs) << eval(n.rhs)
-		case ndShr:
-			return eval(n.lhs) >> eval(n.rhs)
-		case ndEq:
-			if eval(n.lhs) == eval(n.rhs) {
-				return 1
-			}
-			return 0
-		case ndNeq:
-			if eval(n.lhs) != eval(n.rhs) {
-				return 1
-			}
-			return 0
-		case ndLt:
-			if eval(n.lhs) < eval(n.rhs) {
-				return 1
-			}
-			return 0
-		case ndLeq:
-			if eval(n.lhs) <= eval(n.rhs) {
-				return 1
-			}
-			return 0
-		case ndGt:
-			if eval(n.lhs) > eval(n.rhs) {
-				return 1
-			}
-			return 0
-		case ndGeq:
-			if eval(n.lhs) <= eval(n.rhs) {
-				return 1
-			}
-			return 0
-		case ndLogAnd:
-			return eval(n.lhs) & eval(n.rhs)
-		case ndLogOr:
-			return eval(n.lhs) | eval(n.rhs)
-		}
-	case *bitNotNode:
-		return ^eval(n.body)
-	case *notNode:
-		if eval(n.body) != 0 {
-			return 1
-		}
-		return 0
-	case *numNode:
-		return n.val
-	case *ternaryNode:
-		if eval(n.cond) == 0 {
-			return eval(n.rhs)
-		}
-		return eval(n.lhs)
-	}
-	log.Fatalf("Not a constant expression.")
-	return 0
 }
 
 func (p *parser) readFnParams(fn *fnNode) {
@@ -633,12 +553,12 @@ func (p *parser) setFnLVars(fn *fnNode) {
 
 func (p *parser) structDecl() ty {
 	p.expect("struct")
-	tagStr, tagExists := p.consumeID()
+	tag, tagExists := p.consumeID()
 	if tagExists && !p.beginsWith("{") {
-		if tag := p.searchStructTag(tagStr); tag != nil {
+		if tag := p.searchStructTag(tag.getStr()); tag != nil {
 			return tag.ty
 		}
-		log.Fatalf("No such struct tag %s", tagStr)
+		log.Fatalf("No such struct tag %s", tag.getStr())
 	}
 	p.expect("{")
 	var members []*member
@@ -655,19 +575,19 @@ func (p *parser) structDecl() ty {
 	}
 	tyStruct := newTyStruct(align, members, alignTo(offset, align))
 	if tagExists {
-		p.curScope.addStructTag(newStructTag(tagStr, tyStruct))
+		p.curScope.addStructTag(newStructTag(tag.getStr(), tyStruct))
 	}
 	return tyStruct
 }
 
 func (p *parser) enumDecl() ty {
 	p.expect("enum")
-	tagStr, tagExists := p.consumeID()
+	tag, tagExists := p.consumeID()
 	if tagExists && !p.beginsWith("{") {
-		if tag := p.searchEnumTag(tagStr); tag != nil {
+		if tag := p.searchEnumTag(tag.getStr()); tag != nil {
 			return tag.ty
 		}
-		log.Fatalf("No such enum tag %s", tagStr)
+		log.Fatalf("No such enum tag %s", tag.getStr())
 	}
 	t := newTyEnum()
 
@@ -678,7 +598,7 @@ func (p *parser) enumDecl() ty {
 		if p.consume("=") {
 			c = int(p.constExpr())
 		}
-		p.curScope.addEnum(id, t, c)
+		p.curScope.addEnum(id.getStr(), t, c)
 		c++
 		orig := p.toks
 		if p.consume("}") || p.consume(",") && p.consume("}") {
@@ -688,7 +608,7 @@ func (p *parser) enumDecl() ty {
 		p.expect(",")
 	}
 	if tagExists {
-		p.curScope.addEnumTag(newEnumTag(tagStr, t))
+		p.curScope.addEnumTag(newEnumTag(tag.getStr(), t))
 	}
 	return t
 }
@@ -747,7 +667,7 @@ func (p *parser) stmt() node {
 		p.expect("(")
 		cond := p.expr()
 		p.expect(")")
-		then:= p.stmt()
+		then := p.stmt()
 		return newWhileNode(cond, then)
 	}
 
@@ -1152,7 +1072,7 @@ func (p *parser) postfix() node {
 		}
 		if p.consume(".") {
 			if s, ok := node.loadType().(*tyStruct); ok {
-				mem := s.findMember(p.expectID())
+				mem := s.findMember(p.expectID().getStr())
 				node = newMemberNode(node.(addressableNode), mem)
 				continue
 			}
@@ -1160,7 +1080,7 @@ func (p *parser) postfix() node {
 		}
 		if p.consume("->") {
 			if t, ok := node.loadType().(*tyPtr); ok {
-				mem := t.to.(*tyStruct).findMember(p.expectID())
+				mem := t.to.(*tyStruct).findMember(p.expectID().getStr())
 				node = newMemberNode(newDerefNode(node.(addressableNode)), mem)
 				continue
 			}
@@ -1221,6 +1141,7 @@ func (p *parser) primary() node {
 	}
 
 	if id, isID := p.consumeID(); isID {
+		id := id.getStr()
 		if p.consume("(") {
 			var t ty
 			if fn, ok := p.searchVar(id).(*gVar); ok {
@@ -1250,12 +1171,12 @@ func (p *parser) primary() node {
 		}
 	}
 
-	if str, isStr := p.consumeStr(); isStr {
-		init := newGVarInitStr(str)
-		s := newGVar(true, newGVarLabel(), newTyArr(newTyChar(), len(str)), init)
+	if strTok, isStr := p.consumeStr(); isStr {
+		init := newGVarInitStr(strTok.getStr())
+		s := newGVar(true, newGVarLabel(), newTyArr(newTyChar(), strTok.len), init)
 		p.res.gVars = append(p.res.gVars, s)
 		return newVarNode(s)
 	}
 
-	return newNumNode(int64(p.expectNum()))
+	return newNumNode(int64(p.expectNum().val))
 }
