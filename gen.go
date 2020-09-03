@@ -98,7 +98,13 @@ func (a *addrNode) gen() {
 	a.v.genAddr()
 }
 
-func (a *arithNode) gen() {
+func (a *assignNode) gen() {
+	a.lhs.genAddr()
+	a.rhs.gen()
+	store(a.loadType())
+}
+
+func (a *binaryNode) gen() {
 	switch a.op {
 	case ndAddEq, ndSubEq, ndMulEq, ndDivEq, ndPtrAddEq, ndPtrSubEq, ndShlEq, ndShrEq:
 		a.lhs.(addressableNode).genAddr()
@@ -197,12 +203,6 @@ func (a *arithNode) gen() {
 	}
 
 	fmt.Println("	push rax")
-}
-
-func (a *assignNode) gen() {
-	a.lhs.genAddr()
-	a.rhs.gen()
-	store(a.loadType())
 }
 
 func (b *bitNotNode) gen() {

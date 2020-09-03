@@ -19,15 +19,15 @@ type (
 		ty ty
 	}
 
-	arithNode struct {
-		op  nodeKind
-		lhs node
+	assignNode struct {
+		lhs addressableNode
 		rhs node
 		ty  ty
 	}
 
-	assignNode struct {
-		lhs addressableNode
+	binaryNode struct {
+		op  nodeKind
+		lhs node
 		rhs node
 		ty  ty
 	}
@@ -205,21 +205,21 @@ const (
 	ndShrEq
 )
 
-func newAddNode(lhs node, rhs node) *arithNode {
+func newAddNode(lhs node, rhs node) *binaryNode {
 	l := lhs.loadType()
 	r := rhs.loadType()
 	switch l.(type) {
 	case *tyChar, *tyInt, *tyShort, *tyLong, *tyBool:
 		switch r.(type) {
 		case *tyChar, *tyInt, *tyShort, *tyLong, *tyBool:
-			return &arithNode{op: ndAdd, lhs: lhs, rhs: rhs}
+			return &binaryNode{op: ndAdd, lhs: lhs, rhs: rhs}
 		case *tyPtr, *tyArr:
-			return &arithNode{op: ndPtrAdd, lhs: rhs, rhs: lhs}
+			return &binaryNode{op: ndPtrAdd, lhs: rhs, rhs: lhs}
 		}
 	case *tyPtr, *tyArr:
 		switch r.(type) {
 		case *tyChar, *tyInt, *tyShort, *tyLong, *tyBool:
-			return &arithNode{op: ndPtrAdd, lhs: lhs, rhs: rhs}
+			return &binaryNode{op: ndPtrAdd, lhs: lhs, rhs: rhs}
 		}
 	}
 	log.Fatalf("Unexpected type for addition: lhs: %T %T, rhs: %T %T", lhs, l, rhs, r)
@@ -230,12 +230,12 @@ func newAddrNode(v addressableNode) *addrNode {
 	return &addrNode{v: v}
 }
 
-func newArithNode(op nodeKind, lhs node, rhs node) *arithNode {
-	return &arithNode{op: op, lhs: lhs, rhs: rhs}
-}
-
 func newAssignNode(lhs addressableNode, rhs node) *assignNode {
 	return &assignNode{lhs: lhs, rhs: rhs}
+}
+
+func newBinaryNode(op nodeKind, lhs node, rhs node) *binaryNode {
+	return &binaryNode{op: op, lhs: lhs, rhs: rhs}
 }
 
 func newBitNotNode(body node) *bitNotNode {
@@ -327,21 +327,21 @@ func newStmtExprNode(body []node) *stmtExprNode {
 	return &stmtExprNode{body: body}
 }
 
-func newSubNode(lhs node, rhs node) *arithNode {
+func newSubNode(lhs node, rhs node) *binaryNode {
 	l := lhs.loadType()
 	r := rhs.loadType()
 	switch l.(type) {
 	case *tyChar, *tyInt, *tyLong, *tyShort, *tyBool:
 		switch r.(type) {
 		case *tyChar, *tyInt, *tyLong, *tyShort, *tyBool:
-			return &arithNode{op: ndSub, lhs: lhs, rhs: rhs}
+			return &binaryNode{op: ndSub, lhs: lhs, rhs: rhs}
 		}
 	case *tyPtr, *tyArr:
 		switch r.(type) {
 		case *tyChar, *tyInt, *tyLong, *tyShort, *tyBool:
-			return &arithNode{op: ndPtrSub, lhs: lhs, rhs: rhs}
+			return &binaryNode{op: ndPtrSub, lhs: lhs, rhs: rhs}
 		case *tyPtr, *tyArr:
-			return &arithNode{op: ndPtrDiff, lhs: lhs, rhs: rhs}
+			return &binaryNode{op: ndPtrDiff, lhs: lhs, rhs: rhs}
 		}
 	}
 	log.Fatalf("Unexpected type for subtraction: lhs: %T, rhs: %T", l, r)
@@ -374,7 +374,7 @@ func (a *addrNode) loadType() ty {
 	return a.ty
 }
 
-func (a *arithNode) loadType() ty {
+func (a *assignNode) loadType() ty {
 	if a.ty == nil {
 		a.ty = a.lhs.loadType()
 	}
@@ -382,7 +382,7 @@ func (a *arithNode) loadType() ty {
 	return a.ty
 }
 
-func (a *assignNode) loadType() ty {
+func (a *binaryNode) loadType() ty {
 	if a.ty == nil {
 		a.ty = a.lhs.loadType()
 	}

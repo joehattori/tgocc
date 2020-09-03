@@ -520,7 +520,7 @@ func (p *parser) constExpr() int64 {
 
 func eval(nd node) int64 {
 	switch n := nd.(type) {
-	case *arithNode:
+	case *binaryNode:
 		switch n.op {
 		case ndAdd:
 			return eval(n.lhs) + eval(n.rhs)
@@ -955,20 +955,20 @@ func (p *parser) assign() node {
 		node = newAssignNode(node.(addressableNode), p.assign())
 	} else if p.consume("+=") {
 		if _, ok := node.loadType().(ptr); ok {
-			node = newArithNode(ndPtrAddEq, node.(addressableNode), p.assign())
+			node = newBinaryNode(ndPtrAddEq, node.(addressableNode), p.assign())
 		} else {
-			node = newArithNode(ndAddEq, node.(addressableNode), p.assign())
+			node = newBinaryNode(ndAddEq, node.(addressableNode), p.assign())
 		}
 	} else if p.consume("-=") {
 		if _, ok := node.loadType().(ptr); ok {
-			node = newArithNode(ndPtrSubEq, node.(addressableNode), p.assign())
+			node = newBinaryNode(ndPtrSubEq, node.(addressableNode), p.assign())
 		} else {
-			node = newArithNode(ndSubEq, node.(addressableNode), p.assign())
+			node = newBinaryNode(ndSubEq, node.(addressableNode), p.assign())
 		}
 	} else if p.consume("*=") {
-		node = newArithNode(ndMulEq, node.(addressableNode), p.assign())
+		node = newBinaryNode(ndMulEq, node.(addressableNode), p.assign())
 	} else if p.consume("/=") {
-		node = newArithNode(ndDivEq, node.(addressableNode), p.assign())
+		node = newBinaryNode(ndDivEq, node.(addressableNode), p.assign())
 	}
 	return node
 }
@@ -987,7 +987,7 @@ func (p *parser) ternary() node {
 func (p *parser) logOr() node {
 	node := p.logAnd()
 	for p.consume("||") {
-		node = newArithNode(ndLogOr, node, p.logAnd())
+		node = newBinaryNode(ndLogOr, node, p.logAnd())
 	}
 	return node
 }
@@ -995,7 +995,7 @@ func (p *parser) logOr() node {
 func (p *parser) logAnd() node {
 	node := p.bitOr()
 	for p.consume("&&") {
-		node = newArithNode(ndLogAnd, node, p.bitOr())
+		node = newBinaryNode(ndLogAnd, node, p.bitOr())
 	}
 	return node
 }
@@ -1003,7 +1003,7 @@ func (p *parser) logAnd() node {
 func (p *parser) bitOr() node {
 	node := p.bitXor()
 	for p.consume("|") {
-		node = newArithNode(ndBitOr, node, p.bitXor())
+		node = newBinaryNode(ndBitOr, node, p.bitXor())
 	}
 	return node
 }
@@ -1011,7 +1011,7 @@ func (p *parser) bitOr() node {
 func (p *parser) bitXor() node {
 	node := p.bitAnd()
 	for p.consume("^") {
-		node = newArithNode(ndBitXor, node, p.bitXor())
+		node = newBinaryNode(ndBitXor, node, p.bitXor())
 	}
 	return node
 }
@@ -1019,7 +1019,7 @@ func (p *parser) bitXor() node {
 func (p *parser) bitAnd() node {
 	node := p.equality()
 	for p.consume("&") {
-		node = newArithNode(ndBitAnd, node, p.equality())
+		node = newBinaryNode(ndBitAnd, node, p.equality())
 	}
 	return node
 }
@@ -1028,9 +1028,9 @@ func (p *parser) equality() node {
 	node := p.relational()
 	for {
 		if p.consume("==") {
-			node = newArithNode(ndEq, node, p.relational())
+			node = newBinaryNode(ndEq, node, p.relational())
 		} else if p.consume("!=") {
-			node = newArithNode(ndNeq, node, p.relational())
+			node = newBinaryNode(ndNeq, node, p.relational())
 		} else {
 			return node
 		}
@@ -1041,13 +1041,13 @@ func (p *parser) relational() node {
 	node := p.shift()
 	for {
 		if p.consume("<=") {
-			node = newArithNode(ndLeq, node, p.shift())
+			node = newBinaryNode(ndLeq, node, p.shift())
 		} else if p.consume(">=") {
-			node = newArithNode(ndGeq, node, p.shift())
+			node = newBinaryNode(ndGeq, node, p.shift())
 		} else if p.consume("<") {
-			node = newArithNode(ndLt, node, p.shift())
+			node = newBinaryNode(ndLt, node, p.shift())
 		} else if p.consume(">") {
-			node = newArithNode(ndGt, node, p.shift())
+			node = newBinaryNode(ndGt, node, p.shift())
 		} else {
 			return node
 		}
@@ -1058,13 +1058,13 @@ func (p *parser) shift() node {
 	node := p.addSub()
 	for {
 		if p.consume("<<") {
-			node = newArithNode(ndShl, node, p.shift())
+			node = newBinaryNode(ndShl, node, p.shift())
 		} else if p.consume(">>") {
-			node = newArithNode(ndShr, node, p.shift())
+			node = newBinaryNode(ndShr, node, p.shift())
 		} else if p.consume("<<=") {
-			node = newArithNode(ndShlEq, node, p.shift())
+			node = newBinaryNode(ndShlEq, node, p.shift())
 		} else if p.consume(">>=") {
-			node = newArithNode(ndShrEq, node, p.shift())
+			node = newBinaryNode(ndShrEq, node, p.shift())
 		} else {
 			return node
 		}
@@ -1088,9 +1088,9 @@ func (p *parser) mulDiv() node {
 	node := p.cast()
 	for {
 		if p.consume("*") {
-			node = newArithNode(ndMul, node, p.cast())
+			node = newBinaryNode(ndMul, node, p.cast())
 		} else if p.consume("/") {
-			node = newArithNode(ndDiv, node, p.cast())
+			node = newBinaryNode(ndDiv, node, p.cast())
 		} else {
 			return node
 		}
