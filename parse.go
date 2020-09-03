@@ -321,10 +321,10 @@ func buildGVarInit(t ty, rhs node) gVarInit {
 	default:
 		switch nd := rhs.(type) {
 		case *addrNode:
-			return newGVarInitLabel(nd.v.(*varNode).v.getName())
+			return newGVarInitLabel(nd.v.(*varNode).variable.getName())
 		case *varNode:
-			if _, ok := nd.v.getType().(*tyArr); ok {
-				return newGVarInitLabel(nd.v.getName())
+			if _, ok := nd.variable.getType().(*tyArr); ok {
+				return newGVarInitLabel(nd.variable.getName())
 			}
 		}
 		return newGVarInitInt(eval(rhs), t.size())
@@ -850,7 +850,7 @@ func (p *parser) storeInit(t ty, dst addressableNode, rhs node) node {
 func isStrNode(n node) (bool, string) {
 	if v, ok := n.(*varNode); !ok {
 		return false, ""
-	} else if g, ok := v.v.(*gVar); !ok {
+	} else if g, ok := v.variable.(*gVar); !ok {
 		return false, ""
 	} else if t, ok := g.ty.(*tyArr); !ok {
 		return false, ""

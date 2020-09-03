@@ -158,7 +158,7 @@ type (
 	}
 
 	varNode struct {
-		v variable // TODO: fix
+		variable variable // TODO: change to Var when splitted into packages
 	}
 
 	whileNode struct {
@@ -533,7 +533,7 @@ func (t *ternaryNode) loadType() ty {
 }
 
 func (v *varNode) loadType() ty {
-	return v.v.getType()
+	return v.variable.getType()
 }
 
 func (w *whileNode) loadType() ty {

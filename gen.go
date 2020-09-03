@@ -567,11 +567,11 @@ func (m *memberNode) genAddr() {
 }
 
 func (v *varNode) genAddr() {
-	switch vr := v.v.(type) {
+	switch v := v.variable.(type) {
 	case *gVar:
-		fmt.Printf("	push offset %s\n", vr.name)
+		fmt.Printf("	push offset %s\n", v.name)
 	case *lVar:
-		fmt.Printf("	lea rax, [rbp-%d]\n", vr.offset)
+		fmt.Printf("	lea rax, [rbp-%d]\n", v.offset)
 		fmt.Println("	push rax")
 	default:
 		log.Fatalf("Unhandled case in genAddr()")
