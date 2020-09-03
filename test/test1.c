@@ -463,6 +463,21 @@ int main() {
     test(1, ({ struct {int a; int b; int c;} x={1,2,3}; x.a; }), "struct {int a; int b; int c;} x={1,2,3}; x.a;");
     test(2, ({ struct {int a; int b; int c;} x={1,2,3}; x.b; }), "struct {int a; int b; int c;} x={1,2,3}; x.b;");
     test(3, ({ struct {int a; int b; int c;} x={1,2,3}; x.c; }), "struct {int a; int b; int c;} x={1,2,3}; x.c;");
+    test(1, ({ struct {int a; int b; int c;} x={.a=1,.b=2,.c=3}; x.a; }),
+        "struct {int a; int b; int c;} x={.a=1,.b=2,.c=3}; x.a;");
+    test(2, ({ struct {int a; int b; int c;} x={.a=1,.b=2,.c=3}; x.b; }),
+        "struct {int a; int b; int c;} x={.a=1,.b=2,.c=3}; x.b;");
+    test(3, ({ struct {int a; int b; int c;} x={.a=1,.b=2,.c=3}; x.c; }),
+        "struct {int a; int b; int c;} x={.a=1,.b=2,.c=3}; x.c;");
+    test(1, ({ struct {int a; int b; int c;} x={1,.b=2,.c=3}; x.a; }),
+        "struct {int a; int b; int c;} x={.a=1,.b=2,.c=3}; x.a;");
+    test(2, ({ struct {int a; int b; int c;} x={.a=1, 2,.c=3}; x.b; }),
+        "struct {int a; int b; int c;} x={.a=1,.b=2,.c=3}; x.b;");
+    test(3, ({ struct {int a; int b; int c;} x={ 1, 2,.c=3}; x.c; }),
+        "struct {int a; int b; int c;} x={.a=1,.b=2,.c=3}; x.c;");
+    test(0, ({ struct {int a; int b; int c;} x={.b=2, .c=3}; x.a; }), "struct {int a; int b; int c;} x={.b=2, .c=3}; x.a;");
+    test(2, ({ struct {int a; int b; int c;} x={.b=2, .c=3}; x.b; }), "struct {int a; int b; int c;} x={.b=2, .c=3}; x.b;");
+    test(3, ({ struct {int a; int b; int c;} x={.b=2, .c=3}; x.c; }), "struct {int a; int b; int c;} x={.b=2, .c=3}; x.c;");
     test(1, ({ struct {int a; int b; int c;} x={1}; x.a; }), "struct {int a; int b; int c;} x={1}; x.a;");
     test(0, ({ struct {int a; int b; int c;} x={1}; x.b; }), "struct {int a; int b; int c;} x={1}; x.b;");
     test(0, ({ struct {int a; int b; int c;} x={1}; x.c; }), "struct {int a; int b; int c;} x={1}; x.c;");

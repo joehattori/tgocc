@@ -34,17 +34,13 @@ func (a *ast) genData() {
 }
 
 func (init *gVarInitArr) genInit(t ty) {
-	switch t := t.(type) {
-	case *tyArr:
-		for _, e := range init.body {
+	for i, e := range init.body {
+		switch t := t.(type) {
+		case *tyArr:
 			genDataGVar(e, t.of)
-		}
-	case *tyStruct:
-		for i, e := range init.body {
+		case *tyStruct:
 			genDataGVar(e, t.members[i].ty)
-		}
-	default:
-		for _, e := range init.body {
+		default:
 			genDataGVar(e, t)
 		}
 	}

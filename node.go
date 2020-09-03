@@ -158,7 +158,7 @@ type (
 	}
 
 	varNode struct {
-		v variable
+		v variable // TODO: fix
 	}
 
 	whileNode struct {

@@ -174,7 +174,7 @@ func (p *parser) isFunction() bool {
 func (p *parser) isType() (ret bool) {
 	switch tok := p.toks[0].(type) {
 	case *idTok:
-		_, ret = p.searchVar(tok.id).(*typeDef)
+		_, ret = p.searchVar(tok.name).(*typeDef)
 	case *reservedTok:
 		ret = typeMatcher.MatchString(tok.str)
 	}
@@ -298,6 +298,10 @@ func buildGVarInit(t ty, rhs node) gVarInit {
 		for i, e := range rhs.(*blkNode).body {
 			idx++
 			mem := t.members[i]
+			if e == nil {
+				body = append(body, newGVarInitZero(mem.ty.size()))
+				continue
+			}
 			var toAppend []gVarInit
 			toAppend = append(toAppend, buildGVarInit(mem.ty, e))
 			// padding for struct members
@@ -312,10 +316,6 @@ func buildGVarInit(t ty, rhs node) gVarInit {
 				toAppend = append(toAppend, newGVarInitZero(end-start))
 			}
 			body = append(body, newGVarInitArr(toAppend))
-		}
-		// zero out the rest
-		for i := idx; i < len(t.members); i++ {
-			body = append(body, newGVarInitZero(t.members[i].ty.size()))
 		}
 		return newGVarInitArr(body)
 	default:
@@ -389,8 +389,25 @@ func (p *parser) decl() (t ty, id string, rhs node, sc storageClass) {
 
 func (p *parser) initializer(t ty, sc storageClass) node {
 	switch t := t.(type) {
-	case *tyArr, *tyStruct:
+	case *tyArr:
 		var nodes []node
+		if strTok, ok := p.consumeStr(); ok {
+			init := newGVarInitStr(strTok.getStr())
+			s := newGVar((sc&static) != 0, newGVarLabel(), newTyArr(newTyChar(), strTok.len), init)
+			p.res.gVars = append(p.res.gVars, s)
+			return newVarNode(s)
+		}
+		p.expect("{")
+		for !p.consume("}") {
+			nodes = append(nodes, p.initializer(t.of, sc))
+			if !p.consume(",") {
+				p.expect("}")
+				break
+			}
+		}
+		return newBlkNode(nodes)
+	case *tyStruct:
+		nodes := make([]node, len(t.members))
 		if strTok, ok := p.consumeStr(); ok {
 			init := newGVarInitStr(strTok.getStr())
 			s := newGVar((sc&static) != 0, newGVarLabel(), newTyArr(newTyChar(), strTok.len), init)
@@ -400,12 +417,17 @@ func (p *parser) initializer(t ty, sc storageClass) node {
 		p.expect("{")
 		idx := 0
 		for !p.consume("}") {
-			switch t := t.(type) {
-			case *tyArr:
-				nodes = append(nodes, p.initializer(t.of, sc))
-			case *tyStruct:
-				nodes = append(nodes, p.initializer(t.members[idx].ty, sc))
+			if p.consume(".") {
+				id := p.expectID().name
+				p.expect("=")
+				for i, mem := range t.members[idx:] {
+					if id == mem.name {
+						idx += i
+						break
+					}
+				}
 			}
+			nodes[idx] = p.initializer(t.members[idx].ty, sc)
 			if !p.consume(",") {
 				p.expect("}")
 				break
@@ -434,7 +456,7 @@ func (p *parser) baseType() (t ty, isTypeDef bool, sc storageClass) {
 	cur := p.toks[0]
 	switch tok := cur.(type) {
 	case *idTok:
-		id := idMatcher.FindString(tok.id)
+		id := idMatcher.FindString(tok.name)
 		if tyDef, ok := p.searchVar(id).(*typeDef); ok {
 			p.popToks()
 			return tyDef.ty, isTypeDef, sc
@@ -810,15 +832,14 @@ func (p *parser) storeInit(t ty, dst addressableNode, rhs node) node {
 	case *tyStruct:
 		var body []node
 		idx := 0
-		for i, e := range rhs.(*blkNode).body {
+		for i, mem := range rhs.(*blkNode).body {
 			idx++
 			node := newMemberNode(dst, t.members[i])
-			body = append(body, newExprNode(newAssignNode(node, e)))
-		}
-		// zero out the rest
-		for i := idx; i < len(t.members); i++ {
-			node := newMemberNode(dst, t.members[i])
-			body = append(body, newExprNode(newAssignNode(node, newNumNode(0))))
+			if mem == nil {
+				body = append(body, newExprNode(newAssignNode(node, newNumNode(0))))
+			} else {
+				body = append(body, newExprNode(newAssignNode(node, mem)))
+			}
 		}
 		return newBlkNode(body)
 	default:

@@ -26,8 +26,8 @@ type (
 	eofTok struct{}
 
 	idTok struct {
-		id  string
-		len int
+		name string
+		len  int
 	}
 
 	numTok struct {
@@ -47,7 +47,7 @@ type (
 )
 
 func (e *eofTok) getStr() string      { return "" }
-func (i *idTok) getStr() string       { return i.id }
+func (i *idTok) getStr() string       { return i.name }
 func (n *numTok) getStr() string      { return fmt.Sprintf("%d", n.val) }
 func (r *reservedTok) getStr() string { return r.str }
 func (s *strTok) getStr() string      { return s.content }
