@@ -1,4 +1,4 @@
-package main
+package tokenizer
 
 import (
 	"fmt"
@@ -18,72 +18,74 @@ var (
 )
 
 type (
-	token interface {
-		getStr() string
+	Token interface {
+		Str() string
+		Len() int
 	}
 
-	eofTok struct{}
+	EofTok struct{}
 
-	idTok struct {
+	IdTok struct {
 		name string
 		len  int
 	}
 
-	numTok struct {
-		val int64
+	NumTok struct {
+		Val int64
 		len int
 	}
 
-	reservedTok struct {
+	ReservedTok struct {
 		str string
 		len int
 	}
 
-	strTok struct {
+	StrTok struct {
 		content string
 		len     int
 	}
 )
 
-func (e *eofTok) getStr() string      { return "" }
-func (i *idTok) getStr() string       { return i.name }
-func (n *numTok) getStr() string      { return fmt.Sprintf("%d", n.val) }
-func (r *reservedTok) getStr() string { return r.str }
-func (s *strTok) getStr() string      { return s.content }
+func (e *EofTok) Str() string      { return "" }
+func (i *IdTok) Str() string       { return i.name }
+func (n *NumTok) Str() string      { return fmt.Sprintf("%d", n.Val) }
+func (r *ReservedTok) Str() string { return r.str }
+func (s *StrTok) Str() string      { return s.content }
 
-func newEOFTok() *eofTok                            { return &eofTok{} }
-func newIDTok(str string, l int) *idTok             { return &idTok{str, l} }
-func newNumTok(val int64, l int) *numTok            { return &numTok{val, l} }
-func newReservedTok(str string, l int) *reservedTok { return &reservedTok{str, l} }
-func newStrTok(content string, l int) *strTok       { return &strTok{content, l} }
+func (e *EofTok) Len() int      { return 0 }
+func (i *IdTok) Len() int       { return i.len }
+func (n *NumTok) Len() int      { return utf8.RuneCountInString(fmt.Sprintf("%d", n.Val)) }
+func (r *ReservedTok) Len() int { return r.len }
+func (s *StrTok) Len() int      { return s.len }
 
-type ast struct {
-	fns   []*fnNode
-	gVars []*gVar
-}
+func NewEOFTok() *EofTok                            { return &EofTok{} }
+func NewIDTok(str string, l int) *IdTok             { return &IdTok{str, l} }
+func NewNumTok(val int64, l int) *NumTok            { return &NumTok{val, l} }
+func NewReservedTok(str string, l int) *ReservedTok { return &ReservedTok{str, l} }
+func NewStrTok(content string, l int) *StrTok       { return &StrTok{content, l} }
 
-type tokenizer struct {
+type Tokenizer struct {
 	filePath string
 	input    string
 	addEOF   bool
 	pos      int
-	res      []token
+	res      []Token
 }
 
-func newTokenizer(path string, addEOF bool) *tokenizer {
-	return &tokenizer{filePath: path, addEOF: addEOF}
+func NewTokenizer(path string, addEOF bool) *Tokenizer {
+	return &Tokenizer{filePath: path, addEOF: addEOF}
 }
 
-func (t *tokenizer) cur() string {
+func (t *Tokenizer) cur() string {
 	return t.input[t.pos:]
 }
 
-func (t *tokenizer) head() rune {
+func (t *Tokenizer) head() rune {
 	r, _ := utf8.DecodeRuneInString(t.cur())
 	return r
 }
 
-func (t *tokenizer) isComment() bool {
+func (t *Tokenizer) isComment() bool {
 	if strings.HasPrefix(t.cur(), "//") {
 		t.pos += 2
 		for t.head() != '\n' {
@@ -106,7 +108,7 @@ func (t *tokenizer) isComment() bool {
 	return false
 }
 
-func (t *tokenizer) readCharLiteral() token {
+func (t *Tokenizer) readCharLiteral() Token {
 	if t.head() != '\'' {
 		return nil
 	}
@@ -117,10 +119,10 @@ func (t *tokenizer) readCharLiteral() token {
 		log.Fatalf("Char literal is too long: %s", t.input[t.pos:])
 	}
 	t.pos++
-	return newNumTok(c, 1)
+	return NewNumTok(c, 1)
 }
 
-func (t *tokenizer) readDigitLiteral() token {
+func (t *Tokenizer) readDigitLiteral() Token {
 	s := t.cur()
 	r := regexp.MustCompile(`^(0(x|X)[[:xdigit:]]+|0(o|O)\d+|0(b|B)(0|1)+|\d+)`)
 	if !r.MatchString(s) {
@@ -133,10 +135,10 @@ func (t *tokenizer) readDigitLiteral() token {
 		log.Fatalf("invalid number literal: %s", s)
 	}
 	t.pos += numLen
-	return newNumTok(num, numLen)
+	return NewNumTok(num, numLen)
 }
 
-func (t *tokenizer) readID() token {
+func (t *Tokenizer) readID() Token {
 	s := t.cur()
 	if !idMatcher.MatchString(s) {
 		return nil
@@ -144,10 +146,10 @@ func (t *tokenizer) readID() token {
 	id := idMatcher.FindString(s)
 	l := utf8.RuneCountInString(id)
 	t.pos += l
-	return newIDTok(id, l)
+	return NewIDTok(id, l)
 }
 
-func (t *tokenizer) readMultiCharOp() token {
+func (t *Tokenizer) readMultiCharOp() Token {
 	ops := [...]string{
 		"==", "!=", "<=", ">=", "->", "++", "--",
 		"+=", "-=", "*=", "/=", "&&", "||",
@@ -157,46 +159,46 @@ func (t *tokenizer) readMultiCharOp() token {
 	for _, op := range ops {
 		if strings.HasPrefix(s, op) {
 			t.pos += utf8.RuneCountInString(op)
-			return newReservedTok(op, utf8.RuneCountInString(op))
+			return NewReservedTok(op, utf8.RuneCountInString(op))
 		}
 	}
 	return nil
 }
 
-func (t *tokenizer) readNewLine() token {
+func (t *Tokenizer) readNewLine() Token {
 	if t.head() != '\n' {
 		return nil
 	}
 	t.pos++
-	return newReservedTok("\n", 1)
+	return NewReservedTok("\n", 1)
 }
 
-func (t *tokenizer) readReserved() token {
+func (t *Tokenizer) readReserved() Token {
 	s := t.cur()
 	r := regexp.MustCompile(`^(if|else|while|for|return|sizeof|break|continue|switch|case|default|do|define|include)\W`)
 	if res := r.FindString(s); res != "" {
 		l := utf8.RuneCountInString(res) - 1
 		t.pos += l
-		return newReservedTok(res, l)
+		return NewReservedTok(res, l)
 	}
 	if res := typeMatcher.FindString(s); res != "" {
 		l := utf8.RuneCountInString(res) - 1
 		t.pos += l
-		return newReservedTok(res, l)
+		return NewReservedTok(res, l)
 	}
 	return nil
 }
 
-func (t *tokenizer) readRuneFrom(s string) token {
+func (t *Tokenizer) readRuneFrom(s string) Token {
 	if !strings.ContainsRune(s, t.head()) {
 		return nil
 	}
 	cur := t.cur()
 	t.pos++
-	return newReservedTok(cur[:1], 1)
+	return NewReservedTok(cur[:1], 1)
 }
 
-func (t *tokenizer) readStrLiteral() token {
+func (t *Tokenizer) readStrLiteral() Token {
 	if t.head() != '"' {
 		return nil
 	}
@@ -213,22 +215,22 @@ func (t *tokenizer) readStrLiteral() token {
 	}
 	s += string('\000')
 	t.pos++
-	return newStrTok(s, len(s))
+	return NewStrTok(s, len(s))
 }
 
-func (t *tokenizer) trimSpace() {
+func (t *Tokenizer) trimSpace() {
 	for unicode.IsSpace(t.head()) {
 		t.pos++
 	}
 }
 
-func (t *tokenizer) tokenize() []token {
+func (t *Tokenizer) Tokenize() []Token {
 	input, err := ioutil.ReadFile(t.filePath)
 	if err != nil {
 		log.Fatal(err)
 	}
 	t.input = string(input)
-	var toks []token
+	var toks []Token
 	for {
 		// new line will be omitted in preprocessor, but still needed to parse #include ... and #define ...
 		if tok := t.readNewLine(); tok != nil {
@@ -284,9 +286,8 @@ func (t *tokenizer) tokenize() []token {
 		log.Fatalf("Unexpected input %s\n", s)
 	}
 	if t.addEOF {
-		toks = append(toks, newEOFTok())
+		toks = append(toks, NewEOFTok())
 	}
-	t.res = toks
-	toks = t.preprocess()
-	return toks
+	p := &preprocessor{toks}
+	return p.Preprocess(t.filePath, t.addEOF)
 }

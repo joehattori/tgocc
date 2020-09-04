@@ -1,6 +1,11 @@
-package main
+package parser
 
-import "log"
+import (
+	"log"
+
+	"github.com/joehattori/tgocc/types"
+	"github.com/joehattori/tgocc/vars"
+)
 
 type scope struct {
 	baseOffset int
@@ -8,7 +13,7 @@ type scope struct {
 	super      *scope
 	structTags []*structTag
 	enumTags   []*enumTag
-	vars       []variable
+	vars       []vars.Var
 }
 
 func newScope(super *scope) *scope {
@@ -17,54 +22,54 @@ func newScope(super *scope) *scope {
 
 type structTag struct {
 	name string
-	ty   ty
+	ty   types.Type
 }
 
-func newStructTag(name string, t ty) *structTag {
+func newStructTag(name string, t types.Type) *structTag {
 	return &structTag{name, t}
 }
 
 type enumTag struct {
 	name string
-	ty   ty // TODO: is it really necessary?
+	ty   types.Type // TODO: is it really necessary?
 }
 
-func newEnumTag(name string, t ty) *enumTag {
+func newEnumTag(name string, t types.Type) *enumTag {
 	return &enumTag{name, t}
 }
 
-func (s *scope) addGVar(emit bool, id string, t ty, init gVarInit) *gVar {
-	if _, exists := s.searchVar(id).(*gVar); exists {
+func (s *scope) addGVar(emit bool, id string, t types.Type, init vars.GVarInit) *vars.GVar {
+	if _, exists := s.searchVar(id).(*vars.GVar); exists {
 		log.Fatalf("identifier %s is already defined", id)
 	}
-	v := newGVar(emit, id, t, init)
+	v := vars.NewGVar(emit, id, t, init)
 	s.vars = append(s.vars, v)
 	return v
 }
 
-func (s *scope) addLVar(id string, t ty) *lVar {
-	if _, exists := s.searchVar(id).(*lVar); exists {
+func (s *scope) addLVar(id string, t types.Type) *vars.LVar {
+	if _, exists := s.searchVar(id).(*vars.LVar); exists {
 		log.Fatalf("identifier %s is already defined", id)
 	}
-	v := newLVar(id, t)
+	v := vars.NewLVar(id, t)
 	s.vars = append(s.vars, v)
 	return v
 }
 
-func (s *scope) addTypeDef(id string, t ty) *typeDef {
-	if _, exists := s.searchVar(id).(*typeDef); exists {
+func (s *scope) addTypeDef(id string, t types.Type) *vars.TypeDef {
+	if _, exists := s.searchVar(id).(*vars.TypeDef); exists {
 		log.Fatalf("typedef %s is already defined", id)
 	}
-	v := newTypeDef(id, t)
+	v := vars.NewTypeDef(id, t)
 	s.vars = append(s.vars, v)
 	return v
 }
 
-func (s *scope) addEnum(id string, t ty, val int) *enum {
-	if _, exists := s.searchVar(id).(*enum); exists {
+func (s *scope) addEnum(id string, t types.Type, val int) *vars.Enum {
+	if _, exists := s.searchVar(id).(*vars.Enum); exists {
 		log.Fatalf("enum %s is already defined", id)
 	}
-	v := newEnum(id, t, val)
+	v := vars.NewEnum(id, t, val)
 	s.vars = append(s.vars, v)
 	return v
 }
@@ -83,9 +88,9 @@ func (s *scope) addEnumTag(tag *enumTag) {
 	s.enumTags = append(s.enumTags, tag)
 }
 
-func (s *scope) searchVar(varName string) variable {
+func (s *scope) searchVar(varName string) vars.Var {
 	for _, v := range s.vars {
-		if v.getName() == varName {
+		if v.Name() == varName {
 			return v
 		}
 	}
@@ -110,14 +115,14 @@ func (s *scope) searchEnumTag(tagStr string) *enumTag {
 	return nil
 }
 
-func (s *scope) segregateScopeVars() (lVars []*lVar, gVars []*gVar, typeDefs []*typeDef) {
+func (s *scope) segregateScopeVars() (lVars []*vars.LVar, gVars []*vars.GVar, typeDefs []*vars.TypeDef) {
 	for _, sv := range s.vars {
 		switch v := sv.(type) {
-		case *lVar:
+		case *vars.LVar:
 			lVars = append(lVars, v)
-		case *gVar:
+		case *vars.GVar:
 			gVars = append(gVars, v)
-		case *typeDef:
+		case *vars.TypeDef:
 			typeDefs = append(typeDefs, v)
 		}
 	}

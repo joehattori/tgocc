@@ -1,10 +1,12 @@
-package main
+package ast
 
 import (
 	"fmt"
 	"log"
 	"math"
-	"strings"
+
+	"github.com/joehattori/tgocc/types"
+	"github.com/joehattori/tgocc/vars"
 )
 
 var (
@@ -17,154 +19,82 @@ var (
 	paramRegs8 = [...]string{"rdi", "rsi", "rdx", "rcx", "r8", "r9"}
 )
 
-func (a *ast) gen() {
-	fmt.Println(".intel_syntax noprefix")
-	a.genData()
-	a.genText()
+func (a *AddrNode) gen() {
+	a.Var.genAddr()
 }
 
-func (a *ast) genData() {
-	fmt.Println(".data")
-	for _, g := range a.gVars {
-		if g.emit {
-			fmt.Printf("%s:\n", g.name)
-		}
-		genDataGVar(g.init, g.ty)
-	}
-}
-
-func (init *gVarInitArr) genInit(t ty) {
-	for i, e := range init.body {
-		switch t := t.(type) {
-		case *tyArr:
-			genDataGVar(e, t.of)
-		case *tyStruct:
-			genDataGVar(e, t.members[i].ty)
-		default:
-			genDataGVar(e, t)
-		}
-	}
-}
-
-func genDataGVar(init gVarInit, t ty) {
-	if init == nil {
-		fmt.Printf("	.zero %d\n", t.size())
-	} else {
-		init.genInit(t)
-	}
-}
-
-func (init *gVarInitLabel) genInit(_ ty) {
-	fmt.Printf("	.quad %s\n", init.label)
-}
-
-func (init *gVarInitStr) genInit(_ ty) {
-	trimmed := strings.TrimRight(init.content, string('\000'))
-	fmt.Printf("	.string \"%s\"\n", trimmed)
-	fmt.Printf("	.zero %d\n", len(init.content)-len(trimmed))
-}
-
-func (init *gVarInitInt) genInit(_ ty) {
-	switch init.sz {
-	case 1:
-		fmt.Printf("	.byte %d\n", init.val)
-	case 2:
-		fmt.Printf("	.value %d\n", init.val)
-	case 4:
-		fmt.Printf("	.long %d\n", init.val)
-	case 8:
-		fmt.Printf("	.quad %d\n", init.val)
-	default:
-		log.Fatalf("Unhandled type size %d on global variable initialization.", init.sz)
-	}
-}
-
-func (init *gVarInitZero) genInit(_ ty) {
-	fmt.Printf("	.zero %d\n", init.len)
-}
-
-func (a *ast) genText() {
-	fmt.Println(".text")
-	for _, f := range a.fns {
-		f.gen()
-	}
-}
-
-func (a *addrNode) gen() {
-	a.v.genAddr()
-}
-
-func (a *assignNode) gen() {
+func (a *AssignNode) gen() {
 	a.lhs.genAddr()
 	a.rhs.gen()
-	store(a.loadType())
+	store(a.LoadType())
 }
 
-func (a *binaryNode) gen() {
-	switch a.op {
-	case ndAddEq, ndSubEq, ndMulEq, ndDivEq, ndPtrAddEq, ndPtrSubEq, ndShlEq, ndShrEq:
-		a.lhs.(addressableNode).genAddr()
-		defer store(a.lhs.loadType())
+func (b *BinaryNode) gen() {
+	lhs, rhs := b.lhs, b.rhs
+	switch b.op {
+	case NdAddEq, NdSubEq, NdMulEq, NdDivEq, NdPtrAddEq, NdPtrSubEq, NdShlEq, NdShrEq:
+		lhs.(AddressableNode).genAddr()
+		defer store(lhs.LoadType())
 	}
 
-	a.lhs.gen()
-	a.rhs.gen()
+	lhs.gen()
+	rhs.gen()
 
 	fmt.Println("	pop rdi")
 	fmt.Println("	pop rax")
 
-	switch a.op {
-	case ndAdd, ndAddEq:
+	switch b.op {
+	case NdAdd, NdAddEq:
 		fmt.Println("	add rax, rdi")
-	case ndSub, ndSubEq:
+	case NdSub, NdSubEq:
 		fmt.Println("	sub rax, rdi")
-	case ndMul, ndMulEq:
+	case NdMul, NdMulEq:
 		fmt.Println("	imul rax, rdi")
-	case ndDiv, ndDivEq:
+	case NdDiv, NdDivEq:
 		fmt.Println("	cqo")
 		fmt.Println("	idiv rdi")
-	case ndEq:
+	case NdEq:
 		fmt.Println("	cmp rax, rdi")
 		fmt.Println("	sete al")
 		fmt.Println("	movzb rax, al")
-	case ndNeq:
+	case NdNeq:
 		fmt.Println("	cmp rax, rdi")
 		fmt.Println("	setne al")
 		fmt.Println("	movzb rax, al")
-	case ndLt:
+	case NdLt:
 		fmt.Println("	cmp rax, rdi")
 		fmt.Println("	setl al")
 		fmt.Println("	movzb rax, al")
-	case ndLeq:
+	case NdLeq:
 		fmt.Println("	cmp rax, rdi")
 		fmt.Println("	setle al")
 		fmt.Println("	movzb rax, al")
-	case ndGt:
+	case NdGt:
 		fmt.Println("	cmp rdi, rax")
 		fmt.Println("	setl al")
 		fmt.Println("	movzb rax, al")
-	case ndGeq:
+	case NdGeq:
 		fmt.Println("	cmp rdi, rax")
 		fmt.Println("	setle al")
 		fmt.Println("	movzb rax, al")
-	case ndPtrAdd, ndPtrAddEq:
-		fmt.Printf("	imul rdi, %d\n", a.loadType().(ptr).base().size())
+	case NdPtrAdd, NdPtrAddEq:
+		fmt.Printf("	imul rdi, %d\n", b.LoadType().(types.Pointing).Base().Size())
 		fmt.Printf("	add rax, rdi\n")
-	case ndPtrSub, ndPtrSubEq:
-		fmt.Printf("	imul rdi, %d\n", a.loadType().(ptr).base().size())
+	case NdPtrSub, NdPtrSubEq:
+		fmt.Printf("	imul rdi, %d\n", b.LoadType().(types.Pointing).Base().Size())
 		fmt.Printf("	sub rax, rdi\n")
-	case ndPtrDiff:
+	case NdPtrDiff:
 		fmt.Println("	sub rax, rdi")
 		fmt.Println("	cqo")
-		fmt.Printf("	mov rdi, %d\n", a.lhs.loadType().(ptr).base().size())
+		fmt.Printf("	mov rdi, %d\n", b.lhs.LoadType().(types.Pointing).Base().Size())
 		fmt.Println("	idiv rdi")
-	case ndBitOr:
+	case NdBitOr:
 		fmt.Println("	or rax, rdi")
-	case ndBitXor:
+	case NdBitXor:
 		fmt.Println("	xor rax, rdi")
-	case ndBitAnd:
+	case NdBitAnd:
 		fmt.Println("	and rax, rdi")
-	case ndLogOr:
+	case NdLogOr:
 		c := labelCount
 		labelCount++
 		fmt.Println("	cmp rax, 0")
@@ -176,7 +106,7 @@ func (a *binaryNode) gen() {
 		fmt.Printf(".L.true.%d:\n", c)
 		fmt.Println("	setne al")
 		fmt.Printf(".L.end.%d:\n", c)
-	case ndLogAnd:
+	case NdLogAnd:
 		c := labelCount
 		labelCount++
 		fmt.Println("	cmp rax, 0")
@@ -188,10 +118,10 @@ func (a *binaryNode) gen() {
 		fmt.Printf(".L.false.%d:\n", c)
 		fmt.Println("	setne al")
 		fmt.Printf(".L.end.%d:\n", c)
-	case ndShl, ndShlEq:
+	case NdShl, NdShlEq:
 		fmt.Println("	mov cl, dil")
 		fmt.Println("	sal rax, cl")
-	case ndShr, ndShrEq:
+	case NdShr, NdShrEq:
 		fmt.Println("	mov cl, dil")
 		fmt.Println("	sar rax, cl")
 	default:
@@ -201,41 +131,41 @@ func (a *binaryNode) gen() {
 	fmt.Println("	push rax")
 }
 
-func (b *bitNotNode) gen() {
+func (b *BitNotNode) gen() {
 	b.body.gen()
 	fmt.Println("	pop rax")
 	fmt.Println("	not rax")
 	fmt.Println("	push rax")
 }
 
-func (b *blkNode) gen() {
-	for _, st := range b.body {
+func (b *BlkNode) gen() {
+	for _, st := range b.Body {
 		st.gen()
 	}
 }
 
-func (b *breakNode) gen() {
+func (b *BreakNode) gen() {
 	if jmpLabelNum == 0 {
 		log.Fatal("Invalid break statement.")
 	}
 	fmt.Printf("	jmp .L.break.%d\n", jmpLabelNum)
 }
 
-func (c *caseNode) gen() {
+func (c *CaseNode) gen() {
 	for _, b := range c.body {
 		b.gen()
 	}
 }
 
-func (c *castNode) gen() {
+func (c *CastNode) gen() {
 	c.base.gen()
 	fmt.Println("	pop rax")
 	t := c.toTy
-	if _, ok := t.(*tyBool); ok {
+	if _, ok := t.(*types.Bool); ok {
 		fmt.Println("	cmp rax, 0")
 		fmt.Println("	setne al")
 	}
-	switch t.size() {
+	switch t.Size() {
 	case 1:
 		fmt.Println("	movsx rax, al")
 	case 2:
@@ -250,19 +180,19 @@ func (c *castNode) gen() {
 	fmt.Println("	push rax")
 }
 
-func (c *continueNode) gen() {
+func (c *ContinueNode) gen() {
 	if jmpLabelNum == 0 {
 		log.Fatal("invalid continue statement.")
 	}
 	fmt.Printf("jmp .L.continue.%d\n", jmpLabelNum)
 }
 
-func (d *decNode) gen() {
+func (d *DecNode) gen() {
 	body := d.body
-	t := body.loadType()
+	t := body.LoadType()
 	var diff int
-	if p, ok := body.loadType().(ptr); ok {
-		diff = p.base().size()
+	if p, ok := body.LoadType().(types.Pointing); ok {
+		diff = p.Base().Size()
 	} else {
 		diff = 1
 	}
@@ -282,21 +212,21 @@ func (d *decNode) gen() {
 	}
 }
 
-func (d *defaultNode) gen() {
+func (d *DefaultNode) gen() {
 	for _, b := range d.body {
 		b.gen()
 	}
 }
 
-func (d *derefNode) gen() {
+func (d *DerefNode) gen() {
 	d.ptr.gen()
-	ty := d.loadType()
-	if _, ok := ty.(*tyArr); !ok {
+	ty := d.LoadType()
+	if _, ok := ty.(*types.Arr); !ok {
 		load(ty)
 	}
 }
 
-func (d *doWhileNode) gen() {
+func (d *DoWhileNode) gen() {
 	c := labelCount
 	labelCount++
 	prev := jmpLabelNum
@@ -312,12 +242,12 @@ func (d *doWhileNode) gen() {
 	jmpLabelNum = prev
 }
 
-func (e *exprNode) gen() {
-	e.body.gen()
+func (e *ExprNode) gen() {
+	e.Body.gen()
 	fmt.Println("	add rsp, 8")
 }
 
-func (f *forNode) gen() {
+func (f *ForNode) gen() {
 	c := labelCount
 	labelCount++
 	prevLoopLabelNum := jmpLabelNum
@@ -344,7 +274,7 @@ func (f *forNode) gen() {
 	jmpLabelNum = prevLoopLabelNum
 }
 
-func (f *fnCallNode) gen() {
+func (f *FnCallNode) gen() {
 	for _, param := range f.params {
 		param.gen()
 	}
@@ -368,7 +298,7 @@ func (f *fnCallNode) gen() {
 	labelCount++
 }
 
-func (f *fnNode) gen() {
+func (f *FnNode) gen() {
 	name := f.name
 	if !f.isStatic {
 		fmt.Printf(".globl %s\n", name)
@@ -376,10 +306,10 @@ func (f *fnNode) gen() {
 	fmt.Printf("%s:\n", name)
 	fmt.Println("	push rbp")
 	fmt.Println("	mov rbp, rsp")
-	fmt.Printf("	sub rsp, %d\n", f.stackSize)
-	for i, param := range f.params {
+	fmt.Printf("	sub rsp, %d\n", f.StackSize)
+	for i, param := range f.Params {
 		var r [6]string
-		switch param.ty.size() {
+		switch param.Type().Size() {
 		case 1:
 			r = paramRegs1
 		case 2:
@@ -389,11 +319,11 @@ func (f *fnNode) gen() {
 		case 8:
 			r = paramRegs8
 		default:
-			log.Fatalf("Unhandled type size: %d", param.ty.size())
+			log.Fatalf("Unhandled type size: %d", param.Type().Size())
 		}
-		fmt.Printf("	mov [rbp-%d], %s\n", param.offset, r[i])
+		fmt.Printf("	mov [rbp-%d], %s\n", param.Offset, r[i])
 	}
-	for _, node := range f.body {
+	for _, node := range f.Body {
 		node.gen()
 	}
 	fmt.Printf(".L.return.%s:\n", name)
@@ -402,7 +332,7 @@ func (f *fnNode) gen() {
 	fmt.Println("	ret")
 }
 
-func (i *ifNode) gen() {
+func (i *IfNode) gen() {
 	c := labelCount
 	labelCount++
 	if i.els != nil {
@@ -425,12 +355,12 @@ func (i *ifNode) gen() {
 	}
 }
 
-func (i *incNode) gen() {
+func (i *IncNode) gen() {
 	body := i.body
-	t := body.loadType()
+	t := body.LoadType()
 	var diff int
-	if p, ok := body.loadType().(ptr); ok {
-		diff = p.base().size()
+	if p, ok := body.LoadType().(types.Pointing); ok {
+		diff = p.Base().Size()
 	} else {
 		diff = 1
 	}
@@ -450,15 +380,15 @@ func (i *incNode) gen() {
 	}
 }
 
-func (m *memberNode) gen() {
+func (m *MemberNode) gen() {
 	m.genAddr()
-	ty := m.loadType()
-	if _, ok := ty.(*tyArr); !ok {
+	ty := m.LoadType()
+	if _, ok := ty.(*types.Arr); !ok {
 		load(ty)
 	}
 }
 
-func (n *notNode) gen() {
+func (n *NotNode) gen() {
 	n.body.gen()
 	fmt.Println("	pop rax")
 	fmt.Println("	cmp rax, 0")
@@ -466,9 +396,9 @@ func (n *notNode) gen() {
 	fmt.Println("	push rax")
 }
 
-func (*nullNode) gen() {}
+func (*NullNode) gen() {}
 
-func (n *numNode) gen() {
+func (n *NumNode) gen() {
 	if n.val > math.MaxInt32 {
 		fmt.Printf("	movabs rax, %d\n", n.val)
 		fmt.Println("	push rax")
@@ -477,7 +407,7 @@ func (n *numNode) gen() {
 	}
 }
 
-func (r *retNode) gen() {
+func (r *RetNode) gen() {
 	if r.rhs != nil {
 		r.rhs.gen()
 		fmt.Println("	pop rax")
@@ -485,13 +415,13 @@ func (r *retNode) gen() {
 	fmt.Printf("	jmp .L.return.%s\n", r.fnName)
 }
 
-func (s *stmtExprNode) gen() {
+func (s *StmtExprNode) gen() {
 	for _, st := range s.body {
 		st.gen()
 	}
 }
 
-func (s *switchNode) gen() {
+func (s *SwitchNode) gen() {
 	c := labelCount
 	labelCount++
 	prev := jmpLabelNum
@@ -517,7 +447,7 @@ func (s *switchNode) gen() {
 	jmpLabelNum = prev
 }
 
-func (t *ternaryNode) gen() {
+func (t *TernaryNode) gen() {
 	c := labelCount
 	labelCount++
 	t.cond.gen()
@@ -531,15 +461,15 @@ func (t *ternaryNode) gen() {
 	fmt.Printf(".L.ternary.%d.end:\n", c)
 }
 
-func (v *varNode) gen() {
+func (v *VarNode) gen() {
 	v.genAddr()
-	ty := v.loadType()
-	if _, ok := ty.(*tyArr); !ok {
+	ty := v.LoadType()
+	if _, ok := ty.(*types.Arr); !ok {
 		load(ty)
 	}
 }
 
-func (w *whileNode) gen() {
+func (w *WhileNode) gen() {
 	c := labelCount
 	labelCount++
 	prevLoopLabelNum := jmpLabelNum
@@ -555,32 +485,32 @@ func (w *whileNode) gen() {
 	jmpLabelNum = prevLoopLabelNum
 }
 
-func (d *derefNode) genAddr() {
+func (d *DerefNode) genAddr() {
 	d.ptr.gen()
 }
 
-func (m *memberNode) genAddr() {
+func (m *MemberNode) genAddr() {
 	m.lhs.genAddr()
 	fmt.Println("	pop rax")
-	fmt.Printf("	add rax, %d\n", m.mem.offset)
+	fmt.Printf("	add rax, %d\n", m.mem.Offset)
 	fmt.Println("	push rax")
 }
 
-func (v *varNode) genAddr() {
-	switch v := v.variable.(type) {
-	case *gVar:
-		fmt.Printf("	push offset %s\n", v.name)
-	case *lVar:
-		fmt.Printf("	lea rax, [rbp-%d]\n", v.offset)
+func (v *VarNode) genAddr() {
+	switch v := v.Var.(type) {
+	case *vars.GVar:
+		fmt.Printf("	push offset %s\n", v.Name())
+	case *vars.LVar:
+		fmt.Printf("	lea rax, [rbp-%d]\n", v.Offset)
 		fmt.Println("	push rax")
 	default:
 		log.Fatalf("Unhandled case in genAddr()")
 	}
 }
 
-func load(t ty) {
+func load(t types.Type) {
 	fmt.Println("	pop rax")
-	switch t.size() {
+	switch t.Size() {
 	case 1:
 		fmt.Println("	movsx rax, byte ptr [rax]")
 	case 2:
@@ -590,21 +520,21 @@ func load(t ty) {
 	case 8:
 		fmt.Println("	mov rax, [rax]")
 	default:
-		log.Fatalf("Unhandled type size: %d", t.size())
+		log.Fatalf("Unhandled type size: %d", t.Size())
 	}
 	fmt.Println("	push rax")
 }
 
-func store(t ty) {
+func store(t types.Type) {
 	fmt.Println("	pop rdi")
 	fmt.Println("	pop rax")
-	if _, ok := t.(*tyBool); ok {
+	if _, ok := t.(*types.Bool); ok {
 		fmt.Println("	cmp rdi, 0")
 		fmt.Println("	setne dil")
 		fmt.Println("	movzb rdi, dil")
 	}
 	var r string
-	switch t.size() {
+	switch t.Size() {
 	case 1:
 		r = "dil"
 	case 2:
@@ -614,7 +544,7 @@ func store(t ty) {
 	case 8:
 		r = "rdi"
 	default:
-		log.Fatalf("Unhandled type size: %d", t.size())
+		log.Fatalf("Unhandled type size: %d", t.Size())
 	}
 	fmt.Printf("	mov [rax], %s\n", r)
 	fmt.Println("	push rdi")
