@@ -542,6 +542,7 @@ int main() {
 
     test(0, ZERO, "ZERO");
     test(52, WEEKS, "WEEKS");
+    test(2, ({ int x=2; int y=3; MIN(x, y); }), "int x=2; int y=3; MIN(x, y);");
 
     test(1, ({ abc x={1,2,3}; x.a; }), "abc x={1,2,3}; x.a;");
 

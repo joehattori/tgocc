@@ -624,7 +624,7 @@ func (p *Parser) stmt() ast.Node {
 		var cases []*ast.CaseNode
 		var dflt *ast.DefaultNode = nil
 		for idx := 0; ; idx++ {
-			if node := p.switchCase(idx); node== nil {
+			if node := p.switchCase(idx); node == nil {
 				break
 			} else {
 				switch node := node.(type) {
@@ -1064,9 +1064,9 @@ func (p *Parser) primary() ast.Node {
 		}
 	}
 
-	if StrTok, isStr := p.consumeStr(); isStr {
-		init := vars.NewGVarInitStr(StrTok.Str())
-		s := vars.NewGVar(true, newGVarLabel(), types.NewArr(types.NewChar(), StrTok.Len()), init)
+	if strTok, isStr := p.consumeStr(); isStr {
+		init := vars.NewGVarInitStr(strTok.Str())
+		s := vars.NewGVar(true, newGVarLabel(), types.NewArr(types.NewChar(), strTok.Len()), init)
 		p.Ast.GVars = append(p.Ast.GVars, s)
 		return ast.NewVarNode(s)
 	}

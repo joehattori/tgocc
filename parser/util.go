@@ -10,10 +10,6 @@ import (
 	"github.com/joehattori/tgocc/vars"
 )
 
-/*
-   Prerequisite functions for parsing.
-*/
-
 func (p *Parser) beginsWith(s string) bool {
 	return strings.HasPrefix(p.Toks[0].Str(), s)
 }

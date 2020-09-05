@@ -42,6 +42,11 @@ type (
 		len int
 	}
 
+	// paramTok is a token of function-like macro parameter.
+	paramTok struct {
+		idx int // index in the parameters of macro parameters.
+	}
+
 	// ReservedTok represents reserved token such as `int`, `return`, `static`, `for`, etc.
 	ReservedTok struct {
 		str    string
@@ -59,18 +64,21 @@ type (
 func (e *EOFTok) Str() string      { return "" }
 func (i *IDTok) Str() string       { return i.name }
 func (n *NumTok) Str() string      { return fmt.Sprintf("%d", n.Val) }
+func (p *paramTok) Str() string    { return "param" }
 func (r *ReservedTok) Str() string { return r.str }
 func (s *StrTok) Str() string      { return s.content }
 
 func (e *EOFTok) Len() int      { return 0 }
 func (i *IDTok) Len() int       { return i.len }
 func (n *NumTok) Len() int      { return utf8.RuneCountInString(fmt.Sprintf("%d", n.Val)) }
+func (p *paramTok) Len() int    { return -1 }
 func (r *ReservedTok) Len() int { return r.len }
 func (s *StrTok) Len() int      { return s.len }
 
 func newEOFTok() *EOFTok                                         { return &EOFTok{} }
 func newIDTok(str string, l int) *IDTok                          { return &IDTok{str, l} }
 func newNumTok(val int64, l int) *NumTok                         { return &NumTok{val, l} }
+func newParamTok(idx int) *paramTok                              { return &paramTok{idx} }
 func newReservedTok(str string, l int, isType bool) *ReservedTok { return &ReservedTok{str, l, isType} }
 func newStrTok(content string, l int) *StrTok                    { return &StrTok{content, l} }
 

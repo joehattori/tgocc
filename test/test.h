@@ -1,5 +1,6 @@
 #define ZERO 0
-#define WEEKS (365/7)
+#define WEEKS 365/7
+#define MIN(X, Y)  ((X) < (Y) ? (X) : (Y))
 
 int printf();
 int exit();
