@@ -17,5 +17,5 @@ func main() {
 	toks := t.Tokenize()
 	parser := parser.NewParser(toks)
 	parser.Parse()
-	parser.Res.Gen()
+	parser.Ast.Gen()
 }

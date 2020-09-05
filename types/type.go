@@ -1,16 +1,19 @@
 package types
 
 type (
+	// Type is the interface of types.
 	Type interface {
 		Alignment() int
 		Size() int
 	}
 
+	// Pointing is the interface of pointer and array type.
 	Pointing interface {
 		Type
 		Base() Type
 	}
 
+	// Arr represents array type.
 	Arr struct {
 		Of  Type
 		Len int
@@ -100,6 +103,7 @@ type Member struct {
 	Type   Type
 }
 
+// FindMember retrieves the struct member with the given name.
 func (s *Struct) FindMember(name string) *Member {
 	for _, member := range s.Members {
 		if name == member.Name {

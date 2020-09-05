@@ -7,12 +7,13 @@ import (
 )
 
 type (
-	// interface for local variables, global variables, and typedefs
+	// Var is the interface for local variables, global variables, and typedefs
 	Var interface {
 		Name() string
 		Type() types.Type
 	}
 
+	// GVar represents global variable.
 	GVar struct {
 		Emit bool
 		Init GVarInit
@@ -20,17 +21,20 @@ type (
 		ty   types.Type
 	}
 
+	// LVar represents local variable.
 	LVar struct {
 		name   string
 		Offset int
 		ty     types.Type
 	}
 
+	// TypeDef represents a typedef tag.
 	TypeDef struct {
 		name string
 		ty   types.Type
 	}
 
+	// Enum represents an enum tag.
 	Enum struct {
 		name string
 		ty   types.Type
@@ -64,10 +68,11 @@ func NewEnum(name string, t types.Type, val int) *Enum {
 	return &Enum{name, t, val}
 }
 
+// GenData generates the data for global variable initialization.
 func GenData(init GVarInit, t types.Type) {
 	if init == nil {
 		fmt.Printf("	.zero %d\n", t.Size())
 	} else {
-		init.gen(t)
+		init.Gen(t)
 	}
 }

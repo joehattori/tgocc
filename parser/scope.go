@@ -128,3 +128,22 @@ func (s *scope) segregateScopeVars() (lVars []*vars.LVar, gVars []*vars.GVar, ty
 	}
 	return
 }
+
+func (p *Parser) spawnScope() {
+	p.curScope = newScope(p.curScope)
+}
+
+func (p *Parser) rewindScope() {
+	offset := p.curScope.curOffset
+	base := p.curScope.baseOffset
+	lvars, gvars, _ := p.curScope.segregateScopeVars()
+	for _, v := range lvars {
+		offset = types.AlignTo(offset, v.Type().Size())
+		offset += v.Type().Size()
+		v.Offset = offset + base
+	}
+	p.curScope.curOffset += offset
+	p.curScope = p.curScope.super
+	p.curScope.curOffset += offset
+	p.Ast.GVars = append(p.Ast.GVars, gvars...)
+}

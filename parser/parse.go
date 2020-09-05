@@ -1,11 +1,7 @@
 package parser
 
 import (
-	"fmt"
 	"log"
-	"strings"
-	"unicode/utf8"
-	"regexp"
 
 	"github.com/joehattori/tgocc/ast"
 	"github.com/joehattori/tgocc/tokenizer"
@@ -13,35 +9,17 @@ import (
 	"github.com/joehattori/tgocc/vars"
 )
 
+// Parser holds the structure defining a parser object.
 type Parser struct {
 	curFnName string
 	curScope  *scope
-	Res       *ast.Ast // TODO: maybe better to declare ast in global
+	Ast       *ast.Ast
 	Toks      []tokenizer.Token
 }
 
+// NewParser creates a new parser.
 func NewParser(toks []tokenizer.Token) *Parser {
 	return &Parser{"", &scope{}, &ast.Ast{}, toks}
-}
-
-func (p *Parser) spawnScope() {
-	p.curScope = newScope(p.curScope)
-}
-
-func (p *Parser) rewindScope() {
-	offset := p.curScope.curOffset
-	base := p.curScope.baseOffset
-	lvars, gvars, _ := p.curScope.segregateScopeVars()
-	for _, v := range lvars {
-		offset = types.AlignTo(offset, v.Type().Size())
-		offset += v.Type().Size()
-		v.Offset = offset + base
-	}
-	p.curScope.curOffset += offset
-	p.curScope = p.curScope.super
-	// maybe this is not necessary if we zero out the memory for child scope?
-	p.curScope.curOffset += offset
-	p.Res.GVars = append(p.Res.GVars, gvars...)
 }
 
 func (p *Parser) findVar(s string) vars.Var {
@@ -83,119 +61,6 @@ func (p *Parser) searchVar(varName string) vars.Var {
 		scope = scope.super
 	}
 	return nil
-}
-
-/*
-   Prerequisite functions for parsing.
-*/
-
-func (p *Parser) beginsWith(s string) bool {
-	return strings.HasPrefix(p.Toks[0].Str(), s)
-}
-
-func (p *Parser) consume(str string) bool {
-	if r, ok := p.Toks[0].(*tokenizer.ReservedTok); ok &&
-		r.Len() == utf8.RuneCountInString(str) &&
-		strings.HasPrefix(r.Str(), str) {
-		p.popToks()
-		return true
-	}
-	return false
-}
-
-func (p *Parser) consumeID() (tok *tokenizer.IdTok, ok bool) {
-	defer func() {
-		if ok {
-			p.popToks()
-		}
-	}()
-	tok, ok = p.Toks[0].(*tokenizer.IdTok)
-	return
-}
-
-func (p *Parser) consumeStr() (tok *tokenizer.StrTok, ok bool) {
-	defer func() {
-		if ok {
-			p.popToks()
-		}
-	}()
-	tok, ok = p.Toks[0].(*tokenizer.StrTok)
-	return
-}
-
-func (p *Parser) isEOF() (ok bool) {
-	_, ok = p.Toks[0].(*tokenizer.EofTok)
-	return
-}
-
-func (p *Parser) expect(str string) {
-	if r, ok := p.Toks[0].(*tokenizer.ReservedTok); ok &&
-		r.Len() == utf8.RuneCountInString(str) && strings.HasPrefix(r.Str(), str) {
-		p.popToks()
-		return
-	}
-	log.Fatalf("%s was expected but got %s", str, p.Toks[0].Str())
-}
-
-func (p *Parser) expectID() (tok *tokenizer.IdTok) {
-	tok, _ = p.Toks[0].(*tokenizer.IdTok)
-	if tok == nil {
-		log.Fatalf("Id was expected but got %s", p.Toks[0].Str())
-	}
-	p.popToks()
-	return
-}
-
-func (p *Parser) expectNum() (tok *tokenizer.NumTok) {
-	tok, _ = p.Toks[0].(*tokenizer.NumTok)
-	if tok == nil {
-		log.Fatalf("Number was expected but got %s", p.Toks[0].Str())
-	}
-	p.popToks()
-	return
-}
-
-func (p *Parser) expectStr() (tok *tokenizer.StrTok) {
-	tok, _ = p.Toks[0].(*tokenizer.StrTok)
-	if tok == nil {
-		log.Fatalf("String literal was expected but got %s", p.Toks[0].Str())
-	}
-	p.popToks()
-	return
-}
-
-func (p *Parser) isFunction() bool {
-	orig := p.Toks
-	defer func() { p.Toks = orig }()
-	p.baseType()
-	for p.consume("*") {
-	}
-	_, isID := p.consumeID()
-	return isID && p.consume("(")
-}
-
-var typeMatcher = regexp.MustCompile(
-	`^(int|char|long|short|struct|void|_Bool|typedef|enum|static|extern|signed|unsigned|volatile)\W`)
-
-func (p *Parser) isType() (ret bool) {
-	switch tok := p.Toks[0].(type) {
-	case *tokenizer.IdTok:
-		_, ret = p.searchVar(tok.Str()).(*vars.TypeDef)
-	case *tokenizer.ReservedTok:
-		ret = typeMatcher.MatchString(tok.Str())
-	}
-	return
-}
-
-func (p *Parser) popToks() {
-	p.Toks = p.Toks[1:]
-}
-
-var gVarLabelCount int
-
-func newGVarLabel() string {
-	defer func() { gVarLabelCount++ }()
-	return fmt.Sprintf(".L.data.%d", gVarLabelCount)
 }
 
 /*
@@ -242,8 +107,9 @@ Actual parsing process from here.
 	stmtExpr   = "(" "{" stmt+ "}" ")"
 */
 
+// Parse traverses tokens and generates Ast.
 func (p *Parser) Parse() {
-	ast := p.Res
+	ast := p.Ast
 	for !p.isEOF() {
 		if p.isFunction() {
 			if fn := p.function(); fn != nil {
@@ -363,8 +229,8 @@ func (p *Parser) function() *ast.FnNode {
 type storageClass int
 
 const (
-	static = 0b01
-	extern = 0b10
+	static storageClass = 0b01
+	extern storageClass = 0b10
 )
 
 func (p *Parser) decl() (t types.Type, id string, rhs ast.Node, sc storageClass) {
@@ -400,7 +266,7 @@ func (p *Parser) initializer(t types.Type, sc storageClass) ast.Node {
 		if strTok, ok := p.consumeStr(); ok {
 			init := vars.NewGVarInitStr(strTok.Str())
 			s := vars.NewGVar((sc&static) != 0, newGVarLabel(), types.NewArr(types.NewChar(), strTok.Len()), init)
-			p.Res.GVars = append(p.Res.GVars, s)
+			p.Ast.GVars = append(p.Ast.GVars, s)
 			return ast.NewVarNode(s)
 		}
 		p.expect("{")
@@ -417,7 +283,7 @@ func (p *Parser) initializer(t types.Type, sc storageClass) ast.Node {
 		if strTok, ok := p.consumeStr(); ok {
 			init := vars.NewGVarInitStr(strTok.Str())
 			s := vars.NewGVar((sc&static) != 0, newGVarLabel(), types.NewArr(types.NewChar(), strTok.Len()), init)
-			p.Res.GVars = append(p.Res.GVars, s)
+			p.Ast.GVars = append(p.Ast.GVars, s)
 			return ast.NewVarNode(s)
 		}
 		p.expect("{")
@@ -460,7 +326,7 @@ func (p *Parser) baseType() (t types.Type, isTypeDef bool, sc storageClass) {
 		log.Fatal("typedef, static and extern should not be used together.")
 	}
 	switch tok := p.Toks[0].(type) {
-	case *tokenizer.IdTok:
+	case *tokenizer.IDTok:
 		if typeDef, ok := p.searchVar(tok.Str()).(*vars.TypeDef); ok {
 			p.popToks()
 			return typeDef.Type(), isTypeDef, sc
@@ -1167,7 +1033,7 @@ func (p *Parser) primary() ast.Node {
 		return ast.NewNumNode(int64(p.unary().LoadType().Size()))
 	}
 
-	if id, isId := p.consumeID(); isId {
+	if id, isID := p.consumeID(); isID {
 		id := id.Str()
 		if p.consume("(") {
 			var t types.Type
@@ -1201,7 +1067,7 @@ func (p *Parser) primary() ast.Node {
 	if StrTok, isStr := p.consumeStr(); isStr {
 		init := vars.NewGVarInitStr(StrTok.Str())
 		s := vars.NewGVar(true, newGVarLabel(), types.NewArr(types.NewChar(), StrTok.Len()), init)
-		p.Res.GVars = append(p.Res.GVars, s)
+		p.Ast.GVars = append(p.Ast.GVars, s)
 		return ast.NewVarNode(s)
 	}
 

@@ -15,55 +15,66 @@ var (
 	idMatcher   = regexp.MustCompile(`^[a-zA-Z_]+\w*`)
 	typeMatcher = regexp.MustCompile(
 		`^(int|char|long|short|struct|void|_Bool|typedef|enum|static|extern|signed|unsigned|volatile)\W`)
+	digitMatcher    = regexp.MustCompile(`^(0(x|X)[[:xdigit:]]+|0(o|O)\d+|0(b|B)(0|1)+|\d+)`)
+	reservedMatcher = regexp.MustCompile(
+		`^(if|else|while|for|return|sizeof|break|continue|switch|case|default|do|define|include)\W`)
 )
 
 type (
+	// Token is the interface for tokens.
 	Token interface {
 		Str() string
 		Len() int
 	}
 
-	EofTok struct{}
+	// EOFTok represents an EOF token.
+	EOFTok struct{}
 
-	IdTok struct {
+	// IDTok represents an ID token.
+	IDTok struct {
 		name string
 		len  int
 	}
 
+	// NumTok represents a number token.
 	NumTok struct {
 		Val int64
 		len int
 	}
 
+	// ReservedTok represents reserved token such as `int`, `return`, `static`, `for`, etc.
 	ReservedTok struct {
-		str string
-		len int
+		str    string
+		len    int
+		IsType bool
 	}
 
+	// StrTok represents a string literal token.
 	StrTok struct {
 		content string
 		len     int
 	}
 )
 
-func (e *EofTok) Str() string      { return "" }
-func (i *IdTok) Str() string       { return i.name }
+func (e *EOFTok) Str() string      { return "" }
+func (i *IDTok) Str() string       { return i.name }
 func (n *NumTok) Str() string      { return fmt.Sprintf("%d", n.Val) }
 func (r *ReservedTok) Str() string { return r.str }
 func (s *StrTok) Str() string      { return s.content }
 
-func (e *EofTok) Len() int      { return 0 }
-func (i *IdTok) Len() int       { return i.len }
+func (e *EOFTok) Len() int      { return 0 }
+func (i *IDTok) Len() int       { return i.len }
 func (n *NumTok) Len() int      { return utf8.RuneCountInString(fmt.Sprintf("%d", n.Val)) }
 func (r *ReservedTok) Len() int { return r.len }
 func (s *StrTok) Len() int      { return s.len }
 
-func NewEOFTok() *EofTok                            { return &EofTok{} }
-func NewIDTok(str string, l int) *IdTok             { return &IdTok{str, l} }
-func NewNumTok(val int64, l int) *NumTok            { return &NumTok{val, l} }
-func NewReservedTok(str string, l int) *ReservedTok { return &ReservedTok{str, l} }
-func NewStrTok(content string, l int) *StrTok       { return &StrTok{content, l} }
+func newEOFTok() *EOFTok                                         { return &EOFTok{} }
+func newIDTok(str string, l int) *IDTok                          { return &IDTok{str, l} }
+func newNumTok(val int64, l int) *NumTok                         { return &NumTok{val, l} }
+func newReservedTok(str string, l int, isType bool) *ReservedTok { return &ReservedTok{str, l, isType} }
+func newStrTok(content string, l int) *StrTok                    { return &StrTok{content, l} }
 
+// Tokenizer holds the structure defining a tokenizer object.
 type Tokenizer struct {
 	filePath string
 	input    string
@@ -72,6 +83,7 @@ type Tokenizer struct {
 	res      []Token
 }
 
+// NewTokenizer creates a new tokenizer.
 func NewTokenizer(path string, addEOF bool) *Tokenizer {
 	return &Tokenizer{filePath: path, addEOF: addEOF}
 }
@@ -119,23 +131,22 @@ func (t *Tokenizer) readCharLiteral() Token {
 		log.Fatalf("Char literal is too long: %s", t.input[t.pos:])
 	}
 	t.pos++
-	return NewNumTok(c, 1)
+	return newNumTok(c, 1)
 }
 
 func (t *Tokenizer) readDigitLiteral() Token {
 	s := t.cur()
-	r := regexp.MustCompile(`^(0(x|X)[[:xdigit:]]+|0(o|O)\d+|0(b|B)(0|1)+|\d+)`)
-	if !r.MatchString(s) {
+	if !digitMatcher.MatchString(s) {
 		return nil
 	}
-	numStr := r.FindString(s)
+	numStr := digitMatcher.FindString(s)
 	numLen := utf8.RuneCountInString(numStr)
 	num, err := strconv.ParseInt(numStr, 0, 64)
 	if err != nil {
 		log.Fatalf("invalid number literal: %s", s)
 	}
 	t.pos += numLen
-	return NewNumTok(num, numLen)
+	return newNumTok(num, numLen)
 }
 
 func (t *Tokenizer) readID() Token {
@@ -146,7 +157,7 @@ func (t *Tokenizer) readID() Token {
 	id := idMatcher.FindString(s)
 	l := utf8.RuneCountInString(id)
 	t.pos += l
-	return NewIDTok(id, l)
+	return newIDTok(id, l)
 }
 
 func (t *Tokenizer) readMultiCharOp() Token {
@@ -159,7 +170,7 @@ func (t *Tokenizer) readMultiCharOp() Token {
 	for _, op := range ops {
 		if strings.HasPrefix(s, op) {
 			t.pos += utf8.RuneCountInString(op)
-			return NewReservedTok(op, utf8.RuneCountInString(op))
+			return newReservedTok(op, utf8.RuneCountInString(op), false)
 		}
 	}
 	return nil
@@ -170,21 +181,20 @@ func (t *Tokenizer) readNewLine() Token {
 		return nil
 	}
 	t.pos++
-	return NewReservedTok("\n", 1)
+	return newReservedTok("\n", 1, false)
 }
 
 func (t *Tokenizer) readReserved() Token {
 	s := t.cur()
-	r := regexp.MustCompile(`^(if|else|while|for|return|sizeof|break|continue|switch|case|default|do|define|include)\W`)
-	if res := r.FindString(s); res != "" {
+	if res := reservedMatcher.FindString(s); res != "" {
 		l := utf8.RuneCountInString(res) - 1
 		t.pos += l
-		return NewReservedTok(res, l)
+		return newReservedTok(res, l, false)
 	}
 	if res := typeMatcher.FindString(s); res != "" {
 		l := utf8.RuneCountInString(res) - 1
 		t.pos += l
-		return NewReservedTok(res, l)
+		return newReservedTok(res, l, true)
 	}
 	return nil
 }
@@ -195,7 +205,7 @@ func (t *Tokenizer) readRuneFrom(s string) Token {
 	}
 	cur := t.cur()
 	t.pos++
-	return NewReservedTok(cur[:1], 1)
+	return newReservedTok(cur[:1], 1, false)
 }
 
 func (t *Tokenizer) readStrLiteral() Token {
@@ -215,7 +225,7 @@ func (t *Tokenizer) readStrLiteral() Token {
 	}
 	s += string('\000')
 	t.pos++
-	return NewStrTok(s, len(s))
+	return newStrTok(s, len(s))
 }
 
 func (t *Tokenizer) trimSpace() {
@@ -224,6 +234,7 @@ func (t *Tokenizer) trimSpace() {
 	}
 }
 
+// Tokenize peforms the actual tokenization.
 func (t *Tokenizer) Tokenize() []Token {
 	input, err := ioutil.ReadFile(t.filePath)
 	if err != nil {
@@ -286,8 +297,8 @@ func (t *Tokenizer) Tokenize() []Token {
 		log.Fatalf("Unexpected input %s\n", s)
 	}
 	if t.addEOF {
-		toks = append(toks, NewEOFTok())
+		toks = append(toks, newEOFTok())
 	}
-	p := &preprocessor{toks}
-	return p.Preprocess(t.filePath, t.addEOF)
+	p := newPreprocessor(toks, t.addEOF, t.filePath)
+	return p.Preprocess()
 }

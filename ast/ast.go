@@ -3,6 +3,7 @@ package ast
 import (
 	"fmt"
 
+	"github.com/joehattori/tgocc/types"
 	"github.com/joehattori/tgocc/vars"
 )
 
@@ -23,7 +24,7 @@ func (a *Ast) genData() {
 		if g.Emit {
 			fmt.Printf("%s:\n", g.Name())
 		}
-		vars.GenDataGVar(g.Init, g.Type())
+		genDataGVar(g.Init, g.Type())
 	}
 }
 
@@ -31,5 +32,13 @@ func (a *Ast) genText() {
 	fmt.Println(".text")
 	for _, f := range a.Fns {
 		f.gen()
+	}
+}
+
+func genDataGVar(init vars.GVarInit, t types.Type) {
+	if init == nil {
+		fmt.Printf("	.zero %d\n", t.Size())
+	} else {
+		init.Gen(t)
 	}
 }

@@ -7,17 +7,23 @@ import (
 	"unicode/utf8"
 )
 
-var macros = make(map[string][]Token)
+var macros = map[string][]Token{}
 
 type preprocessor struct {
-	toks []Token
+	toks     []Token
+	addEOF   bool
+	filePath string
+}
+
+func newPreprocessor(toks []Token, addEOF bool, filePath string) *preprocessor {
+	return &preprocessor{toks, addEOF, filePath}
 }
 
 func (p *preprocessor) isEOF() (ok bool) {
 	if len(p.toks) == 0 {
 		return true
 	}
-	_, ok = p.toks[0].(*EofTok)
+	_, ok = p.toks[0].(*EOFTok)
 	return
 }
 
@@ -31,18 +37,18 @@ func (p *preprocessor) consume(str string) bool {
 	return false
 }
 
-func (p *preprocessor) consumeID() (tok *IdTok, ok bool) {
+func (p *preprocessor) consumeID() (tok *IDTok, ok bool) {
 	defer func() {
 		if ok {
 			p.popToks()
 		}
 	}()
-	tok, ok = p.toks[0].(*IdTok)
+	tok, ok = p.toks[0].(*IDTok)
 	return
 }
 
-func (p *preprocessor) expectID() (tok *IdTok) {
-	tok, _ = p.toks[0].(*IdTok)
+func (p *preprocessor) expectID() (tok *IDTok) {
+	tok, _ = p.toks[0].(*IDTok)
 	if tok == nil {
 		log.Fatalf("Id was expected but got %s", p.toks[0].Str())
 	}
@@ -63,7 +69,7 @@ func (p *preprocessor) popToks() {
 	p.toks = p.toks[1:]
 }
 
-func (p *preprocessor) Preprocess(path string, addEOF bool) []Token {
+func (p *preprocessor) Preprocess() []Token {
 	var output []Token
 	for !p.isEOF() {
 		if p.consume("\n") {
@@ -99,14 +105,14 @@ func (p *preprocessor) Preprocess(path string, addEOF bool) []Token {
 			macros[id.Str()] = def
 		} else if p.consume("include") {
 			relPath := p.expectStr().Str()
-			includePath := filepath.Join(filepath.Dir(path), strings.TrimRight(relPath, string('\000')))
+			includePath := filepath.Join(filepath.Dir(p.filePath), strings.TrimRight(relPath, string('\000')))
 			newTok := NewTokenizer(includePath, false)
 			netoks := newTok.Tokenize()
 			output = append(output, netoks...)
 		}
 	}
-	if addEOF {
-		output = append(output, NewEOFTok())
+	if p.addEOF {
+		output = append(output, newEOFTok())
 	}
 	return output
 }
