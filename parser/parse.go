@@ -622,21 +622,17 @@ func (p *Parser) stmt() ast.Node {
 		p.expect("{")
 
 		var cases []*ast.CaseNode
-		var dflt *ast.DefaultNode = nil
+		var dflt *ast.CaseNode
 		for idx := 0; ; idx++ {
-			if node := p.switchCase(idx); node == nil {
+			if node, isDefault := p.switchCase(idx); node == nil {
 				break
 			} else {
-				switch node := node.(type) {
-				case *ast.CaseNode:
-					cases = append(cases, node)
-				case *ast.DefaultNode:
+				cases = append(cases, node)
+				if isDefault {
 					if dflt != nil {
 						log.Fatal("Multiple definition of default clause.")
 					}
 					dflt = node
-				default:
-					log.Fatalf("unhandled case: %T", node)
 				}
 			}
 		}
@@ -737,7 +733,7 @@ func isStrNode(n ast.Node) (bool, string) {
 	}
 }
 
-func (p *Parser) switchCase(idx int) ast.Node {
+func (p *Parser) switchCase(idx int) (node *ast.CaseNode, isDefault bool) {
 	if p.consume("case") {
 		n := p.constExpr()
 		p.expect(":")
@@ -745,17 +741,17 @@ func (p *Parser) switchCase(idx int) ast.Node {
 		for !p.beginsWith("case") && !p.beginsWith("default") && !p.beginsWith("}") {
 			body = append(body, p.stmt())
 		}
-		return ast.NewCaseNode(int(n), body, idx)
-	}
-	if p.consume("default") {
+		node = ast.NewCaseNode(int(n), body, idx)
+	} else if p.consume("default") {
+		isDefault = true
 		p.expect(":")
 		var body []ast.Node
 		for !p.beginsWith("case") && !p.beginsWith("default") && !p.beginsWith("}") {
 			body = append(body, p.stmt())
 		}
-		return ast.NewDefaultNode(body, idx)
+		node = ast.NewCaseNode(-1, body, idx)
 	}
-	return nil
+	return
 }
 
 func (p *Parser) expr() ast.Node {

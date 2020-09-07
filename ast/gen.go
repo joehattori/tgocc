@@ -212,12 +212,6 @@ func (d *DecNode) gen() {
 	}
 }
 
-func (d *DefaultNode) gen() {
-	for _, b := range d.body {
-		b.gen()
-	}
-}
-
 func (d *DerefNode) gen() {
 	d.ptr.gen()
 	ty := d.LoadType()
@@ -426,22 +420,24 @@ func (s *SwitchNode) gen() {
 	labelCount++
 	prev := jmpLabelNum
 	jmpLabelNum = c
+
+	s.target.gen()
+	fmt.Println("	pop rax")
+	dflt := s.dflt
 	for _, cs := range s.cases {
-		s.target.gen()
-		fmt.Println("	pop rax")
-		i := cs.idx
-		fmt.Printf("	cmp rax, %d\n", cs.cmp)
-		fmt.Printf("	jne .L.nxt.%d.%d\n", c, i)
-		cs.gen()
-		fmt.Printf(".L.nxt.%d.%d:\n", c, i)
-	}
-	if d := s.dflt; d != nil {
-		d.gen()
-		for _, cs := range s.cases {
-			if cs.idx > d.idx {
-				cs.gen()
-			}
+		if dflt != nil && dflt.idx == cs.idx {
+			continue
 		}
+		fmt.Printf("	cmp rax, %d\n", cs.cmp)
+		fmt.Printf("	je .L.case.%d.%d\n", c, cs.idx)
+	}
+	if dflt != nil {
+		fmt.Printf("	jmp .L.case.%d.%d\n", c, dflt.idx)
+	}
+	fmt.Printf("	jmp .L.break.%d\n", jmpLabelNum)
+	for _, cs := range s.cases {
+		fmt.Printf(".L.case.%d.%d:\n", c, cs.idx)
+		cs.gen()
 	}
 	fmt.Printf(".L.break.%d:\n", jmpLabelNum)
 	jmpLabelNum = prev

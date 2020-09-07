@@ -65,11 +65,6 @@ type (
 		isPre bool
 	}
 
-	DefaultNode struct {
-		body []Node
-		idx  int
-	}
-
 	DerefNode struct {
 		ptr Node
 		ty  types.Type
@@ -147,7 +142,7 @@ type (
 	SwitchNode struct {
 		target Node
 		cases  []*CaseNode
-		dflt   *DefaultNode
+		dflt   *CaseNode
 	}
 
 	TernaryNode struct {
@@ -261,10 +256,6 @@ func NewDecNode(body AddressableNode, isPre bool) *DecNode {
 	return &DecNode{body, isPre}
 }
 
-func NewDefaultNode(body []Node, idx int) *DefaultNode {
-	return &DefaultNode{body, idx}
-}
-
 func NewDerefNode(ptr Node) *DerefNode {
 	return &DerefNode{ptr: ptr}
 }
@@ -342,7 +333,7 @@ func NewSubNode(lhs Node, rhs Node) *BinaryNode {
 	return nil
 }
 
-func NewSwitchNode(target Node, cases []*CaseNode, dflt *DefaultNode) *SwitchNode {
+func NewSwitchNode(target Node, cases []*CaseNode, dflt *CaseNode) *SwitchNode {
 	return &SwitchNode{target, cases, dflt}
 }
 
@@ -413,10 +404,6 @@ func (c *ContinueNode) LoadType() types.Type {
 
 func (d *DecNode) LoadType() types.Type {
 	return d.body.LoadType()
-}
-
-func (d *DefaultNode) LoadType() types.Type {
-	return types.NewEmpty()
 }
 
 func (d *DerefNode) LoadType() types.Type {
