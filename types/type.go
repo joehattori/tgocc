@@ -24,7 +24,8 @@ type (
 	Empty struct{}
 	Enum  struct{}
 	Fn    struct {
-		RetTy Type
+		RetTy      Type
+		IsComplete bool
 	}
 
 	Int  struct{}
@@ -45,16 +46,16 @@ type (
 	Void struct{}
 )
 
-func NewArr(of Type, len int) *Arr { return &Arr{of, len} }
-func NewBool() *Bool               { return &Bool{} }
-func NewChar() *Char               { return &Char{} }
-func NewEmpty() *Empty             { return &Empty{} }
-func NewEnum() *Enum               { return &Enum{} }
-func NewFn(t Type) *Fn             { return &Fn{t} }
-func NewInt() *Int                 { return &Int{} }
-func NewLong() *Long               { return &Long{} }
-func NewPtr(to Type) *Ptr          { return &Ptr{to} }
-func NewShort() *Short             { return &Short{} }
+func NewArr(of Type, len int) *Arr      { return &Arr{of, len} }
+func NewBool() *Bool                    { return &Bool{} }
+func NewChar() *Char                    { return &Char{} }
+func NewEmpty() *Empty                  { return &Empty{} }
+func NewEnum() *Enum                    { return &Enum{} }
+func NewFn(t Type, isComplete bool) *Fn { return &Fn{t, isComplete} }
+func NewInt() *Int                      { return &Int{} }
+func NewLong() *Long                    { return &Long{} }
+func NewPtr(to Type) *Ptr               { return &Ptr{to} }
+func NewShort() *Short                  { return &Short{} }
 func NewStruct(align int, m []*Member, Size int) *Struct {
 	return &Struct{align, m, Size}
 }

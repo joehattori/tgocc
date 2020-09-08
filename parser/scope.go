@@ -39,8 +39,13 @@ func newEnumTag(name string, t types.Type) *enumTag {
 }
 
 func (s *scope) addGVar(emit bool, id string, t types.Type, init vars.GVarInit) *vars.GVar {
-	if _, exists := s.searchVar(id).(*vars.GVar); exists {
-		log.Fatalf("identifier %s is already defined", id)
+	if v, exists := s.searchVar(id).(*vars.GVar); exists {
+		if ty, ok := v.Type().(*types.Fn); ok && !ty.IsComplete {
+			v.SetType(t)
+		} else {
+			log.Fatalf("identifier %s is already defined", id)
+		}
+		return v
 	}
 	v := vars.NewGVar(emit, id, t, init)
 	s.vars = append(s.vars, v)

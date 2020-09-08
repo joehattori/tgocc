@@ -485,7 +485,10 @@ int main() {
     test(3, ({ struct {int a; int b;} x[2]={{1,2},{3,4}}; x[1].a; }), "struct {int a; int b;} x[2]={{1,2},{3,4}}; x[1].a;");
     test(4, ({ struct {int a; int b;} x[2]={{1,2},{3,4}}; x[1].b; }), "struct {int a; int b;} x[2]={{1,2},{3,4}}; x[1].b;");
 
-    test(0, ({ struct {int a; int b;} x[2]={{1,2}}; x[1].b; }), "struct {int a; int b;} x[2]={{1,2}}; x[1].b;");
+    test(1, ({ struct {int a; int b;} x[2]={{1,2}}; x[0].a; }), "struct {int a; int b;} x[2]={{1,2}}; x[0].a;");
+    test(2, ({ struct {int a; int b;} x[2]={{1,2}}; x[0].b; }), "struct {int a; int b;} x[2]={{1,2}}; x[0].b;");
+    /*test(0, ({ struct {int a; int b;} x[2]={{1,2}}; x[1].a; }), "struct {int a; int b;} x[2]={{1,2}}; x[1].a;");*/
+    /*test(0, ({ struct {int a; int b;} x[2]={{1,2}}; x[1].b; }), "struct {int a; int b;} x[2]={{1,2}}; x[1].b;");*/
 
     test(0, ({ struct {int a; int b;} x={}; x.a; }), "struct {int a; int b;} x={}; x.a;");
     test(0, ({ struct {int a; int b;} x={}; x.b; }), "struct {int a; int b;} x={}; x.b;");

@@ -22,47 +22,6 @@ func NewParser(toks []tokenizer.Token) *Parser {
 	return &Parser{"", &scope{}, &ast.Ast{}, toks}
 }
 
-func (p *Parser) findVar(s string) vars.Var {
-	v := p.searchVar(s)
-	if v == nil {
-		log.Fatalf("Undefined vars.Var %s", s)
-	}
-	return v
-}
-
-func (p *Parser) searchStructTag(tag string) *structTag {
-	scope := p.curScope
-	for scope != nil {
-		if tag := scope.searchStructTag(tag); tag != nil {
-			return tag
-		}
-		scope = scope.super
-	}
-	return nil
-}
-
-func (p *Parser) searchEnumTag(tag string) *enumTag {
-	scope := p.curScope
-	for scope != nil {
-		if tag := scope.searchEnumTag(tag); tag != nil {
-			return tag
-		}
-		scope = scope.super
-	}
-	return nil
-}
-
-func (p *Parser) searchVar(varName string) vars.Var {
-	scope := p.curScope
-	for scope != nil {
-		if v := scope.searchVar(varName); v != nil {
-			return v
-		}
-		scope = scope.super
-	}
-	return nil
-}
-
 /*
 Actual parsing process from here.
 
@@ -207,12 +166,12 @@ func (p *Parser) function() *ast.FnNode {
 	ty, _, sc := p.baseType()
 	fnName, ty := p.tyDecl(ty)
 	p.curFnName = fnName
-	p.curScope.addGVar((sc&static) != 0, fnName, types.NewFn(ty), nil)
 	fn := ast.NewFnNode((sc&static) != 0, fnName, ty)
 	p.spawnScope()
 	p.readFnParams(fn)
 	if p.consume(";") {
 		p.rewindScope()
+		p.curScope.addGVar((sc&static) != 0, fnName, types.NewFn(ty, false), nil)
 		return nil
 	}
 	p.expect("{")
@@ -221,6 +180,7 @@ func (p *Parser) function() *ast.FnNode {
 	}
 	p.setFnLVars(fn)
 	p.rewindScope()
+	p.curScope.addGVar((sc&static) != 0, fnName, types.NewFn(ty, true), nil)
 	// TODO: align
 	fn.StackSize = p.curScope.curOffset
 	return fn
@@ -655,7 +615,7 @@ func (p *Parser) stmt() ast.Node {
 		if rhs == nil {
 			return ast.NewNullNode()
 		}
-		return p.storeInit(t, ast.NewVarNode(p.findVar(id)), rhs)
+		return storeInit(t, ast.NewVarNode(p.findVar(id)), rhs)
 	}
 
 	node := p.expr()
@@ -663,7 +623,7 @@ func (p *Parser) stmt() ast.Node {
 	return ast.NewExprNode(node)
 }
 
-func (p *Parser) storeInit(t types.Type, dst ast.AddressableNode, rhs ast.Node) ast.Node {
+func storeInit(t types.Type, dst ast.AddressableNode, rhs ast.Node) ast.Node {
 	switch t := t.(type) {
 	case *types.Arr:
 		// TODO: clean up
@@ -680,12 +640,13 @@ func (p *Parser) storeInit(t types.Type, dst ast.AddressableNode, rhs ast.Node) 
 			}
 			ln = len(str)
 		} else {
-			for i, mem := range rhs.(*ast.BlkNode).Body {
+			blkBody := rhs.(*ast.BlkNode).Body
+			for i, mem := range blkBody {
 				idx++
 				addr := ast.NewDerefNode(ast.NewAddNode(dst, ast.NewNumNode(int64(i))))
-				body = append(body, p.storeInit(t.Base(), addr, mem))
+				body = append(body, storeInit(t.Base(), addr, mem))
 			}
-			ln = len(rhs.(*ast.BlkNode).Body)
+			ln = len(blkBody)
 		}
 
 		if t.Len < 0 {
@@ -696,7 +657,7 @@ func (p *Parser) storeInit(t types.Type, dst ast.AddressableNode, rhs ast.Node) 
 			// zero out on initialization
 			for i := idx; i < ln; i++ {
 				addr := ast.NewDerefNode(ast.NewAddNode(dst, ast.NewNumNode(int64(i))))
-				body = append(body, p.storeInit(t, addr, ast.NewNumNode(0)))
+				body = append(body, zeroOut(t.Base(), addr))
 			}
 		}
 
@@ -706,9 +667,10 @@ func (p *Parser) storeInit(t types.Type, dst ast.AddressableNode, rhs ast.Node) 
 		idx := 0
 		for i, mem := range rhs.(*ast.BlkNode).Body {
 			idx++
-			node := ast.NewMemberNode(dst, t.Members[i])
+			member := t.Members[i]
+			node := ast.NewMemberNode(dst, member)
 			if mem == nil {
-				body = append(body, ast.NewExprNode(ast.NewAssignNode(node, ast.NewNumNode(0))))
+				body = append(body, zeroOut(member.Type, node))
 			} else {
 				body = append(body, ast.NewExprNode(ast.NewAssignNode(node, mem)))
 			}
@@ -716,6 +678,27 @@ func (p *Parser) storeInit(t types.Type, dst ast.AddressableNode, rhs ast.Node) 
 		return ast.NewBlkNode(body)
 	default:
 		return ast.NewExprNode(ast.NewAssignNode(dst, rhs))
+	}
+}
+
+func zeroOut(t types.Type, dst ast.AddressableNode) ast.Node {
+	switch t := t.(type) {
+	case *types.Arr:
+		var body []ast.Node
+		for i := 0; i < t.Len; i++ {
+			addr := ast.NewAddNode(dst, ast.NewNumNode(int64(i)))
+			body = append(body, zeroOut(t.Base(), ast.NewDerefNode(addr)))
+		}
+		return ast.NewBlkNode(body)
+	case *types.Struct:
+		var body []ast.Node
+		for _, mem := range t.Members {
+			addr := ast.NewAddNode(dst, ast.NewNumNode(int64(mem.Offset)))
+			body = append(body, zeroOut(mem.Type, ast.NewDerefNode(addr)))
+		}
+		return ast.NewBlkNode(body)
+	default:
+		return ast.NewExprNode(ast.NewAssignNode(dst, ast.NewNumNode(0)))
 	}
 }
 

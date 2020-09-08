@@ -52,6 +52,8 @@ func (v *LVar) Type() types.Type    { return v.ty }
 func (t *TypeDef) Type() types.Type { return t.ty }
 func (e *Enum) Type() types.Type    { return e.ty }
 
+func (v *GVar) SetType(t types.Type) { v.ty = t }
+
 func NewGVar(emit bool, name string, t types.Type, init GVarInit) *GVar {
 	return &GVar{emit, init, name, t}
 }

@@ -22,6 +22,7 @@ func (a *Ast) genData() {
 	fmt.Println(".data")
 	for _, g := range a.GVars {
 		if g.Emit {
+			fmt.Printf(".globl %s\n", g.Name())
 			fmt.Printf("%s:\n", g.Name())
 		}
 		genDataGVar(g.Init, g.Type())

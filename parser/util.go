@@ -115,3 +115,44 @@ func newGVarLabel() string {
 	defer func() { gVarLabelCount++ }()
 	return fmt.Sprintf(".L.data.%d", gVarLabelCount)
 }
+
+func (p *Parser) findVar(s string) vars.Var {
+	v := p.searchVar(s)
+	if v == nil {
+		log.Fatalf("Undefined vars.Var %s", s)
+	}
+	return v
+}
+
+func (p *Parser) searchStructTag(tag string) *structTag {
+	scope := p.curScope
+	for scope != nil {
+		if tag := scope.searchStructTag(tag); tag != nil {
+			return tag
+		}
+		scope = scope.super
+	}
+	return nil
+}
+
+func (p *Parser) searchEnumTag(tag string) *enumTag {
+	scope := p.curScope
+	for scope != nil {
+		if tag := scope.searchEnumTag(tag); tag != nil {
+			return tag
+		}
+		scope = scope.super
+	}
+	return nil
+}
+
+func (p *Parser) searchVar(varName string) vars.Var {
+	scope := p.curScope
+	for scope != nil {
+		if v := scope.searchVar(varName); v != nil {
+			return v
+		}
+		scope = scope.super
+	}
+	return nil
+}
